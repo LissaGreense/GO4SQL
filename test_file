@@ -1,0 +1,3 @@
+			create table 	tbl( one TEXT , two INT );
+			insert into tbl values( 'hello',	 10 );
+			insert 	into tbl  values( 'goodbye', 20 );

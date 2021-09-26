@@ -1,4 +1,4 @@
-package greetings
+package lexer
 
 import (
 	"testing"
@@ -55,7 +55,7 @@ func TestAbc(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := lexer(input)
+	l := RunLexer(input)
 
 	for i, tt := range tests {
 		tok := l.NextToken()

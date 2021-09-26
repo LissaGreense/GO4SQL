@@ -1,4 +1,4 @@
-package greetings
+package lexer
 
 import (
 	"strings"
@@ -13,7 +13,7 @@ type Lexer struct {
 	character    byte // current char under examination
 }
 
-func lexer(input string) *Lexer {
+func RunLexer(input string) *Lexer {
 	input = strings.ToUpper(input) // map everything to uppercase
 	l := &Lexer{input: input}
 	l.readChar()
