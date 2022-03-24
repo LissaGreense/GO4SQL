@@ -27,11 +27,13 @@ const (
 	TABLE  = "TABLE"
 	INSERT = "INSERT"
 	INTO   = "INTO"
+	VALUES = "VALUES"
 	SELECT = "SELECT"
 	FROM   = "FROM"
+
+	// Data types
 	TEXT   = "TEXT"
 	INT    = "INT"
-	VALUES = "VALUES"
 
 	// System
 	ILLEGAL = "ILLEGAL"
