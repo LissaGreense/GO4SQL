@@ -1,6 +1,6 @@
 package ast
 
-import	"github.com/LissaGreense/GO4SQL/token"
+import "github.com/LissaGreense/GO4SQL/token"
 
 // Sequence of operations commands
 // Example:
@@ -20,7 +20,7 @@ type Node interface {
 // SELECT * FROM Customers
 type Command interface {
 	Node
-	commandNode()
+	CommandNode()
 }
 
 // Mathematical expression
@@ -41,24 +41,27 @@ func (p *Sequence) TokenLiteral() string {
 
 type Identifier struct {
 	Token token.Token // the token.IDENT token
-	Value string
 }
 
-type createCommand struct {
-	Token token.Token
-	Name *Identifier // name of the table
+type CreateCommand struct {
+	Token       token.Token
+	Name        *Identifier // name of the table
 	ColumnNames []string
 	ColumnTypes []token.Token
 }
 
-type insertCommand struct {
-	Token token.Token
-	Name *Identifier // name od the table
+func (ls *CreateCommand) CommandNode()         {}
+func (ls *CreateCommand) Node()                {}
+func (ls *CreateCommand) TokenLiteral() string { return ls.Token.Literal }
+
+type InsertCommand struct {
+	Token  token.Token
+	Name   *Identifier // name od the table
 	Values []token.Token
 }
 
-type selectCommand struct {
+type SelectCommand struct {
 	Token token.Token
-	Name *Identifier
+	Name  *Identifier
 	Space []token.Token // ex. column names
 }

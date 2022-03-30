@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/LissaGreense/GO4SQL/lexer"
+	"github.com/LissaGreense/GO4SQL/parser"
 )
 
 func main() {
@@ -39,6 +40,9 @@ func main() {
 			}
 		}
 
+		parser := parser.New(lex)
+		sequences := parser.ParseSequence()
+		log.Println(sequences.Commands[0])
 	} else if *streamMode {
 		log.Println("Reading from stream")
 
