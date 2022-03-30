@@ -51,7 +51,6 @@ type CreateCommand struct {
 }
 
 func (ls *CreateCommand) CommandNode()         {}
-func (ls *CreateCommand) Node()                {}
 func (ls *CreateCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type InsertCommand struct {
