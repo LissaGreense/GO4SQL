@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -29,165 +28,123 @@ func (parser *Parser) nextToken() {
 	parser.peekToken = parser.lexer.NextToken()
 }
 
-func syntaxError(expected token.TokenType, actual token.TokenType) {
-	log.Fatal("Syntax error, expecting: ", expected, ", got: ", actual)
+func validateTokenAndSkip(parser *Parser, expectedTokens []token.TokenType) {
+	validateToken(parser.currentToken.Type, expectedTokens)
+
+	// Ignore validated token
+	parser.nextToken()
 }
 
-func syntaxError2(expected token.TokenType, secondExpected token.TokenType, actual token.TokenType) {
-	log.Fatal("Syntax error, expecting: ", expected, ", or: ", secondExpected, "got: ", actual)
+func validateToken(tokenType token.TokenType, expectedTokens []token.TokenType) {
+	var contains bool = false
+	var tokensPrintMessage string = ""
+	for i, x := range expectedTokens {
+
+		if i == 0 {
+			tokensPrintMessage += string(x)
+		} else {
+			tokensPrintMessage += ", or: " + string(x)
+		}
+
+		if x == tokenType {
+			contains = true
+			break
+		}
+	}
+	if !contains {
+		log.Fatal("Syntax error, expecting: ", tokensPrintMessage, ", got: ", tokenType)
+	}
 }
 
 // create table tbl( one TEXT , two INT );
 func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return the pointer
+	// token.CREATE already at current position in parser
 	createCommand := &ast.CreateCommand{Token: parser.currentToken}
 
-	// Ignore token.CREATE
+	// Skip token.CREATE
 	parser.nextToken()
 
-	// Check if next token is table
-	if parser.currentToken.Type != token.TABLE {
-		syntaxError(token.TABLE, parser.currentToken.Type)
-	}
+	validateTokenAndSkip(parser, []token.TokenType{token.TABLE})
 
-	// Ignore token.TABLE
-	parser.nextToken()
-
-	// Check if next token is IDENT (variable name)
-	if parser.currentToken.Type != token.IDENT {
-		syntaxError(token.IDENT, parser.currentToken.Type)
-	}
+	validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
 	createCommand.Name = &ast.Identifier{Token: parser.currentToken}
 
-	// Ignore token.IDENT
+	// Skip token.IDENT
 	parser.nextToken()
 
-	// Check if next token is LPAREN
-	if parser.currentToken.Type != token.LPAREN {
-		syntaxError(token.LPAREN, parser.currentToken.Type)
-	}
+	validateTokenAndSkip(parser, []token.TokenType{token.LPAREN})
 
-	// Ignore token.LPAREN
-	parser.nextToken()
-
-	// Begin od inside of Paren
+	// Begin of inside of Paren
 	for parser.currentToken.Type == token.IDENT {
-		if parser.peekToken.Type != token.TEXT && parser.peekToken.Type != token.INT {
-			syntaxError2(token.TEXT, token.INT, parser.peekToken.Type)
-		}
+		validateToken(parser.peekToken.Type, []token.TokenType{token.TEXT, token.INT})
 		createCommand.ColumnNames = append(createCommand.ColumnNames, parser.currentToken.Literal)
 		createCommand.ColumnTypes = append(createCommand.ColumnTypes, parser.peekToken)
 
-		// Ignore token.IDENT
+		// Skip token.IDENT
 		parser.nextToken()
-		// Ignore token.TEXT or token.INT
+		// Skip token.TEXT or token.INT
 		parser.nextToken()
 
 		if parser.currentToken.Type != token.COMMA {
 			break
 		}
 
-		// Ignore token.COMMA
+		// Skip token.COMMA
 		parser.nextToken()
 	}
 	// End of inside of Paren
 
-	// Check if next token is RPAREN
-	if parser.currentToken.Type != token.RPAREN {
-		syntaxError(token.RPAREN, parser.currentToken.Type)
-	}
-	// Ignore token.RPAREN
-	parser.nextToken()
-
-	// Check if next token is SEMICOLON
-	if parser.currentToken.Type != token.SEMICOLON {
-		syntaxError(token.SEMICOLON, parser.currentToken.Type)
-	}
-	// Ignore token.SEMICOLON
-	parser.nextToken()
+	validateTokenAndSkip(parser, []token.TokenType{token.RPAREN})
+	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
 
 	return createCommand
-}
-
-func (parser *Parser) parseInsertCommand() ast.Command {
-	insertCommand := &ast.InsertCommand{Token: parser.currentToken}
-
-	// Ignore token.INSERT
-	parser.nextToken()
-
-	// Check if next token is INTO
-	if parser.currentToken.Type != token.INTO {
-		syntaxError(token.INTO, parser.currentToken.Type)
-	}
-	// Ignore token.INTO
-	parser.nextToken()
-
-	// Check if next token is IDENT (table name)
-	if parser.currentToken.Type != token.IDENT {
-		syntaxError(token.IDENT, parser.currentToken.Type)
-	}
-	insertCommand.Name = &ast.Identifier{Token: parser.currentToken}
-
-	// Ignore token.INDENT
-	parser.nextToken()
-
-	// Check if next token is VALUES
-	if parser.currentToken.Type != token.VALUES {
-		syntaxError(token.VALUES, parser.currentToken.Type)
-	}
-	// Ignore token.VALUES
-	parser.nextToken()
-
-	// Check if next token is LPAREN
-	if parser.currentToken.Type != token.LPAREN {
-		syntaxError(token.LPAREN, parser.currentToken.Type)
-	}
-
-	// Ignore token.LPAREN
-	parser.nextToken()
-
-	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
-		// TODO: Add apostrophe validation
-		parser.skipApostrophe()
-
-		if parser.currentToken.Type != token.IDENT && parser.currentToken.Type != token.LITERAL{
-			syntaxError2(token.IDENT, token.LITERAL, parser.currentToken.Type)
-		}
-		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
-		// Ignore token.IDENT or token.LITERAL
-		parser.nextToken()
-
-		parser.skipApostrophe()
-
-
-		if parser.currentToken.Type != token.COMMA {
-			break
-		}
-
-		// Ignore token.COMMA
-		parser.nextToken()
-	}
-
-	// Check if next token is RPAREN
-	if parser.currentToken.Type != token.RPAREN {
-		syntaxError(token.RPAREN, parser.currentToken.Type)
-	}
-	// Ignore token.RPAREN
-	parser.nextToken()
-
-	// Check if next token is SEMICOLON
-	if parser.currentToken.Type != token.SEMICOLON {
-		syntaxError(token.SEMICOLON, parser.currentToken.Type)
-	}
-	// Ignore token.SEMICOLON
-	parser.nextToken()
-
-	return insertCommand
 }
 
 func (parser *Parser) skipApostrophe() {
 	if parser.currentToken.Type == token.APOSTROPHE {
 		parser.nextToken()
 	}
+}
+
+// insert into tbl values( 'hello',	 10 );
+func (parser *Parser) parseInsertCommand() ast.Command {
+	// token.INSERT already at current position in parser
+	insertCommand := &ast.InsertCommand{Token: parser.currentToken}
+
+	// Ignore token.INSERT
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.TokenType{token.INTO})
+
+	validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
+	insertCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	// Ignore token.INDENT
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.TokenType{token.VALUES})
+	validateTokenAndSkip(parser, []token.TokenType{token.LPAREN})
+
+	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
+		// TODO: Add apostrophe validation
+		parser.skipApostrophe()
+
+		validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT, token.LITERAL})
+		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
+		// Ignore token.IDENT or token.LITERAL
+		parser.nextToken()
+		parser.skipApostrophe()
+
+		if parser.currentToken.Type != token.COMMA {
+			break
+		}
+
+		// Ignore token.COMMA
+		parser.nextToken()
+	}
+
+	validateTokenAndSkip(parser, []token.TokenType{token.RPAREN})
+	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
+	return insertCommand
 }
 
 func (parser *Parser) ParseSequence() *ast.Sequence {
@@ -202,11 +159,10 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 		case token.INSERT:
 			command = parser.parseInsertCommand()
 		case token.SELECT:
-			fmt.Println("SELECT")
+			log.Println("SELECT")
 			parser.nextToken()
 		default:
-			fmt.Println("Syntax error")
-			parser.nextToken()
+			log.Fatal("Syntax error, invalid command found")
 		}
 
 		// Add command to the list of parsed commands
