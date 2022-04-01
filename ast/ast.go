@@ -59,6 +59,9 @@ type InsertCommand struct {
 	Values []token.Token
 }
 
+func (ls *InsertCommand) CommandNode()         {}
+func (ls *InsertCommand) TokenLiteral() string { return ls.Token.Literal }
+
 type SelectCommand struct {
 	Token token.Token
 	Name  *Identifier

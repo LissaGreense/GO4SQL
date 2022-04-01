@@ -24,9 +24,9 @@ func New(lexer *lexer.Lexer) *Parser {
 	return p
 }
 
-func (p *Parser) nextToken() {
-	p.currentToken = p.peekToken
-	p.peekToken = p.lexer.NextToken()
+func (parser *Parser) nextToken() {
+	parser.currentToken = parser.peekToken
+	parser.peekToken = parser.lexer.NextToken()
 }
 
 func syntaxError(expected token.TokenType, actual token.TokenType) {
@@ -69,7 +69,7 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	// Ignore token.LPAREN
 	parser.nextToken()
 
-	// Begin od insisde of Paren
+	// Begin od inside of Paren
 	for parser.currentToken.Type == token.IDENT {
 		if parser.peekToken.Type != token.TEXT && parser.peekToken.Type != token.INT {
 			syntaxError2(token.TEXT, token.INT, parser.peekToken.Type)
@@ -89,13 +89,13 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 		// Ignore token.COMMA
 		parser.nextToken()
 	}
-	// End of insisde of Paren
+	// End of inside of Paren
 
 	// Check if next token is RPAREN
 	if parser.currentToken.Type != token.RPAREN {
 		syntaxError(token.RPAREN, parser.currentToken.Type)
 	}
-
+	// Ignore token.RPAREN
 	parser.nextToken()
 
 	// Check if next token is SEMICOLON
@@ -108,27 +108,110 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	return createCommand
 }
 
-func (parser *Parser) ParseSequence() *ast.Sequence {
+func (parser *Parser) parseInsertCommand() ast.Command {
+	insertCommand := &ast.InsertCommand{Token: parser.currentToken}
 
-	// Create variable holding sequnce/commands
+	// Ignore token.INSERT
+	parser.nextToken()
+
+	// Check if next token is INTO
+	if parser.currentToken.Type != token.INTO {
+		syntaxError(token.INTO, parser.currentToken.Type)
+	}
+	// Ignore token.INTO
+	parser.nextToken()
+
+	// Check if next token is IDENT (table name)
+	if parser.currentToken.Type != token.IDENT {
+		syntaxError(token.IDENT, parser.currentToken.Type)
+	}
+	insertCommand.Name = &ast.Identifier{Token: parser.currentToken}
+
+	// Ignore token.INDENT
+	parser.nextToken()
+
+	// Check if next token is VALUES
+	if parser.currentToken.Type != token.VALUES {
+		syntaxError(token.VALUES, parser.currentToken.Type)
+	}
+	// Ignore token.VALUES
+	parser.nextToken()
+
+	// Check if next token is LPAREN
+	if parser.currentToken.Type != token.LPAREN {
+		syntaxError(token.LPAREN, parser.currentToken.Type)
+	}
+
+	// Ignore token.LPAREN
+	parser.nextToken()
+
+	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
+		// TODO: Add apostrophe validation
+		parser.skipApostrophe()
+
+		if parser.currentToken.Type != token.IDENT && parser.currentToken.Type != token.LITERAL{
+			syntaxError2(token.IDENT, token.LITERAL, parser.currentToken.Type)
+		}
+		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
+		// Ignore token.IDENT or token.LITERAL
+		parser.nextToken()
+
+		parser.skipApostrophe()
+
+
+		if parser.currentToken.Type != token.COMMA {
+			break
+		}
+
+		// Ignore token.COMMA
+		parser.nextToken()
+	}
+
+	// Check if next token is RPAREN
+	if parser.currentToken.Type != token.RPAREN {
+		syntaxError(token.RPAREN, parser.currentToken.Type)
+	}
+	// Ignore token.RPAREN
+	parser.nextToken()
+
+	// Check if next token is SEMICOLON
+	if parser.currentToken.Type != token.SEMICOLON {
+		syntaxError(token.SEMICOLON, parser.currentToken.Type)
+	}
+	// Ignore token.SEMICOLON
+	parser.nextToken()
+
+	return insertCommand
+}
+
+func (parser *Parser) skipApostrophe() {
+	if parser.currentToken.Type == token.APOSTROPHE {
+		parser.nextToken()
+	}
+}
+
+func (parser *Parser) ParseSequence() *ast.Sequence {
+	// Create variable holding sequence/commands
 	sequence := &ast.Sequence{}
 
 	for parser.currentToken.Type != token.EOF {
-		var statement ast.Command
+		var command ast.Command
 		switch parser.currentToken.Type {
 		case token.CREATE:
-			statement = parser.parseCreateCommand()
+			command = parser.parseCreateCommand()
 		case token.INSERT:
-			fmt.Println("INSERT")
+			command = parser.parseInsertCommand()
 		case token.SELECT:
 			fmt.Println("SELECT")
+			parser.nextToken()
 		default:
 			fmt.Println("Syntax error")
+			parser.nextToken()
 		}
 
-		// Add statment to the list of parsed commands
-		if statement != nil {
-			sequence.Commands = append(sequence.Commands, statement)
+		// Add command to the list of parsed commands
+		if command != nil {
+			sequence.Commands = append(sequence.Commands, command)
 		}
 	}
 

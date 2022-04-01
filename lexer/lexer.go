@@ -43,8 +43,8 @@ func (lexer *Lexer) NextToken() token.Token {
 		tok.Type = token.EOF
 	default:
 		if isLetter(lexer.character) {
-			tok.Type = token.LookupIdent(tok.Literal)
 			tok.Literal = lexer.readIdentifier()
+			tok.Type = token.LookupIdent(tok.Literal)
 			return tok
 		} else if isDigit(lexer.character) {
 			tok.Type = token.LITERAL
@@ -60,44 +60,44 @@ func (lexer *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func (l *Lexer) skipWhitespace() {
-	for l.character == ' ' || l.character == '\t' || l.character == '\n' || l.character == '\r' {
-		l.readChar()
+func (lexer *Lexer) skipWhitespace() {
+	for lexer.character == ' ' || lexer.character == '\t' || lexer.character == '\n' || lexer.character == '\r' {
+		lexer.readChar()
 	}
 }
 
-func (l *Lexer) readChar() {
-	if l.readPosition >= len(l.input) {
-		l.character = 0
+func (lexer *Lexer) readChar() {
+	if lexer.readPosition >= len(lexer.input) {
+		lexer.character = 0
 	} else {
-		l.character = l.input[l.readPosition]
+		lexer.character = lexer.input[lexer.readPosition]
 	}
-	l.position = l.readPosition
-	l.readPosition += 1
+	lexer.position = lexer.readPosition
+	lexer.readPosition += 1
 }
 
-func (l *Lexer) peekChar() byte {
-	if l.readPosition >= len(l.input) {
+func (lexer *Lexer) peekChar() byte {
+	if lexer.readPosition >= len(lexer.input) {
 		return 0
 	} else {
-		return l.input[l.readPosition]
+		return lexer.input[lexer.readPosition]
 	}
 }
 
-func (l *Lexer) readIdentifier() string {
-	position := l.position
-	for isLetter(l.character) {
-		l.readChar()
+func (lexer *Lexer) readIdentifier() string {
+	position := lexer.position
+	for isLetter(lexer.character) {
+		lexer.readChar()
 	}
-	return l.input[position:l.position]
+	return lexer.input[position:lexer.position]
 }
 
-func (l *Lexer) readNumber() string {
-	position := l.position
-	for isDigit(l.character) {
-		l.readChar()
+func (lexer *Lexer) readNumber() string {
+	position := lexer.position
+	for isDigit(lexer.character) {
+		lexer.readChar()
 	}
-	return l.input[position:l.position]
+	return lexer.input[position:lexer.position]
 }
 
 func isLetter(ch byte) bool {

@@ -29,10 +29,11 @@ func main() {
 
 		lex := lexer.RunLexer(string(content))
 
+		// FIXME: printing lexer breaks parser input - using NextToken() doesn't let to start reading from the beginning again
 		if *debugMode {
 			log.Println("Lexer output:")
 			for {
-				token := (lex.NextToken())
+				token := lex.NextToken()
 				if len(token.Literal) == 0 {
 					break
 				}
@@ -40,9 +41,14 @@ func main() {
 			}
 		}
 
-		parser := parser.New(lex)
-		sequences := parser.ParseSequence()
-		log.Println(sequences.Commands[0])
+		parserInstance := parser.New(lex)
+		sequences := parserInstance.ParseSequence()
+
+		// TODO: Print only when debug mode is turned on - can be done after lexer print fix
+		log.Println("Parser output:")
+		for _, command := range sequences.Commands{
+			log.Println(command)
+		}
 	} else if *streamMode {
 		log.Println("Reading from stream")
 
