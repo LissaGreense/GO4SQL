@@ -17,6 +17,8 @@ func main() {
 	streamMode := flag.Bool("stream", false, "Use to redirect stdin to stdout")
 	debugMode := flag.Bool("debug", false, "Use to enable debug mode")
 
+	// file := "test_file"
+	// filePath = &file
 	flag.Parse()
 
 	if len(*filePath) > 0 {
@@ -46,7 +48,7 @@ func main() {
 
 		// TODO: Print only when debug mode is turned on - can be done after lexer print fix
 		log.Println("Parser output:")
-		for _, command := range sequences.Commands{
+		for _, command := range sequences.Commands {
 			log.Println(command)
 		}
 	} else if *streamMode {

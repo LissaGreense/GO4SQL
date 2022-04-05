@@ -6,7 +6,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
-func TestAbc(t *testing.T) {
+func TestLexer(t *testing.T) {
 	input :=
 		`
 			create table 	tbl( one TEXT , two INT );
