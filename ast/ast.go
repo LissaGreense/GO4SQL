@@ -50,8 +50,8 @@ type CreateCommand struct {
 	ColumnTypes []token.Token
 }
 
-func (ls *CreateCommand) CommandNode()         {}
-func (ls *CreateCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls CreateCommand) CommandNode()         {}
+func (ls CreateCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type InsertCommand struct {
 	Token  token.Token
@@ -59,8 +59,8 @@ type InsertCommand struct {
 	Values []token.Token
 }
 
-func (ls *InsertCommand) CommandNode()         {}
-func (ls *InsertCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls InsertCommand) CommandNode()         {}
+func (ls InsertCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type SelectCommand struct {
 	Token token.Token
