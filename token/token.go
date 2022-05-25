@@ -32,8 +32,8 @@ const (
 	FROM   = "FROM"
 
 	// Data types
-	TEXT   = "TEXT"
-	INT    = "INT"
+	TEXT = "TEXT"
+	INT  = "INT"
 
 	// System
 	ILLEGAL = "ILLEGAL"
@@ -52,7 +52,7 @@ var keywords = map[string]TokenType{
 	"INSERT": INSERT,
 	"INTO":   INTO,
 	"SELECT": SELECT,
-	"FROM":   SELECT,
+	"FROM":   FROM,
 	"VALUES": VALUES,
 }
 

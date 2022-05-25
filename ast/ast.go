@@ -67,3 +67,6 @@ type SelectCommand struct {
 	Name  *Identifier
 	Space []token.Token // ex. column names
 }
+
+func (ls SelectCommand) CommandNode()         {}
+func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }

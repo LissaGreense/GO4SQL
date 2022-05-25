@@ -14,7 +14,7 @@ type Parser struct {
 	peekToken    token.Token
 }
 
-// Return new Parser struct
+// New Return new Parser struct
 func New(lexer *lexer.Lexer) *Parser {
 	p := &Parser{lexer: lexer}
 	// Read two tokens, so curToken and peekToken are both set
@@ -36,8 +36,8 @@ func validateTokenAndSkip(parser *Parser, expectedTokens []token.TokenType) {
 }
 
 func validateToken(tokenType token.TokenType, expectedTokens []token.TokenType) {
-	var contains bool = false
-	var tokensPrintMessage string = ""
+	var contains = false
+	var tokensPrintMessage = ""
 	for i, x := range expectedTokens {
 
 		if i == 0 {
@@ -74,7 +74,7 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 
 	validateTokenAndSkip(parser, []token.TokenType{token.LPAREN})
 
-	// Begin of inside of Paren
+	// Begin of inside Paren
 	for parser.currentToken.Type == token.IDENT {
 		validateToken(parser.peekToken.Type, []token.TokenType{token.TEXT, token.INT})
 		createCommand.ColumnNames = append(createCommand.ColumnNames, parser.currentToken.Literal)
@@ -92,7 +92,7 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 		// Skip token.COMMA
 		parser.nextToken()
 	}
-	// End of inside of Paren
+	// End of inside Paren
 
 	validateTokenAndSkip(parser, []token.TokenType{token.RPAREN})
 	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
@@ -147,6 +147,44 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 	return insertCommand
 }
 
+// SELECT col1, col2, col3 FROM tbl;
+func (parser *Parser) parseSelectCommand() ast.Command {
+	// token.SELECT already at current position in parser
+	selectCommand := &ast.SelectCommand{Token: parser.currentToken}
+
+	// Ignore token.SELECT
+	parser.nextToken()
+
+	if parser.currentToken.Type == token.ASTERISK {
+		selectCommand.Space = append(selectCommand.Space, parser.currentToken)
+		parser.nextToken()
+
+	} else {
+		for parser.currentToken.Type == token.IDENT {
+			// Get column name
+			validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
+			selectCommand.Space = append(selectCommand.Space, parser.currentToken)
+			parser.nextToken()
+
+			if parser.currentToken.Type != token.COMMA {
+				break
+			}
+			// Ignore token.COMMA
+			parser.nextToken()
+		}
+	}
+
+	validateTokenAndSkip(parser, []token.TokenType{token.FROM})
+
+	selectCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	// Ignore token.INDENT
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
+
+	return selectCommand
+}
+
 func (parser *Parser) ParseSequence() *ast.Sequence {
 	// Create variable holding sequence/commands
 	sequence := &ast.Sequence{}
@@ -159,8 +197,7 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 		case token.INSERT:
 			command = parser.parseInsertCommand()
 		case token.SELECT:
-			log.Println("SELECT")
-			parser.nextToken()
+			command = parser.parseSelectCommand()
 		default:
 			log.Fatal("Syntax error, invalid command found")
 		}

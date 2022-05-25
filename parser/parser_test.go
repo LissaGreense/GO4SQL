@@ -116,6 +116,57 @@ func testInsertStatement(t *testing.T, command ast.Command, expectedTableName st
 	return true
 }
 
+func TestParseSelectCommand(t *testing.T) {
+	tests := []struct {
+		input             string
+		expectedTableName string
+		expectedColumns   []token.Token
+	}{
+		{"select * from TBL;", "TBL", []token.Token{{token.ASTERISK, "*"}}},
+		{"select one, two, three from TBL;", "TBL", []token.Token{{token.IDENT, "ONE"}, {token.IDENT, "TWO"}, {token.IDENT, "THREE"}}},
+		{"select from TBL;", "TBL", []token.Token{}},
+	}
+
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences := parserInstance.ParseSequence()
+
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+		}
+
+		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns) {
+			return
+		}
+	}
+}
+
+func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token) bool {
+	if command.TokenLiteral() != "SELECT" {
+		t.Errorf("command.TokenLiteral() not 'SELECT'. got=%q", command.TokenLiteral())
+		return false
+	}
+
+	actualSelectCommand, ok := command.(*ast.SelectCommand)
+	if !ok {
+		t.Errorf("actualSelectCommand is not %T. got=%T", &ast.SelectCommand{}, command)
+		return false
+	}
+
+	if actualSelectCommand.Name.Token.Literal != expectedTableName {
+		t.Errorf("%s != %s", actualSelectCommand.TokenLiteral(), expectedTableName)
+		return false
+	}
+
+	if !tokenArrayEquals(actualSelectCommand.Space, expectedColumnsTokens) {
+		t.Errorf("")
+		return false
+	}
+
+	return true
+}
+
 func stringArrayEquals(a []string, b []string) bool {
 	if len(a) != len(b) {
 		return false

@@ -17,7 +17,7 @@ type Column struct {
 	Values []interface{}
 }
 
-// Return new DbEngine struct
+// New Return new DbEngine struct
 func New() *DbEngine {
 	engine := &DbEngine{}
 	engine.Tables = make(map[string]map[string]*Column)
