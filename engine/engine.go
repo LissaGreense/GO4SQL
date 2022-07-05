@@ -51,17 +51,16 @@ func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 		log.Fatal("Table with the name of " + command.Name.Token.Literal + " doesn't exist!")
 	}
 
-	if len(command.Values) != len(engine.Tables[command.Name.Token.Literal]) {
-		log.Fatal("Invalid number of parameters in insert, should be: " + strconv.Itoa(len(engine.Tables[command.Name.Token.Literal])) + ", but got: " + strconv.Itoa(len(command.Values)))
+	if len(command.Values) != len(table) {
+		log.Fatal("Invalid number of parameters in insert, should be: " + strconv.Itoa(len(table)) + ", but got: " + strconv.Itoa(len(command.Values)))
 	}
 
-	i := 0
-	for columnName, columnType := range table {
-		if columnType.Type.Type != engine.Tables[command.Name.Token.Literal][columnName].Type.Type {
-			log.Fatal("Invalid Token Type in Insert Command, expecting: " + engine.Tables[command.Name.Token.Literal][columnName].Type.Type + ", got: " + columnType.Type.Type)
+	for i := 0; i < len(table); i++ {
+		expectedToken := tokenMapper(table[i].Type.Type)
+		if expectedToken != command.Values[i].Type {
+			log.Fatal("Invalid Token Type in Insert Command, expecting: " + expectedToken + ", got: " + command.Values[i].Type)
 		}
-		engine.Tables[command.Name.Token.Literal][columnName].Values = append(engine.Tables[command.Name.Token.Literal][columnName].Values, command.Values[i].Literal)
-		i++
+		table[i].Values = append(table[i].Values, command.Values[i].Literal)
 	}
 }
 
@@ -99,4 +98,15 @@ func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) string {
 	}
 
 	return result
+}
+
+func tokenMapper(inputToken token.TokenType) token.TokenType {
+	switch inputToken {
+	case token.TEXT:
+		return token.IDENT
+	case token.INT:
+		return token.LITERAL
+	default:
+		return inputToken
+	}
 }

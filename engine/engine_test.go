@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -8,7 +9,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/parser"
 )
 
-func TestParserCreateCommand(t *testing.T) {
+func TestCreateCommand(t *testing.T) {
 	input :=
 		`
 		create table 	tbl( one TEXT , two INT );
@@ -45,23 +46,23 @@ func TestParserCreateCommand(t *testing.T) {
 	if engine.Tables["TBL"][1].Type.Type != "INT" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][0].Values[0] != "HELLO" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[0]) != "HELLO" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][0].Values[1] != "GOODBYE" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[1]) != "GOODBYE" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][0].Values[2] != "BYEBYE" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[2]) != "BYEBYE" {
 		t.Error()
 	}
 
-	if engine.Tables["TBL"][1].Values[0] != "10" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[0]) != "10" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][1].Values[1] != "20" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[1]) != "20" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][1].Values[2] != "3333" {
+	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[2]) != "3333" {
 		t.Error()
 	}
 }
