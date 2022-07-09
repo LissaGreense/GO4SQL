@@ -1,8 +1,6 @@
 package lexer
 
 import (
-	"strings"
-
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
@@ -14,7 +12,6 @@ type Lexer struct {
 }
 
 func RunLexer(input string) *Lexer {
-	input = strings.ToUpper(input) // map everything to uppercase
 	l := &Lexer{input: input}
 	l.readChar()
 	return l

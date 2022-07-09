@@ -12,10 +12,10 @@ import (
 func TestCreateCommand(t *testing.T) {
 	input :=
 		`
-		create table 	tbl( one TEXT , two INT );
-		insert into tbl values( 'hello',	 10 );
-		insert 	into tbl  values( 'goodbye', 20 );
-		insert 	into tbl  values( 'byebye', 3333 );
+		CREATE TABLE 	tbl( one TEXT , two INT );
+		INSERT INTO tbl VALUES( 'hello',	 10 );
+		INSERT 	INTO tbl  VALUES( 'goodbye', 20 );
+		INSERT 	INTO tbl  VALUES( 'byebye', 3333 );
 		`
 
 	lexer := lexer.RunLexer(input)
@@ -36,33 +36,33 @@ func TestCreateCommand(t *testing.T) {
 		t.Error()
 	}
 
-	if len(engine.Tables["TBL"]) != 2 {
+	if len(engine.Tables["tbl"]) != 2 {
 		t.Error()
 	}
 
-	if engine.Tables["TBL"][0].Type.Type != "TEXT" {
+	if engine.Tables["tbl"][0].Type.Type != "TEXT" {
 		t.Error()
 	}
-	if engine.Tables["TBL"][1].Type.Type != "INT" {
+	if engine.Tables["tbl"][1].Type.Type != "INT" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[0]) != "HELLO" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[0]) != "hello" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[1]) != "GOODBYE" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[1]) != "goodbye" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["TBL"][0].Values[2]) != "BYEBYE" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[2]) != "byebye" {
 		t.Error()
 	}
 
-	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[0]) != "10" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[0]) != "10" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[1]) != "20" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[1]) != "20" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["TBL"][1].Values[2]) != "3333" {
+	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[2]) != "3333" {
 		t.Error()
 	}
 }
@@ -71,11 +71,11 @@ func TestSelectCommand(t *testing.T) {
 
 	input :=
 		`
-		create table 	tbl( one TEXT , two INT, three INT, four TEXT );
-		insert into tbl 	values( 'hello',	1, 	11, 'q'  );
-		insert 	into tbl  	values( 'goodbye', 	2, 	22, 'w'  );
-		insert 	into tbl  	values( 'byebye', 	3, 	33,	'e'  );
-		select * from tbl;
+		CREATE TABLE 	tbl( one TEXT , two INT, three INT, four TEXT );
+		INSERT INTO tbl 	VALUES( 'hello',	1, 	11, 'q'  );
+		INSERT 	INTO tbl  	VALUES( 'goodbye', 	2, 	22, 'w'  );
+		INSERT 	INTO tbl  	VALUES( 'byebye', 	3, 	33,	'e'  );
+		SELECT * FROM tbl;
 		`
 
 	lexer := lexer.RunLexer(input)
@@ -94,7 +94,7 @@ func TestSelectCommand(t *testing.T) {
 
 	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
 
-	expectedResult := "ONE|TWO|THREE|FOUR" + "\n" + "'HELLO'|1|11|'Q'" + "\n" + "'GOODBYE'|2|22|'W'" + "\n" + "'BYEBYE'|3|33|'E'"
+	expectedResult := "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
 
 	if result != expectedResult {
 		t.Error(result)

@@ -9,9 +9,9 @@ import (
 func TestLexer(t *testing.T) {
 	input :=
 		`
-			create table 	tbl( one TEXT , two INT );
-			insert into tbl values( 'hello',	 10 );
-			insert 	into tbl  values( 'goodbye', 20 );
+			CREATE TABLE 	tbl( one TEXT , two INT );
+			INSERT INTO tbl VALUES( 'hello',	 10 );
+			INSERT 	INTO tbl  VALUES( 'goodbye', 20 );
 			`
 	tests := []struct {
 		expectedType    token.TokenType
@@ -19,22 +19,22 @@ func TestLexer(t *testing.T) {
 	}{
 		{token.CREATE, "CREATE"},
 		{token.TABLE, "TABLE"},
-		{token.IDENT, "TBL"},
+		{token.IDENT, "tbl"},
 		{token.LPAREN, "("},
-		{token.IDENT, "ONE"},
+		{token.IDENT, "one"},
 		{token.TEXT, "TEXT"},
 		{token.COMMA, ","},
-		{token.IDENT, "TWO"},
+		{token.IDENT, "two"},
 		{token.INT, "INT"},
 		{token.RPAREN, ")"},
 		{token.SEMICOLON, ";"},
 		{token.INSERT, "INSERT"},
 		{token.INTO, "INTO"},
-		{token.IDENT, "TBL"},
+		{token.IDENT, "tbl"},
 		{token.VALUES, "VALUES"},
 		{token.LPAREN, "("},
 		{token.APOSTROPHE, "'"},
-		{token.IDENT, "HELLO"},
+		{token.IDENT, "hello"},
 		{token.APOSTROPHE, "'"},
 		{token.COMMA, ","},
 		{token.LITERAL, "10"},
@@ -42,11 +42,11 @@ func TestLexer(t *testing.T) {
 		{token.SEMICOLON, ";"},
 		{token.INSERT, "INSERT"},
 		{token.INTO, "INTO"},
-		{token.IDENT, "TBL"},
+		{token.IDENT, "tbl"},
 		{token.VALUES, "VALUES"},
 		{token.LPAREN, "("},
 		{token.APOSTROPHE, "'"},
-		{token.IDENT, "GOODBYE"},
+		{token.IDENT, "goodbye"},
 		{token.APOSTROPHE, "'"},
 		{token.COMMA, ","},
 		{token.LITERAL, "20"},

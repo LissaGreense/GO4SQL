@@ -15,9 +15,9 @@ func TestParserCreateCommand(t *testing.T) {
 		expectedColumnNames []string
 		expectedColumTypes  []token.Token
 	}{
-		{"create table 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{token.TEXT, "TEXT"}}},
-		{"create table 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{token.TEXT, "TEXT"}, {token.TEXT, "TEXT"}, {token.INT, "INT"}}},
-		{"create table 	TBL(  );", "TBL", []string{}, []token.Token{}},
+		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{token.TEXT, "TEXT"}}},
+		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{token.TEXT, "TEXT"}, {token.TEXT, "TEXT"}, {token.INT, "INT"}}},
+		{"CREATE TABLE 	TBL(  );", "TBL", []string{}, []token.Token{}},
 	}
 
 	for _, tt := range tests {
@@ -71,9 +71,9 @@ func TestParseInsertCommand(t *testing.T) {
 		expectedTableName    string
 		expectedValuesTokens []token.Token
 	}{
-		{"insert into TBL values();", "TBL", []token.Token{}},
-		{"insert into TBL values( 'hello' );", "TBL", []token.Token{{token.IDENT, "HELLO"}}},
-		{"insert into TBL values( 'hello',	 10 , 'lol');", "TBL", []token.Token{{token.IDENT, "HELLO"}, {token.LITERAL, "10"}, {token.IDENT, "LOL"}}},
+		{"INSERT INTO TBL VALUES();", "TBL", []token.Token{}},
+		{"INSERT INTO TBL VALUES( 'HELLO' );", "TBL", []token.Token{{token.IDENT, "HELLO"}}},
+		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{token.IDENT, "HELLO"}, {token.LITERAL, "10"}, {token.IDENT, "LOL"}}},
 	}
 
 	for _, tt := range tests {
@@ -122,9 +122,9 @@ func TestParseSelectCommand(t *testing.T) {
 		expectedTableName string
 		expectedColumns   []token.Token
 	}{
-		{"select * from TBL;", "TBL", []token.Token{{token.ASTERISK, "*"}}},
-		{"select one, two, three from TBL;", "TBL", []token.Token{{token.IDENT, "ONE"}, {token.IDENT, "TWO"}, {token.IDENT, "THREE"}}},
-		{"select from TBL;", "TBL", []token.Token{}},
+		{"SELECT * FROM TBL;", "TBL", []token.Token{{token.ASTERISK, "*"}}},
+		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{token.IDENT, "ONE"}, {token.IDENT, "TWO"}, {token.IDENT, "THREE"}}},
+		{"SELECT FROM TBL;", "TBL", []token.Token{}},
 	}
 
 	for _, tt := range tests {
