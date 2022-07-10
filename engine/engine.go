@@ -66,41 +66,65 @@ func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 
 func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) string {
 	table, exist := engine.Tables[command.Name.Token.Literal]
-	result := ""
 
 	if !exist {
 		log.Fatal("Table with the name of " + command.Name.Token.Literal + " doesn't exist!")
 	}
 
+	wantedColumnNames := make([]string, 0)
 	if command.Space[0].Type == token.ASTERISK {
 		for i := 0; i < len(table); i++ {
-			result += table[i].Name
+			wantedColumnNames = append(wantedColumnNames, table[i].Name)
+		}
+		return extractColumnContent(table, wantedColumnNames)
+	} else {
+		for i := 0; i < len(command.Space); i++ {
+			wantedColumnNames = append(wantedColumnNames, command.Space[i].Literal)
+		}
+		return extractColumnContent(table, wantedColumnNames)
+	}
+}
+
+func extractColumnContent(table map[int]*Column, wantedColumnNames []string) string {
+	mappedIndexes := make([]int, 0)
+	for wantedColumnIndex := 0; wantedColumnIndex < len(wantedColumnNames); wantedColumnIndex++ {
+		for columnNameIndex := 0; columnNameIndex < len(table); columnNameIndex++ {
+			if table[columnNameIndex].Name == wantedColumnNames[wantedColumnIndex] {
+				mappedIndexes = append(mappedIndexes, columnNameIndex)
+				break
+			}
+			if columnNameIndex == len(table)-1 {
+				log.Fatal("Provided column name: " + wantedColumnNames[wantedColumnIndex] + "doesn't exist")
+			}
+		}
+	}
+	result := ""
+	for i := 0; i < len(mappedIndexes); i++ {
+		result += table[mappedIndexes[i]].Name
+		result += "|"
+	}
+	result = strings.TrimSuffix(result, "|")
+	result += "\n"
+
+	rowsCount := len(table[0].Values)
+
+	for iRow := 0; iRow < rowsCount; iRow++ {
+		for iColumn := 0; iColumn < len(mappedIndexes); iColumn++ {
+			if table[mappedIndexes[iColumn]].Type.Literal == token.TEXT {
+				result += "'" + fmt.Sprintf("%v", table[mappedIndexes[iColumn]].Values[iRow]) + "'"
+			} else {
+				result += fmt.Sprintf("%v", table[mappedIndexes[iColumn]].Values[iRow])
+			}
 			result += "|"
 		}
 		result = strings.TrimSuffix(result, "|")
 		result += "\n"
-
-		rowsCount := len(table[0].Values)
-
-		for iRow := 0; iRow < rowsCount; iRow++ {
-			for iColumn := 0; iColumn < len(table); iColumn++ {
-				if table[iColumn].Type.Literal == token.TEXT {
-					result += "'" + fmt.Sprintf("%v", table[iColumn].Values[iRow]) + "'"
-				} else {
-					result += fmt.Sprintf("%v", table[iColumn].Values[iRow])
-				}
-				result += "|"
-			}
-			result = strings.TrimSuffix(result, "|")
-			result += "\n"
-		}
-		result = strings.TrimSuffix(result, "\n")
 	}
-
+	result = strings.TrimSuffix(result, "\n")
 	return result
 }
 
-func tokenMapper(inputToken token.TokenType) token.TokenType {
+func tokenMapper(inputToken token.Type) token.Type {
 	switch inputToken {
 	case token.TEXT:
 		return token.IDENT
@@ -109,4 +133,13 @@ func tokenMapper(inputToken token.TokenType) token.TokenType {
 	default:
 		return inputToken
 	}
+}
+
+func isInArray(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }

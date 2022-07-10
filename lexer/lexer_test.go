@@ -14,7 +14,7 @@ func TestLexer(t *testing.T) {
 			INSERT 	INTO tbl  VALUES( 'goodbye', 20 );
 			`
 	tests := []struct {
-		expectedType    token.TokenType
+		expectedType    token.Type
 		expectedLiteral string
 	}{
 		{token.CREATE, "CREATE"},

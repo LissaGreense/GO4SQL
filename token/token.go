@@ -1,28 +1,28 @@
 package token
 
-type TokenType string
+type Type string
 
 const (
-	// Operators
+	// ASTERISK - Operators
 	ASTERISK = "*"
 
-	// Identifiers + literals
+	// IDENT - Identifiers + literals
 	IDENT   = "IDENT"   // tab, car, apple...
 	LITERAL = "LITERAL" // 1343456
 
-	// Delimiters
+	// COMMA - Delimiters
 	COMMA     = ","
 	SEMICOLON = ";"
 
-	// Special tokens
+	// EOF - Special tokens
 	EOF        = ""
 	APOSTROPHE = "'"
 
-	// Paren
+	// LPAREN - Paren
 	LPAREN = "("
 	RPAREN = ")"
 
-	// Keywords
+	// CREATE - Keywords
 	CREATE = "CREATE"
 	TABLE  = "TABLE"
 	INSERT = "INSERT"
@@ -31,20 +31,20 @@ const (
 	SELECT = "SELECT"
 	FROM   = "FROM"
 
-	// Data types
+	// TEXT - Data types
 	TEXT = "TEXT"
 	INT  = "INT"
 
-	// System
+	// ILLEGAL - System
 	ILLEGAL = "ILLEGAL"
 )
 
 type Token struct {
-	Type    TokenType
+	Type    Type
 	Literal string
 }
 
-var keywords = map[string]TokenType{
+var keywords = map[string]Type{
 	"TEXT":   TEXT,
 	"INT":    INT,
 	"CREATE": CREATE,
@@ -56,7 +56,7 @@ var keywords = map[string]TokenType{
 	"VALUES": VALUES,
 }
 
-func LookupIdent(ident string) TokenType {
+func LookupIdent(ident string) Type {
 	if tok, ok := keywords[ident]; ok {
 		return tok
 	}

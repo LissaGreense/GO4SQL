@@ -28,14 +28,14 @@ func (parser *Parser) nextToken() {
 	parser.peekToken = parser.lexer.NextToken()
 }
 
-func validateTokenAndSkip(parser *Parser, expectedTokens []token.TokenType) {
+func validateTokenAndSkip(parser *Parser, expectedTokens []token.Type) {
 	validateToken(parser.currentToken.Type, expectedTokens)
 
 	// Ignore validated token
 	parser.nextToken()
 }
 
-func validateToken(tokenType token.TokenType, expectedTokens []token.TokenType) {
+func validateToken(tokenType token.Type, expectedTokens []token.Type) {
 	var contains = false
 	var tokensPrintMessage = ""
 	for i, x := range expectedTokens {
@@ -64,19 +64,19 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	// Skip token.CREATE
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.TokenType{token.TABLE})
+	validateTokenAndSkip(parser, []token.Type{token.TABLE})
 
-	validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
 	createCommand.Name = &ast.Identifier{Token: parser.currentToken}
 
 	// Skip token.IDENT
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.TokenType{token.LPAREN})
+	validateTokenAndSkip(parser, []token.Type{token.LPAREN})
 
 	// Begin of inside Paren
 	for parser.currentToken.Type == token.IDENT {
-		validateToken(parser.peekToken.Type, []token.TokenType{token.TEXT, token.INT})
+		validateToken(parser.peekToken.Type, []token.Type{token.TEXT, token.INT})
 		createCommand.ColumnNames = append(createCommand.ColumnNames, parser.currentToken.Literal)
 		createCommand.ColumnTypes = append(createCommand.ColumnTypes, parser.peekToken)
 
@@ -94,8 +94,8 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	}
 	// End of inside Paren
 
-	validateTokenAndSkip(parser, []token.TokenType{token.RPAREN})
-	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
+	validateTokenAndSkip(parser, []token.Type{token.RPAREN})
+	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 
 	return createCommand
 }
@@ -114,21 +114,21 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 	// Ignore token.INSERT
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.TokenType{token.INTO})
+	validateTokenAndSkip(parser, []token.Type{token.INTO})
 
-	validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
 	insertCommand.Name = &ast.Identifier{Token: parser.currentToken}
 	// Ignore token.INDENT
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.TokenType{token.VALUES})
-	validateTokenAndSkip(parser, []token.TokenType{token.LPAREN})
+	validateTokenAndSkip(parser, []token.Type{token.VALUES})
+	validateTokenAndSkip(parser, []token.Type{token.LPAREN})
 
 	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
 		// TODO: Add apostrophe validation
 		parser.skipApostrophe()
 
-		validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT, token.LITERAL})
+		validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
 		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
 		// Ignore token.IDENT or token.LITERAL
 		parser.nextToken()
@@ -142,8 +142,8 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 		parser.nextToken()
 	}
 
-	validateTokenAndSkip(parser, []token.TokenType{token.RPAREN})
-	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
+	validateTokenAndSkip(parser, []token.Type{token.RPAREN})
+	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 	return insertCommand
 }
 
@@ -162,7 +162,7 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 	} else {
 		for parser.currentToken.Type == token.IDENT {
 			// Get column name
-			validateToken(parser.currentToken.Type, []token.TokenType{token.IDENT})
+			validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
 			selectCommand.Space = append(selectCommand.Space, parser.currentToken)
 			parser.nextToken()
 
@@ -174,13 +174,13 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 		}
 	}
 
-	validateTokenAndSkip(parser, []token.TokenType{token.FROM})
+	validateTokenAndSkip(parser, []token.Type{token.FROM})
 
 	selectCommand.Name = &ast.Identifier{Token: parser.currentToken}
 	// Ignore token.INDENT
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.TokenType{token.SEMICOLON})
+	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 
 	return selectCommand
 }

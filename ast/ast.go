@@ -2,7 +2,7 @@ package ast
 
 import "github.com/LissaGreense/GO4SQL/token"
 
-// Sequence of operations commands
+// Sequence - Sequence of operations commands
 // Example:
 // Command[0] = SELECT * FROM Customers
 // Command[1] = WHERE City LIKE '%es%';
@@ -15,7 +15,7 @@ type Node interface {
 	TokenLiteral() string
 }
 
-// Part of sequence - represent single static command
+// Command - Part of sequence - represent single static command
 // Example:
 // SELECT * FROM Customers
 type Command interface {
@@ -23,7 +23,7 @@ type Command interface {
 	CommandNode()
 }
 
-// Mathematical expression
+// Expression - Mathematical expression
 // Example:
 // CustomerID<5
 type Expression interface {

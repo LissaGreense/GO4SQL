@@ -18,8 +18,8 @@ func TestCreateCommand(t *testing.T) {
 		INSERT 	INTO tbl  VALUES( 'byebye', 3333 );
 		`
 
-	lexer := lexer.RunLexer(input)
-	parserInstance := parser.New(lexer)
+	lexerInstance := lexer.RunLexer(input)
+	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
 	if len(sequences.Commands) != 4 {
@@ -78,8 +78,8 @@ func TestSelectCommand(t *testing.T) {
 		SELECT * FROM tbl;
 		`
 
-	lexer := lexer.RunLexer(input)
-	parserInstance := parser.New(lexer)
+	lexerInstance := lexer.RunLexer(input)
+	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
 	if len(sequences.Commands) != 5 {
@@ -95,6 +95,57 @@ func TestSelectCommand(t *testing.T) {
 	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
 
 	expectedResult := "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
+
+	if result != expectedResult {
+		t.Error(result)
+	}
+}
+
+func TestSelectWithColumnNamesCommand(t *testing.T) {
+	input :=
+		`
+		CREATE TABLE 	tbl( one TEXT , two INT, three INT, four TEXT );
+		INSERT INTO tbl 	VALUES( 'hello',	1, 	11, 'q'  );
+		INSERT 	INTO tbl  	VALUES( 'goodbye', 	2, 	22, 'w'  );
+		INSERT 	INTO tbl  	VALUES( 'byebye', 	3, 	33,	'e'  );
+		SELECT one, two FROM tbl;
+		SELECT two, one FROM tbl;
+		SELECT one, two, three, four FROM tbl;
+		`
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := parser.New(lexer)
+	sequences := parserInstance.ParseSequence()
+
+	if len(sequences.Commands) != 7 {
+		t.Fatalf("sequences does not contain 7 statements. got=%d", len(sequences.Commands))
+	}
+
+	engine := New()
+	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
+	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
+	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
+	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
+
+	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+
+	expectedResult := "one|two" + "\n" + "'hello'|1" + "\n" + "'goodbye'|2" + "\n" + "'byebye'|3"
+
+	if result != expectedResult {
+		t.Error(result)
+	}
+
+	result = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand))
+
+	expectedResult = "two|one" + "\n" + "1|'hello'" + "\n" + "2|'goodbye'" + "\n" + "3|'byebye'"
+
+	if result != expectedResult {
+		t.Error(result)
+	}
+
+	result = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand))
+
+	expectedResult = "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
 
 	if result != expectedResult {
 		t.Error(result)
