@@ -15,8 +15,6 @@ import (
 func main() {
 	filePath := flag.String("file", "", "Provide a path to the .sql file")
 	streamMode := flag.Bool("stream", false, "Use to redirect stdin to stdout")
-	debugMode := flag.Bool("debug", false, "Use to enable debug mode")
-
 	// file := "test_file"
 	// filePath = &file
 	flag.Parse()
@@ -30,18 +28,6 @@ func main() {
 		}
 
 		lex := lexer.RunLexer(string(content))
-
-		// FIXME: printing lexer breaks parser input - using NextToken() doesn't let to start reading from the beginning again
-		if *debugMode {
-			log.Println("Lexer output:")
-			for {
-				token := lex.NextToken()
-				if len(token.Literal) == 0 {
-					break
-				}
-				log.Println(token.Type, " : ", token.Literal)
-			}
-		}
 
 		parserInstance := parser.New(lex)
 		sequences := parserInstance.ParseSequence()
