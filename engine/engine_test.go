@@ -113,8 +113,8 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 		SELECT one, two, three, four FROM tbl;
 		`
 
-	lexer := lexer.RunLexer(input)
-	parserInstance := parser.New(lexer)
+	lexerInstance := lexer.RunLexer(input)
+	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
 	if len(sequences.Commands) != 7 {
