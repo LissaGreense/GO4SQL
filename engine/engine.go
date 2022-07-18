@@ -81,7 +81,7 @@ func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) string {
 		for i := 0; i < len(command.Space); i++ {
 			wantedColumnNames = append(wantedColumnNames, command.Space[i].Literal)
 		}
-		return extractColumnContent(table, wantedColumnNames)
+		return extractColumnContent(table, unique(wantedColumnNames))
 	}
 }
 
@@ -135,11 +135,14 @@ func tokenMapper(inputToken token.Type) token.Type {
 	}
 }
 
-func isInArray(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
+func unique(arr []string) []string {
+	occurred := map[string]bool{}
+	result := []string{}
+	for e := range arr {
+		if !occurred[arr[e]] {
+			occurred[arr[e]] = true
+			result = append(result, arr[e])
 		}
 	}
-	return false
+	return result
 }
