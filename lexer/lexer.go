@@ -39,13 +39,13 @@ func (lexer *Lexer) NextToken() token.Token {
 		tok.Literal = ""
 		tok.Type = token.EOF
 	default:
-		if isLetter(lexer.character) {
-			tok.Literal = lexer.readIdentifier()
-			tok.Type = token.LookupIdent(tok.Literal)
-			return tok
-		} else if isDigit(lexer.character) {
+		if isDigit(lexer.character) {
 			tok.Type = token.LITERAL
 			tok.Literal = lexer.readNumber()
+			return tok
+		} else if isLetter(lexer.character) {
+			tok.Literal = lexer.readIdentifier()
+			tok.Type = token.LookupIdent(tok.Literal)
 			return tok
 		} else {
 			// unsupported stuff
@@ -73,17 +73,9 @@ func (lexer *Lexer) readChar() {
 	lexer.readPosition += 1
 }
 
-func (lexer *Lexer) peekChar() byte {
-	if lexer.readPosition >= len(lexer.input) {
-		return 0
-	} else {
-		return lexer.input[lexer.readPosition]
-	}
-}
-
 func (lexer *Lexer) readIdentifier() string {
 	position := lexer.position
-	for isLetter(lexer.character) {
+	for isLetter(lexer.character) || isDigit(lexer.character) {
 		lexer.readChar()
 	}
 	return lexer.input[position:lexer.position]
