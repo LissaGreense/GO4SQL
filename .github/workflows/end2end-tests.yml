@@ -1,5 +1,5 @@
 
-name: unit-tests
+name: end2end-tests
 
 on:
   push:
