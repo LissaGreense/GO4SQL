@@ -24,10 +24,10 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Build
-      run: go build -v ./...
+      run: go build -v
 
     - name: Run
-      run: ./GO4SQL -file test_file > output-{{ matrix.go }}.txt
+      run: ./GO4SQL -file test_file > output.txt
 
     - name: Check Result
-      run: diff output-{{ matrix.go }}.txt ./.github/expected_results/end2end.txt
+      run: diff output.txt ./.github/expected_results/end2end.txt
