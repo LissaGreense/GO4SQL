@@ -1,5 +1,15 @@
 # GO4SQL
 
+<p align="center">
+<a href="https://github.com/LissaGreense/GO4SQL/actions">
+<img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg"/>
+</a>
+
+<a href="https://goreportcard.com/report/github.com/LissaGreense/GO4SQL">
+<img alt="Tests Status" src="https://goreportcard.com/badge/github.com/LissaGreense/GO4SQL"/>
+</a>
+</p>
+
 GO4SQL is an open source project to write in-memory SQL engine using nothing but Golang.
 
 ## HOW TO USE
