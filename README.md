@@ -5,8 +5,12 @@
 <img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg"/>
 </a>
 
+<a href="https://github.com/LissaGreense/GO4SQL/actions">
+<img alt="End2End Status" src="https://github.com/LissaGreense/GO4SQL/workflows/end2end-tests/badge.svg"/>
+</a>
+
 <a href="https://goreportcard.com/report/github.com/LissaGreense/GO4SQL">
-<img alt="Tests Status" src="https://goreportcard.com/badge/github.com/LissaGreense/GO4SQL"/>
+<img alt="Report Status" src="https://goreportcard.com/badge/github.com/LissaGreense/GO4SQL"/>
 </a>
 </p>
 
