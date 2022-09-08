@@ -1,5 +1,5 @@
 
-name: unit-tests
+name: end2end-tests
 
 on:
   push:
@@ -24,7 +24,10 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Build
-      run: go build -v ./...
+      run: go build -v
 
-    - name: Test
-      run: go test -v ./...
+    - name: Run
+      run: ./GO4SQL -file test_file > output.txt
+
+    - name: Check Result
+      run: diff output.txt ./.github/expected_results/end2end.txt

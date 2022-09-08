@@ -21,29 +21,18 @@ func main() {
 	engineSQL := engine.New()
 
 	if len(*filePath) > 0 {
-		log.Println("Reading file: ", *filePath)
-
 		content, err := ioutil.ReadFile(*filePath)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		sequences := bytesToSequences(content)
-
-		log.Println("Parser output:")
-		for _, command := range sequences.Commands {
-			log.Println(command)
-		}
 		evaluateInEngine(sequences, engineSQL)
 	} else if *streamMode {
-		log.Println("Reading from stream")
 
 		reader := bufio.NewScanner(os.Stdin)
 		for reader.Scan() {
 			sequences := bytesToSequences(reader.Bytes())
-			for _, command := range sequences.Commands {
-				fmt.Println(command)
-			}
 			evaluateInEngine(sequences, engineSQL)
 		}
 		err := reader.Err()

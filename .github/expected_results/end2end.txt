@@ -1,0 +1,4 @@
+one|two|three|four
+'hello'|1|11|'q'
+'goodbye'|2|22|'w'
+'byebye'|3|33|'e'
