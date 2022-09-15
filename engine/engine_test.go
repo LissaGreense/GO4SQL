@@ -92,7 +92,7 @@ func TestSelectCommand(t *testing.T) {
 	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
 	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
 
-	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand)).ToString()
 
 	expectedResult := "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
 
@@ -127,7 +127,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
 	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
 
-	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand)).ToString()
 
 	expectedResult := "one|two" + "\n" + "'hello'|1" + "\n" + "'goodbye'|2" + "\n" + "'byebye'|3"
 
@@ -135,7 +135,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 		t.Error(result)
 	}
 
-	result = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand))
+	result = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand)).ToString()
 
 	expectedResult = "two|one" + "\n" + "1|'hello'" + "\n" + "2|'goodbye'" + "\n" + "3|'byebye'"
 
@@ -143,7 +143,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 		t.Error(result)
 	}
 
-	result = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand))
+	result = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand)).ToString()
 
 	expectedResult = "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
 
