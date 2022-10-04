@@ -35,33 +35,35 @@ func TestCreateCommand(t *testing.T) {
 		t.Error()
 	}
 
-	if len(engine.Tables["tbl"]) != 2 {
+	columns := engine.Tables["tbl"].Columns
+
+	if len(columns) != 2 {
 		t.Error()
 	}
 
-	if engine.Tables["tbl"][0].Type.Type != "TEXT" {
+	if columns[0].Type.Type != "TEXT" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][1].Type.Type != "INT" {
+	if columns[1].Type.Type != "INT" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][0].Values[0].ToString() != "hello" {
+	if columns[0].Values[0].ToString() != "hello" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][0].Values[1].ToString() != "goodbye" {
+	if columns[0].Values[1].ToString() != "goodbye" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][0].Values[2].ToString() != "byebye" {
+	if columns[0].Values[2].ToString() != "byebye" {
 		t.Error()
 	}
 
-	if engine.Tables["tbl"][1].Values[0].ToString() != "10" {
+	if columns[1].Values[0].ToString() != "10" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][1].Values[1].ToString() != "20" {
+	if columns[1].Values[1].ToString() != "20" {
 		t.Error()
 	}
-	if engine.Tables["tbl"][1].Values[2].ToString() != "3333" {
+	if columns[1].Values[2].ToString() != "3333" {
 		t.Error()
 	}
 }
