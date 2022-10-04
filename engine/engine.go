@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -17,7 +16,7 @@ type DbEngine struct {
 type Column struct {
 	Name   string
 	Type   token.Token
-	Values []interface{}
+	Values []ValueInterface
 }
 
 // New Return new DbEngine struct
@@ -38,7 +37,7 @@ func (engine *DbEngine) CreateTable(command *ast.CreateCommand) {
 
 	for i, columnName := range command.ColumnNames {
 		column := Column{Type: command.ColumnTypes[i]}
-		column.Values = make([]interface{}, 0)
+		column.Values = make([]ValueInterface, 0)
 		column.Name = columnName
 		engine.Tables[command.Name.Token.Literal][i] = &column
 	}
@@ -60,7 +59,20 @@ func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 		if expectedToken != command.Values[i].Type {
 			log.Fatal("Invalid Token Type in Insert Command, expecting: " + expectedToken + ", got: " + command.Values[i].Type)
 		}
-		table[i].Values = append(table[i].Values, command.Values[i].Literal)
+		table[i].Values = append(table[i].Values, getInterfaceValue(command.Values[i]))
+	}
+}
+
+func getInterfaceValue(t token.Token) ValueInterface {
+	switch t.Type {
+	case token.INT:
+		castedInteger, err := strconv.Atoi(t.Literal)
+		if err != nil {
+			log.Fatal("Cannot cast \"" + t.Literal + "\" to Integer")
+		}
+		return IntegerValue{Value: castedInteger}
+	default:
+		return StringValue{Value: t.Literal}
 	}
 }
 
@@ -111,9 +123,9 @@ func extractColumnContent(table map[int]*Column, wantedColumnNames []string) str
 	for iRow := 0; iRow < rowsCount; iRow++ {
 		for iColumn := 0; iColumn < len(mappedIndexes); iColumn++ {
 			if table[mappedIndexes[iColumn]].Type.Literal == token.TEXT {
-				result += "'" + fmt.Sprintf("%v", table[mappedIndexes[iColumn]].Values[iRow]) + "'"
+				result += "'" + table[mappedIndexes[iColumn]].Values[iRow].ToString() + "'"
 			} else {
-				result += fmt.Sprintf("%v", table[mappedIndexes[iColumn]].Values[iRow])
+				result += table[mappedIndexes[iColumn]].Values[iRow].ToString()
 			}
 			result += "|"
 		}
@@ -137,7 +149,8 @@ func tokenMapper(inputToken token.Type) token.Type {
 
 func unique(arr []string) []string {
 	occurred := map[string]bool{}
-	result := []string{}
+	var result []string
+
 	for e := range arr {
 		if !occurred[arr[e]] {
 			occurred[arr[e]] = true

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -46,23 +45,23 @@ func TestCreateCommand(t *testing.T) {
 	if engine.Tables["tbl"][1].Type.Type != "INT" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[0]) != "hello" {
+	if engine.Tables["tbl"][0].Values[0].ToString() != "hello" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[1]) != "goodbye" {
+	if engine.Tables["tbl"][0].Values[1].ToString() != "goodbye" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["tbl"][0].Values[2]) != "byebye" {
+	if engine.Tables["tbl"][0].Values[2].ToString() != "byebye" {
 		t.Error()
 	}
 
-	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[0]) != "10" {
+	if engine.Tables["tbl"][1].Values[0].ToString() != "10" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[1]) != "20" {
+	if engine.Tables["tbl"][1].Values[1].ToString() != "20" {
 		t.Error()
 	}
-	if fmt.Sprintf("%v", engine.Tables["tbl"][1].Values[2]) != "3333" {
+	if engine.Tables["tbl"][1].Values[2].ToString() != "3333" {
 		t.Error()
 	}
 }
