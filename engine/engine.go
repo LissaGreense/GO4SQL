@@ -13,6 +13,10 @@ type DbEngine struct {
 	Tables map[string]map[int]*Column
 }
 
+type Table struct {
+	Columns []*Column
+}
+
 type Column struct {
 	Name   string
 	Type   token.Token
@@ -76,7 +80,7 @@ func getInterfaceValue(t token.Token) ValueInterface {
 	}
 }
 
-func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) string {
+func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) *Table {
 	table, exist := engine.Tables[command.Name.Token.Literal]
 
 	if !exist {
@@ -97,7 +101,8 @@ func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) string {
 	}
 }
 
-func extractColumnContent(table map[int]*Column, wantedColumnNames []string) string {
+func extractColumnContent(table map[int]*Column, wantedColumnNames []string) *Table {
+	selectedTable := &Table{Columns: make([]*Column, 0)}
 	mappedIndexes := make([]int, 0)
 	for wantedColumnIndex := 0; wantedColumnIndex < len(wantedColumnNames); wantedColumnIndex++ {
 		for columnNameIndex := 0; columnNameIndex < len(table); columnNameIndex++ {
@@ -110,22 +115,43 @@ func extractColumnContent(table map[int]*Column, wantedColumnNames []string) str
 			}
 		}
 	}
-	result := ""
+
 	for i := 0; i < len(mappedIndexes); i++ {
-		result += table[mappedIndexes[i]].Name
+		selectedTable.Columns = append(selectedTable.Columns, &Column{
+			Name:   table[mappedIndexes[i]].Name,
+			Type:   table[mappedIndexes[i]].Type,
+			Values: make([]ValueInterface, 0),
+		})
+	}
+	rowsCount := len(table[0].Values)
+
+	for iRow := 0; iRow < rowsCount; iRow++ {
+		for iColumn := 0; iColumn < len(mappedIndexes); iColumn++ {
+			selectedTable.Columns[iColumn].Values = append(selectedTable.Columns[iColumn].Values, table[mappedIndexes[iColumn]].Values[iRow])
+		}
+	}
+	return selectedTable
+}
+
+func (table *Table) ToString() string {
+	result := ""
+
+	for i := 0; i < len(table.Columns); i++ {
+		result += table.Columns[i].Name
 		result += "|"
 	}
 	result = strings.TrimSuffix(result, "|")
 	result += "\n"
 
-	rowsCount := len(table[0].Values)
+	rowsCount := len(table.Columns[0].Values)
 
 	for iRow := 0; iRow < rowsCount; iRow++ {
-		for iColumn := 0; iColumn < len(mappedIndexes); iColumn++ {
-			if table[mappedIndexes[iColumn]].Type.Literal == token.TEXT {
-				result += "'" + table[mappedIndexes[iColumn]].Values[iRow].ToString() + "'"
+
+		for iColumn := 0; iColumn < len(table.Columns); iColumn++ {
+			if table.Columns[iColumn].Type.Literal == token.TEXT {
+				result += "'" + table.Columns[iColumn].Values[iRow].ToString() + "'"
 			} else {
-				result += table[mappedIndexes[iColumn]].Values[iRow].ToString()
+				result += table.Columns[iColumn].Values[iRow].ToString()
 			}
 			result += "|"
 		}

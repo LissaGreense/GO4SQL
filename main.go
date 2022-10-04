@@ -69,7 +69,7 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 
 		selectCommand, selectCommandIsValid := command.(*ast.SelectCommand)
 		if selectCommandIsValid {
-			fmt.Println(engineSQL.SelectFromTable(selectCommand))
+			fmt.Println(engineSQL.SelectFromTable(selectCommand).ToString())
 		}
 	}
 }
