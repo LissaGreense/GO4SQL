@@ -1,5 +1,7 @@
 package engine
 
+import "strconv"
+
 type ValueInterface interface {
 	ToString() string
 	GetType() SupportedTypes
@@ -21,7 +23,7 @@ type StringValue struct {
 }
 
 // ToString implementations
-func (value IntegerValue) ToString() string { return string(int32(value.Value)) }
+func (value IntegerValue) ToString() string { return strconv.Itoa(value.Value) }
 func (value StringValue) ToString() string  { return value.Value }
 
 // GetType implementations

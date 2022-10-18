@@ -137,6 +137,34 @@ func extractColumnContent(columns []*Column, wantedColumnNames []string) *Table 
 	return selectedTable
 }
 
+func (table *Table) IsEqual(secondTable *Table) bool {
+	if len(table.Columns) != len(secondTable.Columns) {
+		return false
+	}
+
+	for i := 0; i < len(table.Columns); i++ {
+		if table.Columns[i].Name != secondTable.Columns[i].Name {
+			return false
+		}
+		if table.Columns[i].Type.Literal != secondTable.Columns[i].Type.Literal {
+			return false
+		}
+		if string(table.Columns[i].Type.Type) != string(secondTable.Columns[i].Type.Type) {
+			return false
+		}
+		if len(table.Columns[i].Values) != len(secondTable.Columns[i].Values) {
+			return false
+		}
+		for j := 0; j < len(table.Columns[i].Values); j++ {
+			if table.Columns[i].Values[j].ToString() != secondTable.Columns[i].Values[j].ToString() {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func (table *Table) ToString() string {
 	result := ""
 

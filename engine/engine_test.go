@@ -6,16 +6,82 @@ import (
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
+	"github.com/LissaGreense/GO4SQL/token"
 )
 
+const (
+	tableName = "tbl"
+)
+
+func getCreateAndInsertCommands() string {
+	return `
+	CREATE  TABLE  ` + tableName + `( one TEXT , two INT, three INT, four TEXT );
+	INSERT  INTO   ` + tableName + ` VALUES( 'hello',	1, 	11, 'q'  );
+	INSERT 	INTO   ` + tableName + ` VALUES( 'goodbye', 	2, 	22, 'w'  );
+	INSERT 	INTO   ` + tableName + ` VALUES( 'byebye', 	3, 	33,	'e'  );
+	`
+}
+
+func getOneColumn() *Column {
+	column := &Column{
+		Name:   "one",
+		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
+		Values: make([]ValueInterface, 0),
+	}
+	column.Values = append(column.Values, StringValue{Value: "hello"})
+	column.Values = append(column.Values, StringValue{Value: "goodbye"})
+	column.Values = append(column.Values, StringValue{Value: "byebye"})
+	return column
+}
+
+func getTwoColumn() *Column {
+	column := &Column{
+		Name:   "two",
+		Type:   token.Token{Type: token.INT, Literal: "INT"},
+		Values: make([]ValueInterface, 0),
+	}
+	column.Values = append(column.Values, IntegerValue{Value: 1})
+	column.Values = append(column.Values, IntegerValue{Value: 2})
+	column.Values = append(column.Values, IntegerValue{Value: 3})
+	return column
+}
+
+func getThreeColumn() *Column {
+	column := &Column{
+		Name:   "three",
+		Type:   token.Token{Type: token.INT, Literal: "INT"},
+		Values: make([]ValueInterface, 0),
+	}
+	column.Values = append(column.Values, IntegerValue{Value: 11})
+	column.Values = append(column.Values, IntegerValue{Value: 22})
+	column.Values = append(column.Values, IntegerValue{Value: 33})
+	return column
+}
+
+func getFourColumn() *Column {
+	column := &Column{
+		Name:   "four",
+		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
+		Values: make([]ValueInterface, 0),
+	}
+	column.Values = append(column.Values, StringValue{Value: "q"})
+	column.Values = append(column.Values, StringValue{Value: "w"})
+	column.Values = append(column.Values, StringValue{Value: "e"})
+	return column
+}
+
+func getExpectedTable() *Table {
+	expectedTable := &Table{Columns: make([]*Column, 0)}
+	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
+	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
+	expectedTable.Columns = append(expectedTable.Columns, getThreeColumn())
+	expectedTable.Columns = append(expectedTable.Columns, getFourColumn())
+
+	return expectedTable
+}
+
 func TestCreateCommand(t *testing.T) {
-	input :=
-		`
-		CREATE TABLE 	tbl( one TEXT , two INT );
-		INSERT INTO tbl VALUES( 'hello',	 10 );
-		INSERT 	INTO tbl  VALUES( 'goodbye', 20 );
-		INSERT 	INTO tbl  VALUES( 'byebye', 3333 );
-		`
+	input := getCreateAndInsertCommands()
 
 	lexerInstance := lexer.RunLexer(input)
 	parserInstance := parser.New(lexerInstance)
@@ -35,49 +101,16 @@ func TestCreateCommand(t *testing.T) {
 		t.Error()
 	}
 
-	columns := engine.Tables["tbl"].Columns
-
-	if len(columns) != 2 {
-		t.Error()
-	}
-
-	if columns[0].Type.Type != "TEXT" {
-		t.Error()
-	}
-	if columns[1].Type.Type != "INT" {
-		t.Error()
-	}
-	if columns[0].Values[0].ToString() != "hello" {
-		t.Error()
-	}
-	if columns[0].Values[1].ToString() != "goodbye" {
-		t.Error()
-	}
-	if columns[0].Values[2].ToString() != "byebye" {
-		t.Error()
-	}
-
-	if columns[1].Values[0].ToString() != "10" {
-		t.Error()
-	}
-	if columns[1].Values[1].ToString() != "20" {
-		t.Error()
-	}
-	if columns[1].Values[2].ToString() != "3333" {
-		t.Error()
+	tableFromEngineStruct := engine.Tables[tableName]
+	expectedTable := getExpectedTable()
+	if tableFromEngineStruct.IsEqual(expectedTable) == false {
+		t.Error("\n" + tableFromEngineStruct.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 }
 
 func TestSelectCommand(t *testing.T) {
 
-	input :=
-		`
-		CREATE TABLE 	tbl( one TEXT , two INT, three INT, four TEXT );
-		INSERT INTO tbl 	VALUES( 'hello',	1, 	11, 'q'  );
-		INSERT 	INTO tbl  	VALUES( 'goodbye', 	2, 	22, 'w'  );
-		INSERT 	INTO tbl  	VALUES( 'byebye', 	3, 	33,	'e'  );
-		SELECT * FROM tbl;
-		`
+	input := getCreateAndInsertCommands() + "\n SELECT * FROM " + tableName + ";"
 
 	lexerInstance := lexer.RunLexer(input)
 	parserInstance := parser.New(lexerInstance)
@@ -93,25 +126,20 @@ func TestSelectCommand(t *testing.T) {
 	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
 	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
 
-	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand)).ToString()
+	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+	expectedTable := getExpectedTable()
 
-	expectedResult := "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
-
-	if result != expectedResult {
-		t.Error(result)
+	if actualTable.IsEqual(expectedTable) == false {
+		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 }
 
 func TestSelectWithColumnNamesCommand(t *testing.T) {
-	input :=
+	input := getCreateAndInsertCommands() +
 		`
-		CREATE TABLE 	tbl( one TEXT , two INT, three INT, four TEXT );
-		INSERT INTO tbl 	VALUES( 'hello',	1, 	11, 'q'  );
-		INSERT 	INTO tbl  	VALUES( 'goodbye', 	2, 	22, 'w'  );
-		INSERT 	INTO tbl  	VALUES( 'byebye', 	3, 	33,	'e'  );
-		SELECT one, two FROM tbl;
-		SELECT two, one FROM tbl;
-		SELECT one, two, three, four FROM tbl;
+		SELECT one, two FROM ` + tableName + `;
+		SELECT two, one FROM ` + tableName + `;
+		SELECT one, two, three, four FROM ` + tableName + `;
 		`
 
 	lexerInstance := lexer.RunLexer(input)
@@ -128,27 +156,25 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
 	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
 
-	result := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand)).ToString()
-
-	expectedResult := "one|two" + "\n" + "'hello'|1" + "\n" + "'goodbye'|2" + "\n" + "'byebye'|3"
-
-	if result != expectedResult {
-		t.Error(result)
+	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+	expectedTable := &Table{Columns: make([]*Column, 0)}
+	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
+	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
+	if actualTable.IsEqual(expectedTable) == false {
+		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 
-	result = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand)).ToString()
-
-	expectedResult = "two|one" + "\n" + "1|'hello'" + "\n" + "2|'goodbye'" + "\n" + "3|'byebye'"
-
-	if result != expectedResult {
-		t.Error(result)
+	actualTable = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand))
+	expectedTable = &Table{Columns: make([]*Column, 0)}
+	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
+	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
+	if actualTable.IsEqual(expectedTable) == false {
+		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 
-	result = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand)).ToString()
-
-	expectedResult = "one|two|three|four" + "\n" + "'hello'|1|11|'q'" + "\n" + "'goodbye'|2|22|'w'" + "\n" + "'byebye'|3|33|'e'"
-
-	if result != expectedResult {
-		t.Error(result)
+	actualTable = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand))
+	expectedResult := getExpectedTable()
+	if actualTable.IsEqual(expectedResult) == false {
+		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedResult.ToString())
 	}
 }
