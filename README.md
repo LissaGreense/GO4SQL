@@ -18,7 +18,7 @@ GO4SQL is an open source project to write in-memory SQL engine using nothing but
 
 ## HOW TO USE
 You can compile the project with ``go build``, this will create ``GO4SQL`` binary.
-You can eithier specify file path with ``./GO4SQL -file file_path``, that will read the the input data directly into the program.
+You can either specify file path with ``./GO4SQL -file file_path``, that will read the input data directly into the program.
 Also with ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands in your console (from standard input).
 
 ## FUNCTIONALITY
