@@ -3,7 +3,6 @@ package engine
 import (
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -165,33 +164,79 @@ func (table *Table) IsEqual(secondTable *Table) bool {
 	return true
 }
 
-func (table *Table) ToString() string {
-	result := ""
+func getBar(columWidths []int) string {
+	bar := "+"
 
-	for i := 0; i < len(table.Columns); i++ {
-		result += table.Columns[i].Name
-		result += "|"
+	for i := 0; i < len(columWidths); i++ {
+		bar += "-"
+		for j := 0; j < columWidths[i]; j++ {
+			bar += "-"
+		}
+		bar += "-+"
 	}
-	result = strings.TrimSuffix(result, "|")
-	result += "\n"
+
+	return bar
+}
+
+func getColumWidths(columns []*Column) []int {
+	widths := make([]int, 0, 0)
+
+	for iColumn := 0; iColumn < len(columns); iColumn++ {
+		maxLength := len(columns[iColumn].Name)
+		for iRow := 0; iRow < len(columns[iColumn].Values); iRow++ {
+			valueLength := len(columns[iColumn].Values[iRow].ToString())
+			if columns[iColumn].Type.Literal == token.TEXT {
+				valueLength += 2 // double "'"
+			}
+			if valueLength > maxLength {
+				maxLength = valueLength
+			}
+		}
+		widths = append(widths, maxLength)
+	}
+
+	return widths
+}
+
+func (table *Table) ToString() string {
+	columWidths := getColumWidths(table.Columns)
+	bar := getBar(columWidths)
+	result := bar + "\n"
+
+	result += "|"
+	for i := 0; i < len(table.Columns); i++ {
+		result += " "
+		for j := 0; j < columWidths[i]-len(table.Columns[i].Name); j++ {
+			result += " "
+		}
+		result += table.Columns[i].Name
+		result += " |"
+	}
+	result += "\n" + bar + "\n"
 
 	rowsCount := len(table.Columns[0].Values)
 
 	for iRow := 0; iRow < rowsCount; iRow++ {
+		result += "|"
 
 		for iColumn := 0; iColumn < len(table.Columns); iColumn++ {
+			result += " "
+
+			printedValue := table.Columns[iColumn].Values[iRow].ToString()
 			if table.Columns[iColumn].Type.Literal == token.TEXT {
-				result += "'" + table.Columns[iColumn].Values[iRow].ToString() + "'"
-			} else {
-				result += table.Columns[iColumn].Values[iRow].ToString()
+				printedValue = "'" + printedValue + "'"
 			}
-			result += "|"
+			for i := 0; i < columWidths[iColumn]-len(printedValue); i++ {
+				result += " "
+			}
+
+			result += printedValue + " |"
 		}
-		result = strings.TrimSuffix(result, "|")
+
 		result += "\n"
 	}
-	result = strings.TrimSuffix(result, "\n")
-	return result
+
+	return result + bar
 }
 
 func tokenMapper(inputToken token.Type) token.Type {
