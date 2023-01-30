@@ -103,7 +103,7 @@ func TestCreateCommand(t *testing.T) {
 
 	tableFromEngineStruct := engine.Tables[tableName]
 	expectedTable := getExpectedTable()
-	if tableFromEngineStruct.IsEqual(expectedTable) == false {
+	if tableFromEngineStruct.isEqual(expectedTable) == false {
 		t.Error("\n" + tableFromEngineStruct.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 }
@@ -129,7 +129,7 @@ func TestSelectCommand(t *testing.T) {
 	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
 	expectedTable := getExpectedTable()
 
-	if actualTable.IsEqual(expectedTable) == false {
+	if actualTable.isEqual(expectedTable) == false {
 		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 }
@@ -160,7 +160,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 	expectedTable := &Table{Columns: make([]*Column, 0)}
 	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
 	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
-	if actualTable.IsEqual(expectedTable) == false {
+	if actualTable.isEqual(expectedTable) == false {
 		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 
@@ -168,13 +168,13 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 	expectedTable = &Table{Columns: make([]*Column, 0)}
 	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
 	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
-	if actualTable.IsEqual(expectedTable) == false {
+	if actualTable.isEqual(expectedTable) == false {
 		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
 	}
 
 	actualTable = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand))
 	expectedResult := getExpectedTable()
-	if actualTable.IsEqual(expectedResult) == false {
+	if actualTable.isEqual(expectedResult) == false {
 		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedResult.ToString())
 	}
 }

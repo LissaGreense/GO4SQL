@@ -55,7 +55,7 @@ func (ls CreateCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type InsertCommand struct {
 	Token  token.Token
-	Name   *Identifier // name od the table
+	Name   *Identifier // name of the table
 	Values []token.Token
 }
 
