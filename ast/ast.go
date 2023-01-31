@@ -28,7 +28,7 @@ type Command interface {
 // CustomerID<5
 type Expression interface {
 	Node
-	expressionNode()
+	ExpressionNode()
 }
 
 func (p *Sequence) TokenLiteral() string {
@@ -41,6 +41,12 @@ func (p *Sequence) TokenLiteral() string {
 
 type Identifier struct {
 	Token token.Token // the token.IDENT token
+}
+
+type Condition struct {
+	Left           *Identifier // name of column
+	Right          token.Token // value which column should have
+	OperationToken token.Token // example: token.EQUAL
 }
 
 type CreateCommand struct {
@@ -70,3 +76,11 @@ type SelectCommand struct {
 
 func (ls SelectCommand) CommandNode()         {}
 func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
+
+type WhereCommand struct {
+	Token      token.Token
+	Expression *Condition
+}
+
+func (ls WhereCommand) CommandNode()         {}
+func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }

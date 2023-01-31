@@ -30,6 +30,11 @@ const (
 	VALUES = "VALUES"
 	SELECT = "SELECT"
 	FROM   = "FROM"
+	WHERE  = "WHERE"
+
+	// EQUAL - Logical operations
+	EQUAL = "EQUAL"
+	NOT   = "NOT"
 
 	// TEXT - Data types
 	TEXT = "TEXT"
@@ -54,6 +59,9 @@ var keywords = map[string]Type{
 	"SELECT": SELECT,
 	"FROM":   FROM,
 	"VALUES": VALUES,
+	"WHERE":  WHERE,
+	"EQUAL":  EQUAL,
+	"NOT":    NOT,
 }
 
 func LookupIdent(ident string) Type {

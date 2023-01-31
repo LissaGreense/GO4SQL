@@ -18,7 +18,7 @@ func (table *Table) isEqual(secondTable *Table) bool {
 		if table.Columns[i].Type.Literal != secondTable.Columns[i].Type.Literal {
 			return false
 		}
-		if string(table.Columns[i].Type.Type) != string(secondTable.Columns[i].Type.Type) {
+		if table.Columns[i].Type.Type != secondTable.Columns[i].Type.Type {
 			return false
 		}
 		if len(table.Columns[i].Values) != len(secondTable.Columns[i].Values) {

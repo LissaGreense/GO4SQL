@@ -178,3 +178,92 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedResult.ToString())
 	}
 }
+
+//
+//func TestSelectWithWhereEqual(t *testing.T) {
+//	input := getCreateAndInsertCommands() +
+//		`
+//		SELECT one, three FROM ` + tableName + ` WHERE one EQUAL 'hello';
+//		`
+//
+//	lexerInstance := lexer.RunLexer(input)
+//	parserInstance := parser.New(lexerInstance)
+//	sequences := parserInstance.ParseSequence()
+//
+//	if len(sequences.Commands) != 5 {
+//		t.Fatalf("sequences does not contain 5 statements. got=%d", len(sequences.Commands))
+//	}
+//
+//	engine := New()
+//	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
+//	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
+//	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
+//	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
+//
+//	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+//	expectedTable := &Table{Columns: make([]*Column, 0)}
+//	column := &Column{
+//		Name:   "one",
+//		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
+//		Values: make([]ValueInterface, 0),
+//	}
+//	column.Values = append(column.Values, StringValue{Value: "hello"})
+//	expectedTable.Columns = append(expectedTable.Columns, column)
+//
+//	column = &Column{
+//		Name:   "three",
+//		Type:   token.Token{Type: token.INT, Literal: "INT"},
+//		Values: make([]ValueInterface, 0),
+//	}
+//	column.Values = append(column.Values, IntegerValue{Value: 11})
+//	expectedTable.Columns = append(expectedTable.Columns, column)
+//
+//	if actualTable.isEqual(expectedTable) == false {
+//		t.Error("\n" + actualTable.ToString() + "\n not equal to: \n" + expectedTable.ToString())
+//	}
+//}
+
+//func TestSelectWithWhereNotEqual(t *testing.T) {
+//	input := getCreateAndInsertCommands() +
+//		`
+//		SELECT one, three FROM ` + tableName + ` WHERE two NOT EQUAL 22;
+//		`
+//
+//	lexerInstance := lexer.RunLexer(input)
+//	parserInstance := parser.New(lexerInstance)
+//	sequences := parserInstance.ParseSequence()
+//
+//	if len(sequences.Commands) != 5 {
+//		t.Fatalf("sequences does not contain 5 statements. got=%d", len(sequences.Commands))
+//	}
+//
+//	engine := New()
+//	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
+//	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
+//	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
+//	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
+//
+//	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
+//	expectedTable := &Table{Columns: make([]*Column, 0)}
+//	column := &Column{
+//		Name:   "one",
+//		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
+//		Values: make([]ValueInterface, 0),
+//	}
+//	column.Values = append(column.Values, StringValue{Value: "hello"})
+//	column.Values = append(column.Values, StringValue{Value: "byebye"})
+//	expectedTable.Columns = append(expectedTable.Columns, column)
+//
+//	column = &Column{
+//		Name:   "three",
+//		Type:   token.Token{Type: token.INT, Literal: "INT"},
+//		Values: make([]ValueInterface, 0),
+//	}
+//	column.Values = append(column.Values, IntegerValue{Value: 11})
+//	column.Values = append(column.Values, IntegerValue{Value: 33})
+//	expectedTable.Columns = append(expectedTable.Columns, column)
+//
+//	if actualTable.isEqual(expectedTable) == false {
+//		t.Error("\n" + actualTable.ToString() + "\n not equal to: \n" + expectedTable.ToString())
+//	}
+//}

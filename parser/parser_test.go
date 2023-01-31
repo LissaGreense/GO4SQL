@@ -142,6 +142,32 @@ func TestParseSelectCommand(t *testing.T) {
 	}
 }
 
+func TestParseWhereCommand(t *testing.T) {
+	tests := []struct {
+		input             string
+		expectedLeft      token.Token
+		expectedRight     token.Token
+		expectedOperation token.Token
+	}{
+		{input: "WHERE colName1 EQUAL 'fda';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{input: "WHERE colName2 EQUAL 6462389;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+	}
+
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences := parserInstance.ParseSequence()
+
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+		}
+
+		if !testWhereStatement(t, sequences.Commands[0], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+			return
+		}
+	}
+}
+
 func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token) bool {
 	if command.TokenLiteral() != "SELECT" {
 		t.Errorf("command.TokenLiteral() not 'SELECT'. got=%q", command.TokenLiteral())
@@ -161,6 +187,36 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 
 	if !tokenArrayEquals(actualSelectCommand.Space, expectedColumnsTokens) {
 		t.Errorf("")
+		return false
+	}
+
+	return true
+}
+
+func testWhereStatement(t *testing.T, command ast.Command, expectedLeft token.Token, expectedRight token.Token, expectedOperation token.Token) bool {
+	if command.TokenLiteral() != "WHERE" {
+		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
+		return false
+	}
+
+	actualWhereCommand, ok := command.(*ast.WhereCommand)
+	if !ok {
+		t.Errorf("actualWhereCommand is not %T. got=%T", &ast.WhereCommand{}, command)
+		return false
+	}
+
+	if actualWhereCommand.Expression.Left.Token.Literal != expectedLeft.Literal {
+		t.Errorf("%s != %s", actualWhereCommand.Expression.Left.Token.Literal, expectedLeft.Literal)
+		return false
+	}
+
+	if actualWhereCommand.Expression.OperationToken.Literal != expectedOperation.Literal {
+		t.Errorf("%s != %s", actualWhereCommand.Expression.OperationToken.Literal, expectedOperation.Literal)
+		return false
+	}
+
+	if actualWhereCommand.Expression.Right.Literal != expectedRight.Literal {
+		t.Errorf("%s != %s", actualWhereCommand.Expression.Right.Literal, expectedRight.Literal)
 		return false
 	}
 

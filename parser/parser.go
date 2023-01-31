@@ -180,9 +180,48 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 	// Ignore token.INDENT
 	parser.nextToken()
 
-	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+	// expect SEMICOLON or WHERE
+	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE})
+
+	if parser.currentToken.Type == token.SEMICOLON {
+		parser.nextToken()
+	}
 
 	return selectCommand
+}
+
+// WHERE colName EQUAL 'potato'
+func (parser *Parser) parseWhereCommand() ast.Command {
+	// token.WHERE already at current position in parser
+	whereCommand := &ast.WhereCommand{Token: parser.currentToken}
+
+	// Ignore token.WHERE
+	parser.nextToken()
+
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	left := &ast.Identifier{Token: parser.currentToken}
+	parser.nextToken()
+
+	validateToken(parser.currentToken.Type, []token.Type{token.EQUAL})
+	operationToken := parser.currentToken
+	parser.nextToken()
+
+	parser.skipApostrophe()
+
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+	right := parser.currentToken
+	parser.nextToken()
+
+	parser.skipApostrophe()
+
+	whereCommand.Expression = &ast.Condition{
+		Left:           left,
+		Right:          right,
+		OperationToken: operationToken,
+	}
+
+	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+	return whereCommand
 }
 
 func (parser *Parser) ParseSequence() *ast.Sequence {
@@ -198,6 +237,8 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 			command = parser.parseInsertCommand()
 		case token.SELECT:
 			command = parser.parseSelectCommand()
+		case token.WHERE:
+			command = parser.parseWhereCommand()
 		default:
 			log.Fatal("Syntax error, invalid command found")
 		}
