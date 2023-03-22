@@ -202,7 +202,7 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	left := &ast.Identifier{Token: parser.currentToken}
 	parser.nextToken()
 
-	validateToken(parser.currentToken.Type, []token.Type{token.EQUAL})
+	validateToken(parser.currentToken.Type, []token.Type{token.EQUAL, token.NOT})
 	operationToken := parser.currentToken
 	parser.nextToken()
 
