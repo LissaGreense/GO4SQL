@@ -103,7 +103,7 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectcommand *ast.SelectComman
 	conditionalColumnIndex := -1
 
 	// use create table after decorator implementation
-	for i, _ := range columns {
+	for i := range columns {
 		filteredTable.Columns = append(filteredTable.Columns,
 			&Column{
 				Type:   columns[i].Type,

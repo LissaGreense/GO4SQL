@@ -1,271 +1,184 @@
 package engine
 
 import (
+	"log"
+	"strings"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
-	"github.com/LissaGreense/GO4SQL/token"
 )
-
-const (
-	tableName = "tbl"
-)
-
-func getCreateAndInsertCommands() string {
-	return `
-	CREATE  TABLE  ` + tableName + `( one TEXT , two INT, three INT, four TEXT );
-	INSERT  INTO   ` + tableName + ` VALUES( 'hello',	1, 	11, 'q'  );
-	INSERT 	INTO   ` + tableName + ` VALUES( 'goodbye', 	2, 	22, 'w'  );
-	INSERT 	INTO   ` + tableName + ` VALUES( 'byebye', 	3, 	33,	'e'  );
-	`
-}
-
-func getOneColumn() *Column {
-	column := &Column{
-		Name:   "one",
-		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, StringValue{Value: "hello"})
-	column.Values = append(column.Values, StringValue{Value: "goodbye"})
-	column.Values = append(column.Values, StringValue{Value: "byebye"})
-	return column
-}
-
-func getTwoColumn() *Column {
-	column := &Column{
-		Name:   "two",
-		Type:   token.Token{Type: token.INT, Literal: "INT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, IntegerValue{Value: 1})
-	column.Values = append(column.Values, IntegerValue{Value: 2})
-	column.Values = append(column.Values, IntegerValue{Value: 3})
-	return column
-}
-
-func getThreeColumn() *Column {
-	column := &Column{
-		Name:   "three",
-		Type:   token.Token{Type: token.INT, Literal: "INT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, IntegerValue{Value: 11})
-	column.Values = append(column.Values, IntegerValue{Value: 22})
-	column.Values = append(column.Values, IntegerValue{Value: 33})
-	return column
-}
-
-func getFourColumn() *Column {
-	column := &Column{
-		Name:   "four",
-		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, StringValue{Value: "q"})
-	column.Values = append(column.Values, StringValue{Value: "w"})
-	column.Values = append(column.Values, StringValue{Value: "e"})
-	return column
-}
-
-func getExpectedTable() *Table {
-	expectedTable := &Table{Columns: make([]*Column, 0)}
-	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
-	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
-	expectedTable.Columns = append(expectedTable.Columns, getThreeColumn())
-	expectedTable.Columns = append(expectedTable.Columns, getFourColumn())
-
-	return expectedTable
-}
-
-func TestCreateCommand(t *testing.T) {
-	input := getCreateAndInsertCommands()
-
-	lexerInstance := lexer.RunLexer(input)
-	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
-	if len(sequences.Commands) != 4 {
-		t.Fatalf("sequences does not contain 4 statements. got=%d", len(sequences.Commands))
-	}
-
-	engine := New()
-	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
-	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
-
-	if engine.Tables == nil {
-		t.Error()
-	}
-
-	tableFromEngineStruct := engine.Tables[tableName]
-	expectedTable := getExpectedTable()
-	if tableFromEngineStruct.isEqual(expectedTable) == false {
-		t.Error("\n" + tableFromEngineStruct.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
-	}
-}
 
 func TestSelectCommand(t *testing.T) {
-
-	input := getCreateAndInsertCommands() + "\n SELECT * FROM " + tableName + ";"
-
-	lexerInstance := lexer.RunLexer(input)
-	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
-	if len(sequences.Commands) != 5 {
-		t.Fatalf("sequences does not contain 5 statements. got=%d", len(sequences.Commands))
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "2", "22", "w"},
+			{"byebye", "3", "33", "e"},
+		},
 	}
 
-	engine := New()
-	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
-	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
-
-	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
-	expectedTable := getExpectedTable()
-
-	if actualTable.isEqual(expectedTable) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
-	}
+	engineTestSuite.runTestSuite(t)
 }
 
 func TestSelectWithColumnNamesCommand(t *testing.T) {
-	input := getCreateAndInsertCommands() +
-		`
-		SELECT one, two FROM ` + tableName + `;
-		SELECT two, one FROM ` + tableName + `;
-		SELECT one, two, three, four FROM ` + tableName + `;
-		`
-
-	lexerInstance := lexer.RunLexer(input)
-	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
-	if len(sequences.Commands) != 7 {
-		t.Fatalf("sequences does not contain 7 statements. got=%d", len(sequences.Commands))
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "2", "22", "w"},
+			{"byebye", "3", "33", "e"},
+		},
 	}
 
-	engine := New()
-	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
-	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
-
-	actualTable := engine.SelectFromTable(sequences.Commands[4].(*ast.SelectCommand))
-	expectedTable := &Table{Columns: make([]*Column, 0)}
-	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
-	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
-	if actualTable.isEqual(expectedTable) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
-	}
-
-	actualTable = engine.SelectFromTable(sequences.Commands[5].(*ast.SelectCommand))
-	expectedTable = &Table{Columns: make([]*Column, 0)}
-	expectedTable.Columns = append(expectedTable.Columns, getTwoColumn())
-	expectedTable.Columns = append(expectedTable.Columns, getOneColumn())
-	if actualTable.isEqual(expectedTable) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedTable.ToString())
-	}
-
-	actualTable = engine.SelectFromTable(sequences.Commands[6].(*ast.SelectCommand))
-	expectedResult := getExpectedTable()
-	if actualTable.isEqual(expectedResult) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not euqal to: \n" + expectedResult.ToString())
-	}
+	engineTestSuite.runTestSuite(t)
 }
 
 func TestSelectWithWhereEqual(t *testing.T) {
-	input := getCreateAndInsertCommands() +
-		`
-		SELECT one, three FROM ` + tableName + ` WHERE one EQUAL 'hello';
-		`
-
-	lexerInstance := lexer.RunLexer(input)
-	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
-	if len(sequences.Commands) != 6 {
-		t.Fatalf("sequences does not contain 6 statements. got=%d", len(sequences.Commands))
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one EQUAL 'hello';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+		},
 	}
 
-	engine := New()
-	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
-	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
-
-	actualTable := engine.SelectFromTableWithWhere(sequences.Commands[4].(*ast.SelectCommand), sequences.Commands[5].(*ast.WhereCommand))
-
-	expectedTable := &Table{Columns: make([]*Column, 0)}
-	column := &Column{
-		Name:   "one",
-		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, StringValue{Value: "hello"})
-	expectedTable.Columns = append(expectedTable.Columns, column)
-
-	column = &Column{
-		Name:   "three",
-		Type:   token.Token{Type: token.INT, Literal: "INT"},
-		Values: make([]ValueInterface, 0),
-	}
-	column.Values = append(column.Values, IntegerValue{Value: 11})
-	expectedTable.Columns = append(expectedTable.Columns, column)
-
-	if actualTable.isEqual(expectedTable) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not equal to: \n" + expectedTable.ToString())
-	}
+	engineTestSuite.runTestSuite(t)
 }
 
 func TestSelectWithWhereNotEqual(t *testing.T) {
-	input := getCreateAndInsertCommands() +
-		`
-		SELECT one, three FROM ` + tableName + ` WHERE three NOT 22;
-		`
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three NOT 22';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"byebye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+type engineTestSuite struct {
+	createInputs   []string
+	insertInputs   []string
+	selectInput    string
+	expectedOutput [][]string
+}
+
+func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
+	input := ""
+	for i := 0; i < len(engineTestSuite.createInputs); i++ {
+		input += engineTestSuite.createInputs[i] + "\n"
+	}
+	for i := 0; i < len(engineTestSuite.insertInputs); i++ {
+		input += engineTestSuite.insertInputs[i] + "\n"
+	}
+	input += engineTestSuite.selectInput
 
 	lexerInstance := lexer.RunLexer(input)
 	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
-	if len(sequences.Commands) != 6 {
-		t.Fatalf("sequences does not contain 6 statements. got=%d", len(sequences.Commands))
+	expectedSequencesNumber := len(engineTestSuite.createInputs) + len(engineTestSuite.insertInputs) + 1
+
+	var actualTable *Table
+
+	if strings.Contains(engineTestSuite.selectInput, " WHERE ") {
+
+		// WHERE CONDITION
+
+		expectedSequencesNumber++
+		if len(sequences.Commands) != expectedSequencesNumber {
+			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
+		}
+
+		engine := New()
+		for i := 0; i < len(sequences.Commands)-2; i++ {
+			if createCommand, ok := sequences.Commands[i].(*ast.CreateCommand); ok {
+				engine.CreateTable(createCommand)
+			}
+			if insertCommand, ok := sequences.Commands[i].(*ast.InsertCommand); ok {
+				engine.InsertIntoTable(insertCommand)
+			}
+		}
+
+		actualTable = engine.SelectFromTableWithWhere(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.WhereCommand))
+	} else {
+
+		// NO WHERE CONDITION
+
+		if len(sequences.Commands) != expectedSequencesNumber {
+			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
+		}
+
+		engine := New()
+		for i := 0; i < len(sequences.Commands)-1; i++ {
+			if createCommand, ok := sequences.Commands[i].(*ast.CreateCommand); ok {
+				engine.CreateTable(createCommand)
+			}
+			if insertCommand, ok := sequences.Commands[i].(*ast.InsertCommand); ok {
+				engine.InsertIntoTable(insertCommand)
+			}
+		}
+
+		actualTable = engine.SelectFromTable(sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand))
 	}
 
-	engine := New()
-	engine.CreateTable((sequences.Commands[0]).(*ast.CreateCommand))
-	engine.InsertIntoTable(sequences.Commands[1].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[2].(*ast.InsertCommand))
-	engine.InsertIntoTable(sequences.Commands[3].(*ast.InsertCommand))
-
-	actualTable := engine.SelectFromTableWithWhere(sequences.Commands[4].(*ast.SelectCommand), sequences.Commands[5].(*ast.WhereCommand))
-
-	expectedTable := &Table{Columns: make([]*Column, 0)}
-
-	column := &Column{
-		Name:   "one",
-		Type:   token.Token{Type: token.TEXT, Literal: "TEXT"},
-		Values: make([]ValueInterface, 0),
+	if len(actualTable.Columns) != len(engineTestSuite.expectedOutput[0]) {
+		log.Fatalf("Number of columns is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput[0]), len(actualTable.Columns))
 	}
-	column.Values = append(column.Values, StringValue{Value: "hello"})
-	column.Values = append(column.Values, StringValue{Value: "byebye"})
-	expectedTable.Columns = append(expectedTable.Columns, column)
 
-	column = &Column{
-		Name:   "three",
-		Type:   token.Token{Type: token.INT, Literal: "INT"},
-		Values: make([]ValueInterface, 0),
+	if len(actualTable.Columns[0].Values) != len(engineTestSuite.expectedOutput)-1 {
+		log.Fatalf("Number of rows is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput)-1, len(actualTable.Columns[0].Values))
 	}
-	column.Values = append(column.Values, IntegerValue{Value: 11})
-	column.Values = append(column.Values, IntegerValue{Value: 33})
-	expectedTable.Columns = append(expectedTable.Columns, column)
 
-	if actualTable.isEqual(expectedTable) == false {
-		t.Error("\n" + actualTable.ToString() + "\n not equal to: \n" + expectedTable.ToString())
+	for iColumn := 0; iColumn < len(actualTable.Columns); iColumn++ {
+		if actualTable.Columns[iColumn].Name != engineTestSuite.expectedOutput[0][iColumn] {
+			t.Fatalf("Column names doesn't match, expected: %s, got: %s", engineTestSuite.expectedOutput[0][iColumn], actualTable.Columns[iColumn].Name)
+		}
+
+		for iRow := 0; iRow < len(actualTable.Columns[0].Values); iRow++ {
+			if engineTestSuite.expectedOutput[iRow+1][iColumn] != actualTable.Columns[iColumn].Values[iRow].ToString() {
+				t.Fatalf("Value doesn't match, expected: %s, got: %s", engineTestSuite.expectedOutput[iRow+1][iColumn], actualTable.Columns[iColumn].Values[iRow].ToString())
+			}
+		}
 	}
 }
