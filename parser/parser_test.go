@@ -149,8 +149,8 @@ func TestParseWhereCommand(t *testing.T) {
 		expectedRight     token.Token
 		expectedOperation token.Token
 	}{
-		{input: "WHERE colName1 EQUAL 'fda';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-		{input: "WHERE colName2 EQUAL 6462389;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{input: "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
 	}
 
 	for _, tt := range tests {
@@ -158,11 +158,11 @@ func TestParseWhereCommand(t *testing.T) {
 		parserInstance := New(lexer)
 		sequences := parserInstance.ParseSequence()
 
-		if len(sequences.Commands) != 1 {
+		if len(sequences.Commands) != 2 {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !testWhereStatement(t, sequences.Commands[0], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
 			return
 		}
 	}

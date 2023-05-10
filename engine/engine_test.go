@@ -85,7 +85,7 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
 		},
-		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three NOT 22';",
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three NOT 22;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},

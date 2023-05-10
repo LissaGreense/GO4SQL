@@ -53,7 +53,13 @@ func bytesToSequences(content []byte) *ast.Sequence {
 }
 
 func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
-	for _, command := range sequences.Commands {
+	commands := sequences.Commands
+	for commandIndex, command := range commands {
+
+		_, whereCommandIsValid := command.(*ast.WhereCommand)
+		if whereCommandIsValid {
+			continue
+		}
 
 		createCommand, createCommandIsValid := command.(*ast.CreateCommand)
 		if createCommandIsValid {
@@ -69,7 +75,24 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 
 		selectCommand, selectCommandIsValid := command.(*ast.SelectCommand)
 		if selectCommandIsValid {
-			fmt.Println(engineSQL.SelectFromTable(selectCommand).ToString())
+			result := getSelectResponse(commandIndex, commands, engineSQL, selectCommand)
+			fmt.Println(result)
+			continue
+		}
+
+	}
+}
+
+func getSelectResponse(commandIndex int, commands []ast.Command, engineSQL *engine.DbEngine, selectCommand *ast.SelectCommand) string {
+	nextCommandIndex := commandIndex + 1
+
+	if nextCommandIndex != len(commands) {
+		whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
+
+		if whereCommandIsValid {
+			return engineSQL.SelectFromTableWithWhere(selectCommand, whereCommand).ToString()
 		}
 	}
+
+	return engineSQL.SelectFromTable(selectCommand).ToString()
 }

@@ -238,6 +238,9 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 		case token.SELECT:
 			command = parser.parseSelectCommand()
 		case token.WHERE:
+			if len(sequence.Commands) == 0 || sequence.Commands[len(sequence.Commands)-1].TokenLiteral() != token.SELECT {
+				log.Fatal("Syntax error, WHERE command needs SELECT command before")
+			}
 			command = parser.parseWhereCommand()
 		default:
 			log.Fatal("Syntax error, invalid command found")
