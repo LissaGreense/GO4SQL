@@ -44,7 +44,7 @@ type Identifier struct {
 }
 
 type Condition struct {
-	Left           *Identifier // name of column
+	Left           token.Token // name of column
 	Right          token.Token // value which column should have
 	OperationToken token.Token // example: token.EQUAL
 }

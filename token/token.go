@@ -35,6 +35,8 @@ const (
 	// EQUAL - Logical operations
 	EQUAL = "EQUAL"
 	NOT   = "NOT"
+	AND   = "AND"
+	OR    = "OR"
 
 	// TEXT - Data types
 	TEXT = "TEXT"
@@ -62,6 +64,8 @@ var keywords = map[string]Type{
 	"WHERE":  WHERE,
 	"EQUAL":  EQUAL,
 	"NOT":    NOT,
+	"AND":    AND,
+	"OR":     OR,
 }
 
 func LookupIdent(ident string) Type {

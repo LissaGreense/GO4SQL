@@ -94,7 +94,7 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectcommand *ast.SelectComman
 
 	columns := table.Columns
 
-	conditionalColumnName := whereCommand.Expression.Left.Token
+	conditionalColumnName := whereCommand.Expression.Left
 	conditionalOperation := whereCommand.Expression.OperationToken
 	conditionalValue := whereCommand.Expression.Right
 

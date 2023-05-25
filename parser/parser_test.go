@@ -15,8 +15,8 @@ func TestParserCreateCommand(t *testing.T) {
 		expectedColumnNames []string
 		expectedColumTypes  []token.Token
 	}{
-		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{token.TEXT, "TEXT"}}},
-		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{token.TEXT, "TEXT"}, {token.TEXT, "TEXT"}, {token.INT, "INT"}}},
+		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}}},
+		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}, {Type: token.TEXT, Literal: "TEXT"}, {Type: token.INT, Literal: "INT"}}},
 		{"CREATE TABLE 	TBL(  );", "TBL", []string{}, []token.Token{}},
 	}
 
@@ -72,8 +72,8 @@ func TestParseInsertCommand(t *testing.T) {
 		expectedValuesTokens []token.Token
 	}{
 		{"INSERT INTO TBL VALUES();", "TBL", []token.Token{}},
-		{"INSERT INTO TBL VALUES( 'HELLO' );", "TBL", []token.Token{{token.IDENT, "HELLO"}}},
-		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{token.IDENT, "HELLO"}, {token.LITERAL, "10"}, {token.IDENT, "LOL"}}},
+		{"INSERT INTO TBL VALUES( 'HELLO' );", "TBL", []token.Token{{Type: token.IDENT, Literal: "HELLO"}}},
+		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{Type: token.IDENT, Literal: "HELLO"}, {Type: token.LITERAL, Literal: "10"}, {Type: token.IDENT, Literal: "LOL"}}},
 	}
 
 	for _, tt := range tests {
@@ -122,8 +122,8 @@ func TestParseSelectCommand(t *testing.T) {
 		expectedTableName string
 		expectedColumns   []token.Token
 	}{
-		{"SELECT * FROM TBL;", "TBL", []token.Token{{token.ASTERISK, "*"}}},
-		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{token.IDENT, "ONE"}, {token.IDENT, "TWO"}, {token.IDENT, "THREE"}}},
+		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}},
+		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}},
 		{"SELECT FROM TBL;", "TBL", []token.Token{}},
 	}
 
@@ -168,6 +168,37 @@ func TestParseWhereCommand(t *testing.T) {
 	}
 }
 
+// func TestParseLogicOperatorsInCommand(t *testing.T) {
+// 	a := token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}
+
+// 	tests := []struct {
+// 		input             string
+// 		expectedLeft     *ast.Expression
+// 		expectedRight    *ast.Expression
+// 		expectedOperation token.Token
+// 	}{
+
+// 		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+// 		{input: "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+// 		{input: "SELECT * FROM TBL WHERE true;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+
+// 	}
+
+// 	for _, tt := range tests {
+// 		lexer := lexer.RunLexer(tt.input)
+// 		parserInstance := New(lexer)
+// 		sequences := parserInstance.ParseSequence()
+
+// 		if len(sequences.Commands) != 2 {
+// 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+// 		}
+
+// 		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+// 			return
+// 		}
+// 	}
+// }
+
 func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token) bool {
 	if command.TokenLiteral() != "SELECT" {
 		t.Errorf("command.TokenLiteral() not 'SELECT'. got=%q", command.TokenLiteral())
@@ -205,8 +236,8 @@ func testWhereStatement(t *testing.T, command ast.Command, expectedLeft token.To
 		return false
 	}
 
-	if actualWhereCommand.Expression.Left.Token.Literal != expectedLeft.Literal {
-		t.Errorf("%s != %s", actualWhereCommand.Expression.Left.Token.Literal, expectedLeft.Literal)
+	if actualWhereCommand.Expression.Left.Literal != expectedLeft.Literal {
+		t.Errorf("%s != %s", actualWhereCommand.Expression.Left.Literal, expectedLeft.Literal)
 		return false
 	}
 
