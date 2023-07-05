@@ -37,6 +37,8 @@ const (
 	NOT   = "NOT"
 	AND   = "AND"
 	OR    = "OR"
+	TRUE  = "TRUE"
+	FALSE = "FALSE"
 
 	// TEXT - Data types
 	TEXT = "TEXT"
@@ -66,6 +68,8 @@ var keywords = map[string]Type{
 	"NOT":    NOT,
 	"AND":    AND,
 	"OR":     OR,
+	"TRUE":   TRUE,
+	"FALSE":  FALSE,
 }
 
 func LookupIdent(ident string) Type {

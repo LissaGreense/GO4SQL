@@ -214,7 +214,7 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 
 	parser.skipApostrophe()
 
-	whereCommand.Expression = &ast.Condition{
+	whereCommand.Expression = &ast.ConditionExpresion{
 		Left:           left,
 		Right:          right,
 		OperationToken: operationToken,

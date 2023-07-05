@@ -207,17 +207,15 @@ func TestLexerWithNumbersWithWhitespacesIdentifier(t *testing.T) {
 func TestLogicalStatments(t *testing.T) {
 	input :=
 		`
-			WHERE two NOT 22 AND three EQUAL 33;
-			WHERE two NOT 11 OR three EQUAL 44;
+			WHERE FALSE AND three EQUAL 33;
+			WHERE two NOT 11 OR TRUE;
 			`
 	tests := []struct {
 		expectedType    token.Type
 		expectedLiteral string
 	}{
 		{token.WHERE, "WHERE"},
-		{token.IDENT, "two"},
-		{token.NOT, "NOT"},
-		{token.LITERAL, "22"},
+		{token.FALSE, "FALSE"},
 		{token.AND, "AND"},
 		{token.IDENT, "three"},
 		{token.EQUAL, "EQUAL"},
@@ -228,9 +226,7 @@ func TestLogicalStatments(t *testing.T) {
 		{token.NOT, "NOT"},
 		{token.LITERAL, "11"},
 		{token.OR, "OR"},
-		{token.IDENT, "three"},
-		{token.EQUAL, "EQUAL"},
-		{token.LITERAL, "44"},
+		{token.TRUE, "TRUE"},
 		{token.SEMICOLON, ";"},
 		{token.EOF, ""},
 	}

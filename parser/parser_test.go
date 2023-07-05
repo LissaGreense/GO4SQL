@@ -168,36 +168,45 @@ func TestParseWhereCommand(t *testing.T) {
 	}
 }
 
-// func TestParseLogicOperatorsInCommand(t *testing.T) {
-// 	a := token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}
+func TestParseLogicOperatorsInCommand(t *testing.T) {
 
-// 	tests := []struct {
-// 		input             string
-// 		expectedLeft     *ast.Expression
-// 		expectedRight    *ast.Expression
-// 		expectedOperation token.Token
-// 	}{
+	firstExpression := ast.OperationExpresion{
+		Left:      ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Right:     ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Operation: token.Token{Type: token.AND, Literal: "AND"},
+	}
+	secondExpression := ast.OperationExpresion{
+		Left:      ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}}, Condition: token.Token{Type: token.NOT, Literal: "NOT"}},
+		Right:     ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "qwe"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Operation: token.Token{Type: token.OR, Literal: "OR"},
+	}
+	thirdExpression := ast.BooleanExpresion{
+		Boolean: token.Token{Type: token.TRUE, Literal: "TRUE"},
+	}
+	tests := []struct {
+		input              string
+		expectedExpression ast.Expression
+	}{
 
-// 		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-// 		{input: "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-// 		{input: "SELECT * FROM TBL WHERE true;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;", expectedExpression: firstExpression},
+		{input: "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';", expectedExpression: secondExpression},
+		{input: "SELECT * FROM TBL WHERE TRUE;", expectedExpression: thirdExpression},
+	}
 
-// 	}
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences := parserInstance.ParseSequence()
 
-// 	for _, tt := range tests {
-// 		lexer := lexer.RunLexer(tt.input)
-// 		parserInstance := New(lexer)
-// 		sequences := parserInstance.ParseSequence()
+		if len(sequences.Commands) != 3 {
+			t.Fatalf("sequences does not contain 3 statements. got=%d", len(sequences.Commands))
+		}
 
-// 		if len(sequences.Commands) != 2 {
-// 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
-// 		}
-
-// 		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
-// 			return
-// 		}
-// 	}
-// }
+		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+			return
+		}
+	}
+}
 
 func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token) bool {
 	if command.TokenLiteral() != "SELECT" {
