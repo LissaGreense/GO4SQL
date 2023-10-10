@@ -171,23 +171,37 @@ func TestParseWhereCommand(t *testing.T) {
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
 	firstExpression := ast.OperationExpresion{
-		Left:      ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-		Right:     ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Left: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Right: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
 		Operation: token.Token{Type: token.AND, Literal: "AND"},
 	}
+
 	secondExpression := ast.OperationExpresion{
-		Left:      ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}}, Condition: token.Token{Type: token.NOT, Literal: "NOT"}},
-		Right:     ast.ConditionExpresion{Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}}, Right: ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "qwe"}}, Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Left: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
+			Condition: token.Token{Type: token.NOT, Literal: "NOT"}},
+		Right: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "qwe"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
 		Operation: token.Token{Type: token.OR, Literal: "OR"},
 	}
+
 	thirdExpression := ast.BooleanExpresion{
 		Boolean: token.Token{Type: token.TRUE, Literal: "TRUE"},
 	}
+
 	tests := []struct {
 		input              string
 		expectedExpression ast.Expression
 	}{
-
 		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;", expectedExpression: firstExpression},
 		{input: "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';", expectedExpression: secondExpression},
 		{input: "SELECT * FROM TBL WHERE TRUE;", expectedExpression: thirdExpression},
