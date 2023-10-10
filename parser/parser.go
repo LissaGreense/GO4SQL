@@ -227,7 +227,8 @@ func (parser *Parser) getExpression() ast.Expression {
 		return booleanExpression
 	}
 
-	return nil // ?
+	// TODO there is no operations so it should be syntax error / or not becouse we re in recursion
+	return nil
 }
 
 func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpresion) (bool, *ast.OperationExpression) {
@@ -245,6 +246,8 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 
 		operationExpression.Operation = parser.currentToken
 		parser.nextToken()
+
+		// TODO: Add right parsing
 	}
 
 	return isValid, operationExpression
