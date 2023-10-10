@@ -198,30 +198,133 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	// Ignore token.WHERE
 	parser.nextToken()
 
-	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	left := parser.currentToken
-	parser.nextToken()
-
-	validateToken(parser.currentToken.Type, []token.Type{token.EQUAL, token.NOT})
-	operationToken := parser.currentToken
-	parser.nextToken()
-
-	parser.skipApostrophe()
-
-	validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
-	right := parser.currentToken
-	parser.nextToken()
-
-	parser.skipApostrophe()
-
-	whereCommand.Expression = &ast.ConditionExpresion{
-		Left:      left,
-		Right:     right,
-		Condition: operationToken,
-	}
+	// BEGIN OF EXPRESSION
+	whereCommand.Expression = parser.getExpression()
+	// END OF EXPRESSION
 
 	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+
+	//TODO check if where command is not empty
 	return whereCommand
+}
+
+func (parser *Parser) getExpression() ast.Expression {
+	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
+
+	conditionalExpressionExists, conditionalExpression := parser.getConditionalExpression()
+
+	operationExpressionExists, operationExpression := parser.getOperationExpression(booleanExpressionExists, conditionalExpressionExists, booleanExpression, conditionalExpression)
+
+	if operationExpressionExists {
+		return operationExpression
+	}
+
+	if conditionalExpressionExists {
+		return conditionalExpression
+	}
+
+	if booleanExpressionExists {
+		return booleanExpression
+	}
+
+	return nil // ?
+}
+
+func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpresion) (bool, *ast.OperationExpression) {
+	operationExpression := &ast.OperationExpression{}
+	isValid := false
+
+	if (booleanExpressionExists || conditionalExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
+		if booleanExpressionExists {
+			operationExpression.Left = booleanExpression
+		}
+
+		if conditionalExpressionExists {
+			operationExpression.Left = conditionalExpression
+		}
+
+		operationExpression.Operation = parser.currentToken
+		parser.nextToken()
+	}
+
+	return isValid, operationExpression
+}
+
+func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpresion) {
+	booleanExpression := &ast.BooleanExpresion{}
+	isValid := false
+
+	if parser.currentToken.Type == token.TRUE || parser.currentToken.Type == token.FALSE {
+		booleanExpression.Boolean = parser.currentToken
+		parser.nextToken()
+		isValid = true
+	}
+
+	return isValid, booleanExpression
+}
+
+func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpresion) {
+	// TODO REFACTOR THIS
+	conditionalExpression := &ast.ConditionExpresion{}
+
+	if parser.currentToken.Type == token.IDENT {
+		conditionalExpression.Left = ast.Identifier{
+			Token: parser.currentToken,
+		}
+		parser.nextToken()
+
+	} else if parser.currentToken.Type == token.APOSTROPHE {
+		parser.skipApostrophe()
+
+		conditionalExpression.Left = ast.Anonymitifier{
+			Token: parser.currentToken,
+		}
+
+		parser.nextToken()
+
+		validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
+	} else if parser.currentToken.Type == token.LITERAL {
+		conditionalExpression.Left = ast.Anonymitifier{
+			Token: parser.currentToken,
+		}
+		parser.nextToken()
+
+	} else {
+		return false, conditionalExpression
+	}
+
+	validateToken(parser.currentToken.Type, []token.Type{token.EQUAL, token.NOT})
+	conditionalExpression.Condition = parser.currentToken
+	parser.nextToken()
+
+	if parser.currentToken.Type == token.IDENT {
+		conditionalExpression.Right = ast.Identifier{
+			Token: parser.currentToken,
+		}
+		parser.nextToken()
+
+	} else if parser.currentToken.Type == token.APOSTROPHE {
+		parser.skipApostrophe()
+
+		conditionalExpression.Right = ast.Anonymitifier{
+			Token: parser.currentToken,
+		}
+
+		parser.nextToken()
+
+		validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
+
+	} else if parser.currentToken.Type == token.LITERAL {
+		conditionalExpression.Right = ast.Anonymitifier{
+			Token: parser.currentToken,
+		}
+		parser.nextToken()
+
+	} else {
+		log.Fatal("Syntax error, expecting: ", token.APOSTROPHE, ",", token.IDENT, ",", token.LITERAL, ", got: ", parser.currentToken.Literal)
+	}
+
+	return true, conditionalExpression
 }
 
 func (parser *Parser) ParseSequence() *ast.Sequence {

@@ -284,7 +284,7 @@ func testWhereStatement(t *testing.T, command ast.Command, expectedExpression as
 		return false
 	}
 
-	if expressionsAreEqual(*actualWhereCommand.Expression, expectedExpression) {
+	if expressionsAreEqual(actualWhereCommand.Expression, expectedExpression) {
 		t.Errorf("Actual expression is not equal to expected one")
 		return false
 	}

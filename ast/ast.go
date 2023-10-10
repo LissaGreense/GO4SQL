@@ -135,7 +135,7 @@ func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type WhereCommand struct {
 	Token      token.Token
-	Expression *Expression
+	Expression Expression
 }
 
 func (ls WhereCommand) CommandNode()         {}
