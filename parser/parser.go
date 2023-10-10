@@ -215,9 +215,9 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	parser.skipApostrophe()
 
 	whereCommand.Expression = &ast.ConditionExpresion{
-		Left:           left,
-		Right:          right,
-		OperationToken: operationToken,
+		Left:      left,
+		Right:     right,
+		Condition: operationToken,
 	}
 
 	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})

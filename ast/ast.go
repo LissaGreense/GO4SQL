@@ -89,14 +89,14 @@ func (ls ConditionExpresion) GetIdentifiers() []*Identifier {
 	return identifiers
 }
 
-type OperationExpresion struct {
+type OperationExpression struct {
 	Left      Expression  // another operation, condition or boolean
 	Right     Expression  // another operation, condition or boolean
 	Operation token.Token // example: token.AND
 }
 
-func (ls OperationExpresion) ExpressionNode() {}
-func (ls OperationExpresion) GetIdentifiers() []*Identifier {
+func (ls OperationExpression) ExpressionNode() {}
+func (ls OperationExpression) GetIdentifiers() []*Identifier {
 	var identifiers []*Identifier
 
 	identifiers = append(identifiers, ls.Left.GetIdentifiers()...)
