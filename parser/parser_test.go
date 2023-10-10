@@ -149,8 +149,18 @@ func TestParseWhereCommand(t *testing.T) {
 		expectedRight     token.Token
 		expectedOperation token.Token
 	}{
-		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-		{input: "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{
+			input:             "SELECT * FROM TBL WHERE colName1 EQUAL 'fda';",
+			expectedLeft:      token.Token{Type: token.IDENT, Literal: "colName1"},
+			expectedRight:     token.Token{Type: token.IDENT, Literal: "fda"},
+			expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+		{
+			input:             "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;",
+			expectedLeft:      token.Token{Type: token.IDENT, Literal: "colName2"},
+			expectedRight:     token.Token{Type: token.LITERAL, Literal: "6462389"},
+			expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -202,9 +212,18 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		input              string
 		expectedExpression ast.Expression
 	}{
-		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;", expectedExpression: firstExpression},
-		{input: "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';", expectedExpression: secondExpression},
-		{input: "SELECT * FROM TBL WHERE TRUE;", expectedExpression: thirdExpression},
+		{
+			input:              "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;",
+			expectedExpression: firstExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';",
+			expectedExpression: secondExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE TRUE;",
+			expectedExpression: thirdExpression,
+		},
 	}
 
 	for _, tt := range tests {
