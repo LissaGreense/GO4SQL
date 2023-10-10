@@ -162,7 +162,7 @@ func TestParseWhereCommand(t *testing.T) {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+		if !testWhereStatement(t, sequences.Commands[1]) {
 			return
 		}
 	}
@@ -170,7 +170,7 @@ func TestParseWhereCommand(t *testing.T) {
 
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
-	firstExpression := ast.OperationExpresion{
+	firstExpression := ast.OperationExpression{
 		Left: ast.ConditionExpresion{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
@@ -182,7 +182,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		Operation: token.Token{Type: token.AND, Literal: "AND"},
 	}
 
-	secondExpression := ast.OperationExpresion{
+	secondExpression := ast.OperationExpression{
 		Left: ast.ConditionExpresion{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
@@ -212,11 +212,11 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		parserInstance := New(lexer)
 		sequences := parserInstance.ParseSequence()
 
-		if len(sequences.Commands) != 3 {
-			t.Fatalf("sequences does not contain 3 statements. got=%d", len(sequences.Commands))
+		if len(sequences.Commands) != 2 {
+			t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !ExpressionsAreEqual(tt.expectedExpression, sequences.Commands) {
+		if !expressionsAreEqual(tt.expectedExpression, sequences.Commands) {
 			t.Fatalf("Expression are not equal")
 		}
 
@@ -251,35 +251,25 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 	return true
 }
 
-// func testWhereStatement(t *testing.T, command ast.Command, expectedLeft token.Token, expectedRight token.Token, expectedOperation token.Token) bool {
-// 	if command.TokenLiteral() != "WHERE" {
-// 		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
-// 		return false
-// 	}
+func testWhereStatement(t *testing.T, command ast.Command, expectedExpression *ast.Expression) bool {
+	if command.TokenLiteral() != "WHERE" {
+		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
+		return false
+	}
 
-// 	actualWhereCommand, ok := command.(*ast.WhereCommand)
-// 	if !ok {
-// 		t.Errorf("actualWhereCommand is not %T. got=%T", &ast.WhereCommand{}, command)
-// 		return false
-// 	}
+	actualWhereCommand, ok := command.(*ast.WhereCommand)
+	if !ok {
+		t.Errorf("actualWhereCommand is not %T. got=%T", &ast.WhereCommand{}, command)
+		return false
+	}
 
-// 	if actualWhereCommand.Expression.Left.Literal != expectedLeft.Literal {
-// 		t.Errorf("%s != %s", actualWhereCommand.Expression.Left.Literal, expectedLeft.Literal)
-// 		return false
-// 	}
+	if expressionsAreEqual(actualWhereCommand.Expression, expectedExpression) {
+		t.Errorf("Actual expression is not equal to expected one")
+		return false
+	}
 
-// 	if actualWhereCommand.Expression.OperationToken.Literal != expectedOperation.Literal {
-// 		t.Errorf("%s != %s", actualWhereCommand.Expression.OperationToken.Literal, expectedOperation.Literal)
-// 		return false
-// 	}
-
-// 	if actualWhereCommand.Expression.Right.Literal != expectedRight.Literal {
-// 		t.Errorf("%s != %s", actualWhereCommand.Expression.Right.Literal, expectedRight.Literal)
-// 		return false
-// 	}
-
-// 	return true
-// }
+	return true
+}
 
 func stringArrayEquals(a []string, b []string) bool {
 	if len(a) != len(b) {
@@ -305,7 +295,7 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 	return true
 }
 
-func ExpressionsAreEqual(first ast.Expression, second ast.Expression) bool {
+func expressionsAreEqual(first *ast.Expression, second *ast.Expression) bool {
 	result := false
 
 	// _, whereCommandIsValid := first.(*BooleanExpresion)
