@@ -194,21 +194,23 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 func (parser *Parser) parseWhereCommand() ast.Command {
 	// token.WHERE already at current position in parser
 	whereCommand := &ast.WhereCommand{Token: parser.currentToken}
+	expressionIsValid := false
 
 	// Ignore token.WHERE
 	parser.nextToken()
 
-	// BEGIN OF EXPRESSION
-	whereCommand.Expression = parser.getExpression()
-	// END OF EXPRESSION
+	expressionIsValid, whereCommand.Expression = parser.getExpression()
+
+	if !expressionIsValid {
+		log.Fatal("Expression withing Where statment couldn't be parsed correctly")
+	}
 
 	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 
-	//TODO check if where command is not empty
 	return whereCommand
 }
 
-func (parser *Parser) getExpression() ast.Expression {
+func (parser *Parser) getExpression() (bool, ast.Expression) {
 	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
 	conditionalExpressionExists, conditionalExpression := parser.getConditionalExpression()
@@ -216,24 +218,22 @@ func (parser *Parser) getExpression() ast.Expression {
 	operationExpressionExists, operationExpression := parser.getOperationExpression(booleanExpressionExists, conditionalExpressionExists, booleanExpression, conditionalExpression)
 
 	if operationExpressionExists {
-		return operationExpression
+		return true, operationExpression
 	}
 
 	if conditionalExpressionExists {
-		return conditionalExpression
+		return true, conditionalExpression
 	}
 
 	if booleanExpressionExists {
-		return booleanExpression
+		return true, booleanExpression
 	}
 
-	// TODO there is no operations so it should be syntax error / or not becouse we re in recursion
-	return nil
+	return false, nil
 }
 
 func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpresion) (bool, *ast.OperationExpression) {
 	operationExpression := &ast.OperationExpression{}
-	isValid := false
 
 	if (booleanExpressionExists || conditionalExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
 		if booleanExpressionExists {
@@ -247,10 +247,18 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 		operationExpression.Operation = parser.currentToken
 		parser.nextToken()
 
-		// TODO: Add right parsing
+		expressionIsValid, expression := parser.getExpression()
+
+		if !expressionIsValid {
+			log.Fatal("Couldn't parse right side of the OperationExpression after ", operationExpression.Operation.Literal, " token.")
+		}
+
+		operationExpression.Right = expression
+
+		return true, operationExpression
 	}
 
-	return isValid, operationExpression
+	return false, operationExpression
 }
 
 func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpresion) {

@@ -86,54 +86,54 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 }
 
 func (engine *DbEngine) SelectFromTableWithWhere(selectcommand *ast.SelectCommand, whereCommand *ast.WhereCommand) *Table {
-	table, exist := engine.Tables[selectcommand.Name.Token.Literal]
+	_, exist := engine.Tables[selectcommand.Name.Token.Literal]
 
 	if !exist {
 		log.Fatal("Table with the name of " + selectcommand.Name.Token.Literal + " doesn't exist!")
 	}
 
-	columns := table.Columns
+	// columns := table.Columns
 
-	conditionalColumnName := whereCommand.Expression.Left
-	conditionalOperation := whereCommand.Expression.OperationToken
-	conditionalValue := whereCommand.Expression.Right
+	// conditionalColumnName := whereCommand.Expression
+	// conditionalOperation := whereCommand.Expression
+	// conditionalValue := whereCommand.Expression
 
 	filteredTable := &Table{Columns: []*Column{}}
 
-	conditionalColumnIndex := -1
+	// conditionalColumnIndex := -1
 
-	// use create table after decorator implementation
-	for i := range columns {
-		filteredTable.Columns = append(filteredTable.Columns,
-			&Column{
-				Type:   columns[i].Type,
-				Values: make([]ValueInterface, 0),
-				Name:   columns[i].Name,
-			})
+	// // use create table after decorator implementation
+	// for i := range columns {
+	// 	filteredTable.Columns = append(filteredTable.Columns,
+	// 		&Column{
+	// 			Type:   columns[i].Type,
+	// 			Values: make([]ValueInterface, 0),
+	// 			Name:   columns[i].Name,
+	// 		})
 
-		if conditionalColumnName.Literal == columns[i].Name {
-			conditionalColumnIndex = i
-		}
-	}
+	// 	if conditionalColumnName.Literal == columns[i].Name {
+	// 		conditionalColumnIndex = i
+	// 	}
+	// }
 
-	if conditionalColumnIndex == -1 {
-		log.Fatal("In table" + selectcommand.Name.Token.Literal + ", column with the name of" + conditionalColumnName.Literal + " doesn't exist!")
-	}
+	// if conditionalColumnIndex == -1 {
+	// 	log.Fatal("In table" + selectcommand.Name.Token.Literal + ", column with the name of" + conditionalColumnName.Literal + " doesn't exist!")
+	// }
 
-	for rowIndex, value := range columns[conditionalColumnIndex].Values {
-		switch conditionalOperation.Type {
-		case token.EQUAL:
-			if value == getInterfaceValue(conditionalValue) {
-				filteredTable.appendRow(columns, rowIndex)
-			}
-		case token.NOT:
-			if value != getInterfaceValue(conditionalValue) {
-				filteredTable.appendRow(columns, rowIndex)
-			}
-		default:
-			log.Fatal("Operation '" + conditionalOperation.Literal + "' provided in WHERE command isn't allowed!")
-		}
-	}
+	// for rowIndex, value := range columns[conditionalColumnIndex].Values {
+	// 	switch conditionalOperation.Type {
+	// 	case token.EQUAL:
+	// 		if value == getInterfaceValue(conditionalValue) {
+	// 			filteredTable.appendRow(columns, rowIndex)
+	// 		}
+	// 	case token.NOT:
+	// 		if value != getInterfaceValue(conditionalValue) {
+	// 			filteredTable.appendRow(columns, rowIndex)
+	// 		}
+	// 	default:
+	// 		log.Fatal("Operation '" + conditionalOperation.Literal + "' provided in WHERE command isn't allowed!")
+	// 	}
+	// }
 
 	return engine.selectFromProvidedTable(selectcommand, filteredTable)
 }

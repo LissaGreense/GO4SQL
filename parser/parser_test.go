@@ -178,7 +178,7 @@ func TestParseWhereCommand(t *testing.T) {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !testWhereStatement(t, sequences.Commands[1], tt.expectedExpression) {
+		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
 			return
 		}
 	}
@@ -241,8 +241,8 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 			t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !testWhereStatement(t, sequences.Commands[1], tt.expectedExpression) {
-			return
+		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
+			t.Fatalf("Actual expression and expected one are different")
 		}
 	}
 }
@@ -272,7 +272,7 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 	return true
 }
 
-func testWhereStatement(t *testing.T, command ast.Command, expectedExpression ast.Expression) bool {
+func whereStatementIsValid(t *testing.T, command ast.Command, expectedExpression ast.Expression) bool {
 	if command.TokenLiteral() != "WHERE" {
 		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
 		return false
@@ -321,7 +321,6 @@ func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 	booleanExpresion, booleanExpresionIsValid := first.(ast.BooleanExpresion)
 	if booleanExpresionIsValid {
 		return validateBooleanExpressions(second, booleanExpresion)
-
 	}
 
 	conditionExpresion, conditionExpresionIsValid := first.(*ast.ConditionExpresion)
@@ -348,7 +347,7 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 		return false
 	}
 
-	return expressionsAreEqual(operationExpression, secondOperationExpression)
+	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
 }
 
 func validateConditionExpresion(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
