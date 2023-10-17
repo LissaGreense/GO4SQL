@@ -145,7 +145,7 @@ func TestParseSelectCommand(t *testing.T) {
 func TestParseWhereCommand(t *testing.T) {
 	firstExpression := ast.ConditionExpresion{
 		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
-		Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "fda"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
 		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
 	}
 
@@ -194,7 +194,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		Right: ast.ConditionExpresion{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}},
-			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "NOT"}},
 		Operation: token.Token{Type: token.AND, Literal: "AND"},
 	}
 
@@ -284,8 +284,8 @@ func whereStatementIsValid(t *testing.T, command ast.Command, expectedExpression
 		return false
 	}
 
-	if expressionsAreEqual(actualWhereCommand.Expression, expectedExpression) {
-		t.Errorf("Actual expression is not equal to expected one")
+	if !expressionsAreEqual(actualWhereCommand.Expression, expectedExpression) {
+		t.Errorf("Actual expression is not equal to expected one.\nActual: %#v\nExpected: %#v", actualWhereCommand.Expression, expectedExpression)
 		return false
 	}
 
@@ -318,7 +318,7 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 
 func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 
-	booleanExpresion, booleanExpresionIsValid := first.(ast.BooleanExpresion)
+	booleanExpresion, booleanExpresionIsValid := first.(*ast.BooleanExpresion)
 	if booleanExpresionIsValid {
 		return validateBooleanExpressions(second, booleanExpresion)
 	}
@@ -337,7 +337,7 @@ func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 }
 
 func validateOperationExpression(second ast.Expression, operationExpression *ast.OperationExpression) bool {
-	secondOperationExpression, secondOperationExpressionIsValid := second.(*ast.OperationExpression)
+	secondOperationExpression, secondOperationExpressionIsValid := second.(ast.OperationExpression)
 
 	if !secondOperationExpressionIsValid {
 		return false
@@ -351,7 +351,7 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 }
 
 func validateConditionExpresion(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
-	secondConditionExpresion, secondConditionExpresionIsValid := second.(*ast.ConditionExpresion)
+	secondConditionExpresion, secondConditionExpresionIsValid := second.(ast.ConditionExpresion)
 
 	if !secondConditionExpresionIsValid {
 		return false
@@ -370,10 +370,11 @@ func validateConditionExpresion(second ast.Expression, conditionExpresion *ast.C
 	if conditionExpresion.Condition.Literal != secondConditionExpresion.Condition.Literal {
 		return false
 	}
-	return false
+
+	return true
 }
 
-func validateBooleanExpressions(second ast.Expression, booleanExpresion ast.BooleanExpresion) bool {
+func validateBooleanExpressions(second ast.Expression, booleanExpresion *ast.BooleanExpresion) bool {
 	secondBooleanExpresion, secondBooleanExpresionIsValid := second.(ast.BooleanExpresion)
 
 	if !secondBooleanExpresionIsValid {
