@@ -2,11 +2,11 @@
 
 <p align="center">
 <a href="https://github.com/LissaGreense/GO4SQL/actions">
-<img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg"/>
+<img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg?branch=main"/>
 </a>
 
 <a href="https://github.com/LissaGreense/GO4SQL/actions">
-<img alt="End2End Status" src="https://github.com/LissaGreense/GO4SQL/workflows/end2end-tests/badge.svg"/>
+<img alt="End2End Status" src="https://github.com/LissaGreense/GO4SQL/workflows/end2end-tests/badge.svg?branch=main"/>
 </a>
 
 <a href="https://goreportcard.com/report/github.com/LissaGreense/GO4SQL">
