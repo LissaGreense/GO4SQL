@@ -318,14 +318,14 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 
 func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 
-	booleanExpresion, booleanExpresionIsValid := first.(*ast.BooleanExpresion)
-	if booleanExpresionIsValid {
-		return validateBooleanExpressions(second, booleanExpresion)
+	booleanExpression, booleanExpressionIsValid := first.(*ast.BooleanExpresion)
+	if booleanExpressionIsValid {
+		return validateBooleanExpressions(second, booleanExpression)
 	}
 
-	conditionExpresion, conditionExpresionIsValid := first.(*ast.ConditionExpresion)
-	if conditionExpresionIsValid {
-		return validateConditionExpresion(second, conditionExpresion)
+	conditionExpression, conditionExpressionIsValid := first.(*ast.ConditionExpresion)
+	if conditionExpressionIsValid {
+		return validateConditionExpression(second, conditionExpression)
 	}
 
 	operationExpression, operationExpressionIsValid := first.(*ast.OperationExpression)
@@ -350,24 +350,24 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
 }
 
-func validateConditionExpresion(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
-	secondConditionExpresion, secondConditionExpresionIsValid := second.(ast.ConditionExpresion)
+func validateConditionExpression(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
+	secondConditionExpression, secondConditionExpressionIsValid := second.(ast.ConditionExpresion)
 
-	if !secondConditionExpresionIsValid {
+	if !secondConditionExpressionIsValid {
 		return false
 	}
 
-	if conditionExpresion.Left.GetToken().Literal != secondConditionExpresion.Left.GetToken().Literal &&
-		conditionExpresion.Left.IsIdentifier() == secondConditionExpresion.Left.IsIdentifier() {
+	if conditionExpresion.Left.GetToken().Literal != secondConditionExpression.Left.GetToken().Literal &&
+		conditionExpresion.Left.IsIdentifier() == secondConditionExpression.Left.IsIdentifier() {
 		return false
 	}
 
-	if conditionExpresion.Right.GetToken().Literal != secondConditionExpresion.Right.GetToken().Literal &&
-		conditionExpresion.Right.IsIdentifier() == secondConditionExpresion.Right.IsIdentifier() {
+	if conditionExpresion.Right.GetToken().Literal != secondConditionExpression.Right.GetToken().Literal &&
+		conditionExpresion.Right.IsIdentifier() == secondConditionExpression.Right.IsIdentifier() {
 		return false
 	}
 
-	if conditionExpresion.Condition.Literal != secondConditionExpresion.Condition.Literal {
+	if conditionExpresion.Condition.Literal != secondConditionExpression.Condition.Literal {
 		return false
 	}
 

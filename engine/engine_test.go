@@ -96,6 +96,108 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one EQUAL 'goodbye' AND two NOT 2;",
+		expectedOutput: [][]string{
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLogicalOperationOR(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3;",
+		expectedOutput: [][]string{
+			{"hello", "1", "11", "q"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3 AND four EQUAL 'e';",
+		expectedOutput: [][]string{
+			{"hello", "1", "11", "q"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereEqualToTrue(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE TRUE;",
+		expectedOutput: [][]string{
+			{"hello", "1", "11", "q"},
+			{"goodbye", "2", "22", "w"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereEqualToFalse(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput:    "SELECT * FROM tb1 WHERE FALSE;",
+		expectedOutput: [][]string{},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineTestSuite struct {
 	createInputs   []string
 	insertInputs   []string

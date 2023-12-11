@@ -9,7 +9,7 @@ import (
 
 func getInterfaceValue(t token.Token) ValueInterface {
 	switch t.Type {
-	case token.INT:
+	case token.LITERAL:
 		castedInteger, err := strconv.Atoi(t.Literal)
 		if err != nil {
 			log.Fatal("Cannot cast \"" + t.Literal + "\" to Integer")

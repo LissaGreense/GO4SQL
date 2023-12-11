@@ -5,6 +5,7 @@ import "strconv"
 type ValueInterface interface {
 	ToString() string
 	GetType() SupportedTypes
+	IsEqual(valueInterface ValueInterface) bool
 }
 
 type SupportedTypes int
@@ -29,3 +30,15 @@ func (value StringValue) ToString() string  { return value.Value }
 // GetType implementations
 func (value IntegerValue) GetType() SupportedTypes { return IntType }
 func (value StringValue) GetType() SupportedTypes  { return StringType }
+
+// IsEqual implementations
+func (value IntegerValue) IsEqual(valueInterface ValueInterface) bool {
+	return areEqual(value, valueInterface)
+}
+func (value StringValue) IsEqual(valueInterface ValueInterface) bool {
+	return areEqual(value, valueInterface)
+}
+
+func areEqual(first ValueInterface, second ValueInterface) bool {
+	return first.GetType() == second.GetType() && first.ToString() == second.ToString()
+}

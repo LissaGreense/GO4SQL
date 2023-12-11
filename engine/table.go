@@ -75,12 +75,6 @@ func (table *Table) ToString() string {
 	return result + bar
 }
 
-func (table *Table) appendRow(providedTable []*Column, rowIndex int) {
-	for columnIndex := range table.Columns {
-		table.Columns[columnIndex].Values = append(table.Columns[columnIndex].Values, providedTable[columnIndex].Values[rowIndex])
-	}
-}
-
 func getBar(columWidths []int) string {
 	bar := "+"
 
