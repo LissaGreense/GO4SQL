@@ -94,39 +94,15 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
 	}
 
-	filteredTable := &Table{Columns: []*Column{}}
-
-	// --- add to filteredTable column names and column types (no values so far)
-	for _, column := range table.Columns {
-		filteredTable.Columns = append(filteredTable.Columns,
-			&Column{
-				Type:   column.Type,
-				Values: make([]ValueInterface, 0),
-				Name:   column.Name,
-			})
-	}
-
-	// --- create rows out of table
-	rows := make([]map[string]ValueInterface, 0)
+	filteredTable := getCopyOfTableWithoutRows(table)
 
 	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
 		return engine.selectFromProvidedTable(selectCommand, filteredTable)
 	}
 
-	numberOfRows := len(table.Columns[0].Values)
+	//TODO: maybe rows should have separate structure, so it would would have it's on methods
+	rows := mapTableToRows(table)
 
-	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
-
-		row := make(map[string]ValueInterface)
-
-		for _, column := range table.Columns {
-			row[column.Name] = column.Values[rowIndex]
-		}
-
-		rows = append(rows, row)
-	}
-
-	// -- check if rows match filters from where
 	for _, row := range rows {
 		fulfilledFilters, err := isFulfillingFilters(row, whereCommand.Expression)
 		if err != nil {
@@ -142,6 +118,35 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 	}
 
 	return engine.selectFromProvidedTable(selectCommand, filteredTable)
+}
+
+func getCopyOfTableWithoutRows(table *Table) *Table {
+	filteredTable := &Table{Columns: []*Column{}}
+
+	for _, column := range table.Columns {
+		filteredTable.Columns = append(filteredTable.Columns,
+			&Column{
+				Type:   column.Type,
+				Values: make([]ValueInterface, 0),
+				Name:   column.Name,
+			})
+	}
+	return filteredTable
+}
+
+func mapTableToRows(table *Table) []map[string]ValueInterface {
+	rows := make([]map[string]ValueInterface, 0)
+
+	numberOfRows := len(table.Columns[0].Values)
+
+	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
+		row := make(map[string]ValueInterface)
+		for _, column := range table.Columns {
+			row[column.Name] = column.Values[rowIndex]
+		}
+		rows = append(rows, row)
+	}
+	return rows
 }
 
 func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expression) (bool, error) {
