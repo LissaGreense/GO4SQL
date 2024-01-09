@@ -39,3 +39,18 @@ from standard input).
 ## UNIT TESTS
 
 To run all the tests locally use "go clean -testcache; go test ./..." in root directory.
+
+## DOCKER
+
+To build your docker image run this command in root directory:
+```
+docker build -t go4sql:test .
+```
+
+To run this docker image in interactive mode use this command:
+
+```
+docker run -i go4sql:test
+```
+
+
