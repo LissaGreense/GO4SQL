@@ -210,11 +210,11 @@ type engineTestSuite struct {
 
 func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	input := ""
-	for i := 0; i < len(engineTestSuite.createInputs); i++ {
-		input += engineTestSuite.createInputs[i] + "\n"
+	for inputIndex := 0; inputIndex < len(engineTestSuite.createInputs); inputIndex++ {
+		input += engineTestSuite.createInputs[inputIndex] + "\n"
 	}
-	for i := 0; i < len(engineTestSuite.insertInputs); i++ {
-		input += engineTestSuite.insertInputs[i] + "\n"
+	for inputIndex := 0; inputIndex < len(engineTestSuite.insertInputs); inputIndex++ {
+		input += engineTestSuite.insertInputs[inputIndex] + "\n"
 	}
 	input += engineTestSuite.selectInput
 
@@ -277,11 +277,11 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 
 func (engineTestSuite *engineTestSuite) getEngineWithInsertedValues(sequences *ast.Sequence) *DbEngine {
 	engine := New()
-	for i := 0; i < len(sequences.Commands); i++ {
-		if createCommand, ok := sequences.Commands[i].(*ast.CreateCommand); ok {
+	for commandIndex := 0; commandIndex < len(sequences.Commands); commandIndex++ {
+		if createCommand, ok := sequences.Commands[commandIndex].(*ast.CreateCommand); ok {
 			engine.CreateTable(createCommand)
 		}
-		if insertCommand, ok := sequences.Commands[i].(*ast.InsertCommand); ok {
+		if insertCommand, ok := sequences.Commands[commandIndex].(*ast.InsertCommand); ok {
 			engine.InsertIntoTable(insertCommand)
 		}
 	}
