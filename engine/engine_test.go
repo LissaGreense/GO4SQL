@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"log"
 	"strings"
 	"testing"
 
@@ -96,6 +95,112 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one EQUAL 'goodbye' AND two NOT 2;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLogicalOperationOR(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3 AND four EQUAL 'e';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereEqualToTrue(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE TRUE;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "2", "22", "w"},
+			{"goodbye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereEqualToFalse(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+		},
+		selectInput:    "SELECT * FROM tb1 WHERE FALSE;",
+		expectedOutput: [][]string{},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineTestSuite struct {
 	createInputs   []string
 	insertInputs   []string
@@ -105,11 +210,11 @@ type engineTestSuite struct {
 
 func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	input := ""
-	for i := 0; i < len(engineTestSuite.createInputs); i++ {
-		input += engineTestSuite.createInputs[i] + "\n"
+	for inputIndex := 0; inputIndex < len(engineTestSuite.createInputs); inputIndex++ {
+		input += engineTestSuite.createInputs[inputIndex] + "\n"
 	}
-	for i := 0; i < len(engineTestSuite.insertInputs); i++ {
-		input += engineTestSuite.insertInputs[i] + "\n"
+	for inputIndex := 0; inputIndex < len(engineTestSuite.insertInputs); inputIndex++ {
+		input += engineTestSuite.insertInputs[inputIndex] + "\n"
 	}
 	input += engineTestSuite.selectInput
 
@@ -130,15 +235,7 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
 		}
 
-		engine := New()
-		for i := 0; i < len(sequences.Commands)-2; i++ {
-			if createCommand, ok := sequences.Commands[i].(*ast.CreateCommand); ok {
-				engine.CreateTable(createCommand)
-			}
-			if insertCommand, ok := sequences.Commands[i].(*ast.InsertCommand); ok {
-				engine.InsertIntoTable(insertCommand)
-			}
-		}
+		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
 
 		actualTable = engine.SelectFromTableWithWhere(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.WhereCommand))
 	} else {
@@ -149,36 +246,44 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
 		}
 
-		engine := New()
-		for i := 0; i < len(sequences.Commands)-1; i++ {
-			if createCommand, ok := sequences.Commands[i].(*ast.CreateCommand); ok {
-				engine.CreateTable(createCommand)
-			}
-			if insertCommand, ok := sequences.Commands[i].(*ast.InsertCommand); ok {
-				engine.InsertIntoTable(insertCommand)
-			}
-		}
+		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
 
 		actualTable = engine.SelectFromTable(sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand))
 	}
 
-	if len(actualTable.Columns) != len(engineTestSuite.expectedOutput[0]) {
-		log.Fatalf("Number of columns is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput[0]), len(actualTable.Columns))
-	}
-
-	if len(actualTable.Columns[0].Values) != len(engineTestSuite.expectedOutput)-1 {
-		log.Fatalf("Number of rows is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput)-1, len(actualTable.Columns[0].Values))
-	}
-
-	for iColumn := 0; iColumn < len(actualTable.Columns); iColumn++ {
-		if actualTable.Columns[iColumn].Name != engineTestSuite.expectedOutput[0][iColumn] {
-			t.Fatalf("Column names doesn't match, expected: %s, got: %s", engineTestSuite.expectedOutput[0][iColumn], actualTable.Columns[iColumn].Name)
+	if len(engineTestSuite.expectedOutput) == 0 {
+		if len(actualTable.Columns[0].Values) != 0 {
+			t.Fatalf("Number of rows is incorrect, should be 0, got %d", len(actualTable.Columns))
+		}
+	} else {
+		if len(actualTable.Columns) != len(engineTestSuite.expectedOutput[0]) {
+			t.Fatalf("Number of columns is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput[0]), len(actualTable.Columns))
 		}
 
-		for iRow := 0; iRow < len(actualTable.Columns[0].Values); iRow++ {
-			if engineTestSuite.expectedOutput[iRow+1][iColumn] != actualTable.Columns[iColumn].Values[iRow].ToString() {
-				t.Fatalf("Value doesn't match, expected: %s, got: %s", engineTestSuite.expectedOutput[iRow+1][iColumn], actualTable.Columns[iColumn].Values[iRow].ToString())
+		if len(actualTable.Columns[0].Values) != len(engineTestSuite.expectedOutput)-1 {
+			t.Fatalf("Number of rows is incorrect, expecting %d, got %d", len(engineTestSuite.expectedOutput)-1, len(actualTable.Columns[0].Values))
+		}
+
+		for iColumn := 0; iColumn < len(actualTable.Columns); iColumn++ {
+			for iRow := 0; iRow < len(actualTable.Columns[0].Values); iRow++ {
+				if engineTestSuite.expectedOutput[iRow+1][iColumn] != actualTable.Columns[iColumn].Values[iRow].ToString() {
+					t.Fatalf("Value doesn't match, expected: %s, got: %s", engineTestSuite.expectedOutput[iRow+1][iColumn], actualTable.Columns[iColumn].Values[iRow].ToString())
+				}
 			}
 		}
 	}
+
+}
+
+func (engineTestSuite *engineTestSuite) getEngineWithInsertedValues(sequences *ast.Sequence) *DbEngine {
+	engine := New()
+	for commandIndex := 0; commandIndex < len(sequences.Commands); commandIndex++ {
+		if createCommand, ok := sequences.Commands[commandIndex].(*ast.CreateCommand); ok {
+			engine.CreateTable(createCommand)
+		}
+		if insertCommand, ok := sequences.Commands[commandIndex].(*ast.InsertCommand); ok {
+			engine.InsertIntoTable(insertCommand)
+		}
+	}
+	return engine
 }

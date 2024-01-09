@@ -2,11 +2,11 @@
 
 <p align="center">
 <a href="https://github.com/LissaGreense/GO4SQL/actions">
-<img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg"/>
+<img alt="Unit-Tests Status" src="https://github.com/LissaGreense/GO4SQL/workflows/unit-tests/badge.svg?branch=main"/>
 </a>
 
 <a href="https://github.com/LissaGreense/GO4SQL/actions">
-<img alt="End2End Status" src="https://github.com/LissaGreense/GO4SQL/workflows/end2end-tests/badge.svg"/>
+<img alt="End2End Status" src="https://github.com/LissaGreense/GO4SQL/workflows/end2end-tests/badge.svg?branch=main"/>
 </a>
 
 <a href="https://goreportcard.com/report/github.com/LissaGreense/GO4SQL">
@@ -19,7 +19,7 @@ GO4SQL is an open source project to write in-memory SQL engine using nothing but
 ## HOW TO USE
 
 You can compile the project with ``go build``, this will create ``GO4SQL`` binary.
-You can eithier specify file path with ``./GO4SQL -file file_path``, that will read the the input data directly into the
+You can eithier specify file path with ``./GO4SQL -file file_path``, that will read the input data directly into the
 program.
 Also with ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands in your console (
 from standard input).

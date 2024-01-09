@@ -15,8 +15,8 @@ func TestParserCreateCommand(t *testing.T) {
 		expectedColumnNames []string
 		expectedColumTypes  []token.Token
 	}{
-		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{token.TEXT, "TEXT"}}},
-		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{token.TEXT, "TEXT"}, {token.TEXT, "TEXT"}, {token.INT, "INT"}}},
+		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}}},
+		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}, {Type: token.TEXT, Literal: "TEXT"}, {Type: token.INT, Literal: "INT"}}},
 		{"CREATE TABLE 	TBL(  );", "TBL", []string{}, []token.Token{}},
 	}
 
@@ -72,8 +72,8 @@ func TestParseInsertCommand(t *testing.T) {
 		expectedValuesTokens []token.Token
 	}{
 		{"INSERT INTO TBL VALUES();", "TBL", []token.Token{}},
-		{"INSERT INTO TBL VALUES( 'HELLO' );", "TBL", []token.Token{{token.IDENT, "HELLO"}}},
-		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{token.IDENT, "HELLO"}, {token.LITERAL, "10"}, {token.IDENT, "LOL"}}},
+		{"INSERT INTO TBL VALUES( 'HELLO' );", "TBL", []token.Token{{Type: token.IDENT, Literal: "HELLO"}}},
+		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{Type: token.IDENT, Literal: "HELLO"}, {Type: token.LITERAL, Literal: "10"}, {Type: token.IDENT, Literal: "LOL"}}},
 	}
 
 	for _, tt := range tests {
@@ -122,8 +122,8 @@ func TestParseSelectCommand(t *testing.T) {
 		expectedTableName string
 		expectedColumns   []token.Token
 	}{
-		{"SELECT * FROM TBL;", "TBL", []token.Token{{token.ASTERISK, "*"}}},
-		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{token.IDENT, "ONE"}, {token.IDENT, "TWO"}, {token.IDENT, "THREE"}}},
+		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}},
+		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}},
 		{"SELECT FROM TBL;", "TBL", []token.Token{}},
 	}
 
@@ -143,14 +143,30 @@ func TestParseSelectCommand(t *testing.T) {
 }
 
 func TestParseWhereCommand(t *testing.T) {
+	firstExpression := ast.ConditionExpresion{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
+		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+	}
+
+	secondExpression := ast.ConditionExpresion{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
+		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+	}
+
 	tests := []struct {
-		input             string
-		expectedLeft      token.Token
-		expectedRight     token.Token
-		expectedOperation token.Token
+		input              string
+		expectedExpression ast.Expression
 	}{
-		{input: "SELECT * FROM TBL WHERE colName1 EQUAL 'fda';", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName1"}, expectedRight: token.Token{Type: token.IDENT, Literal: "fda"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-		{input: "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;", expectedLeft: token.Token{Type: token.IDENT, Literal: "colName2"}, expectedRight: token.Token{Type: token.LITERAL, Literal: "6462389"}, expectedOperation: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		{
+			input:              "SELECT * FROM TBL WHERE colName1 EQUAL 'fda';",
+			expectedExpression: firstExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;",
+			expectedExpression: secondExpression,
+		},
 	}
 
 	for _, tt := range tests {
@@ -162,8 +178,71 @@ func TestParseWhereCommand(t *testing.T) {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !testWhereStatement(t, sequences.Commands[1], tt.expectedLeft, tt.expectedRight, tt.expectedOperation) {
+		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
 			return
+		}
+	}
+}
+
+func TestParseLogicOperatorsInCommand(t *testing.T) {
+
+	firstExpression := ast.OperationExpression{
+		Left: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Right: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "NOT"}},
+		Operation: token.Token{Type: token.AND, Literal: "AND"},
+	}
+
+	secondExpression := ast.OperationExpression{
+		Left: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
+			Condition: token.Token{Type: token.NOT, Literal: "NOT"}},
+		Right: ast.ConditionExpresion{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "qwe"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
+		Operation: token.Token{Type: token.OR, Literal: "OR"},
+	}
+
+	thirdExpression := ast.BooleanExpresion{
+		Boolean: token.Token{Type: token.TRUE, Literal: "TRUE"},
+	}
+
+	tests := []struct {
+		input              string
+		expectedExpression ast.Expression
+	}{
+		{
+			input:              "SELECT * FROM TBL WHERE colName1 EQUAL 'fda' AND colName2 NOT 123;",
+			expectedExpression: firstExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE colName2 NOT 6462389 OR colName1 EQUAL 'qwe';",
+			expectedExpression: secondExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE TRUE;",
+			expectedExpression: thirdExpression,
+		},
+	}
+
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences := parserInstance.ParseSequence()
+
+		if len(sequences.Commands) != 2 {
+			t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+		}
+
+		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
+			t.Fatalf("Actual expression and expected one are different")
 		}
 	}
 }
@@ -193,7 +272,7 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 	return true
 }
 
-func testWhereStatement(t *testing.T, command ast.Command, expectedLeft token.Token, expectedRight token.Token, expectedOperation token.Token) bool {
+func whereStatementIsValid(t *testing.T, command ast.Command, expectedExpression ast.Expression) bool {
 	if command.TokenLiteral() != "WHERE" {
 		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
 		return false
@@ -205,18 +284,8 @@ func testWhereStatement(t *testing.T, command ast.Command, expectedLeft token.To
 		return false
 	}
 
-	if actualWhereCommand.Expression.Left.Token.Literal != expectedLeft.Literal {
-		t.Errorf("%s != %s", actualWhereCommand.Expression.Left.Token.Literal, expectedLeft.Literal)
-		return false
-	}
-
-	if actualWhereCommand.Expression.OperationToken.Literal != expectedOperation.Literal {
-		t.Errorf("%s != %s", actualWhereCommand.Expression.OperationToken.Literal, expectedOperation.Literal)
-		return false
-	}
-
-	if actualWhereCommand.Expression.Right.Literal != expectedRight.Literal {
-		t.Errorf("%s != %s", actualWhereCommand.Expression.Right.Literal, expectedRight.Literal)
+	if !expressionsAreEqual(actualWhereCommand.Expression, expectedExpression) {
+		t.Errorf("Actual expression is not equal to expected one.\nActual: %#v\nExpected: %#v", actualWhereCommand.Expression, expectedExpression)
 		return false
 	}
 
@@ -244,5 +313,77 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 			return false
 		}
 	}
+	return true
+}
+
+func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
+
+	booleanExpression, booleanExpressionIsValid := first.(*ast.BooleanExpresion)
+	if booleanExpressionIsValid {
+		return validateBooleanExpressions(second, booleanExpression)
+	}
+
+	conditionExpression, conditionExpressionIsValid := first.(*ast.ConditionExpresion)
+	if conditionExpressionIsValid {
+		return validateConditionExpression(second, conditionExpression)
+	}
+
+	operationExpression, operationExpressionIsValid := first.(*ast.OperationExpression)
+	if operationExpressionIsValid {
+		return validateOperationExpression(second, operationExpression)
+	}
+
+	return false
+}
+
+func validateOperationExpression(second ast.Expression, operationExpression *ast.OperationExpression) bool {
+	secondOperationExpression, secondOperationExpressionIsValid := second.(ast.OperationExpression)
+
+	if !secondOperationExpressionIsValid {
+		return false
+	}
+
+	if operationExpression.Operation.Literal != secondOperationExpression.Operation.Literal {
+		return false
+	}
+
+	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
+}
+
+func validateConditionExpression(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
+	secondConditionExpression, secondConditionExpressionIsValid := second.(ast.ConditionExpresion)
+
+	if !secondConditionExpressionIsValid {
+		return false
+	}
+
+	if conditionExpresion.Left.GetToken().Literal != secondConditionExpression.Left.GetToken().Literal &&
+		conditionExpresion.Left.IsIdentifier() == secondConditionExpression.Left.IsIdentifier() {
+		return false
+	}
+
+	if conditionExpresion.Right.GetToken().Literal != secondConditionExpression.Right.GetToken().Literal &&
+		conditionExpresion.Right.IsIdentifier() == secondConditionExpression.Right.IsIdentifier() {
+		return false
+	}
+
+	if conditionExpresion.Condition.Literal != secondConditionExpression.Condition.Literal {
+		return false
+	}
+
+	return true
+}
+
+func validateBooleanExpressions(second ast.Expression, booleanExpresion *ast.BooleanExpresion) bool {
+	secondBooleanExpresion, secondBooleanExpresionIsValid := second.(ast.BooleanExpresion)
+
+	if !secondBooleanExpresionIsValid {
+		return false
+	}
+
+	if booleanExpresion.Boolean.Literal != secondBooleanExpresion.Boolean.Literal {
+		return false
+	}
+
 	return true
 }

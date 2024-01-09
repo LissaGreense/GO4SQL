@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"bytes"
+
 	"github.com/LissaGreense/GO4SQL/token"
 )
 

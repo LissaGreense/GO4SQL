@@ -22,7 +22,7 @@ func extractColumnContent(columns []*Column, wantedColumnNames []string) *Table 
 				break
 			}
 			if columnNameIndex == len(columns)-1 {
-				log.Fatal("Provided column name: " + wantedColumnNames[wantedColumnIndex] + "doesn't exist")
+				log.Fatal("Provided column name: " + wantedColumnNames[wantedColumnIndex] + " doesn't exist")
 			}
 		}
 	}
@@ -38,7 +38,8 @@ func extractColumnContent(columns []*Column, wantedColumnNames []string) *Table 
 
 	for iRow := 0; iRow < rowsCount; iRow++ {
 		for iColumn := 0; iColumn < len(mappedIndexes); iColumn++ {
-			selectedTable.Columns[iColumn].Values = append(selectedTable.Columns[iColumn].Values, columns[mappedIndexes[iColumn]].Values[iRow])
+			selectedTable.Columns[iColumn].Values =
+				append(selectedTable.Columns[iColumn].Values, columns[mappedIndexes[iColumn]].Values[iRow])
 		}
 	}
 	return selectedTable

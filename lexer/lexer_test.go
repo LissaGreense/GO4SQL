@@ -203,3 +203,47 @@ func TestLexerWithNumbersWithWhitespacesIdentifier(t *testing.T) {
 		}
 	}
 }
+
+func TestLogicalStatments(t *testing.T) {
+	input :=
+		`
+			WHERE FALSE AND three EQUAL 33;
+			WHERE two NOT 11 OR TRUE;
+			`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.WHERE, "WHERE"},
+		{token.FALSE, "FALSE"},
+		{token.AND, "AND"},
+		{token.IDENT, "three"},
+		{token.EQUAL, "EQUAL"},
+		{token.LITERAL, "33"},
+		{token.SEMICOLON, ";"},
+		{token.WHERE, "WHERE"},
+		{token.IDENT, "two"},
+		{token.NOT, "NOT"},
+		{token.LITERAL, "11"},
+		{token.OR, "OR"},
+		{token.TRUE, "TRUE"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	l := RunLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+}

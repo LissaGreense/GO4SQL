@@ -27,8 +27,13 @@ type Command interface {
 // Example:
 // CustomerID<5
 type Expression interface {
-	Node
 	ExpressionNode()
+	GetIdentifiers() []*Identifier
+}
+
+type Tifier interface {
+	IsIdentifier() bool
+	GetToken() token.Token
 }
 
 func (p *Sequence) TokenLiteral() string {
@@ -43,10 +48,61 @@ type Identifier struct {
 	Token token.Token // the token.IDENT token
 }
 
-type Condition struct {
-	Left           *Identifier // name of column
-	Right          token.Token // value which column should have
-	OperationToken token.Token // example: token.EQUAL
+func (ls Identifier) IsIdentifier() bool    { return true }
+func (ls Identifier) GetToken() token.Token { return ls.Token }
+
+type Anonymitifier struct {
+	Token token.Token // the token.IDENT token
+}
+
+func (ls Anonymitifier) IsIdentifier() bool    { return false }
+func (ls Anonymitifier) GetToken() token.Token { return ls.Token }
+
+type BooleanExpresion struct {
+	Boolean token.Token // example: token.TRUE
+}
+
+func (ls BooleanExpresion) ExpressionNode() {}
+func (ls BooleanExpresion) GetIdentifiers() []*Identifier {
+	var identifiers []*Identifier
+	return identifiers
+}
+
+type ConditionExpresion struct {
+	Left      Tifier      // name of column
+	Right     Tifier      // value which column should have
+	Condition token.Token // example: token.EQUAL
+}
+
+func (ls ConditionExpresion) ExpressionNode() {}
+func (ls ConditionExpresion) GetIdentifiers() []*Identifier {
+	var identifiers []*Identifier
+
+	if ls.Left.IsIdentifier() {
+		identifiers = append(identifiers, &Identifier{ls.Left.GetToken()})
+	}
+
+	if ls.Right.IsIdentifier() {
+		identifiers = append(identifiers, &Identifier{ls.Right.GetToken()})
+	}
+
+	return identifiers
+}
+
+type OperationExpression struct {
+	Left      Expression  // another operation, condition or boolean
+	Right     Expression  // another operation, condition or boolean
+	Operation token.Token // example: token.AND
+}
+
+func (ls OperationExpression) ExpressionNode() {}
+func (ls OperationExpression) GetIdentifiers() []*Identifier {
+	var identifiers []*Identifier
+
+	identifiers = append(identifiers, ls.Left.GetIdentifiers()...)
+	identifiers = append(identifiers, ls.Right.GetIdentifiers()...)
+
+	return identifiers
 }
 
 type CreateCommand struct {
@@ -79,7 +135,7 @@ func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
 
 type WhereCommand struct {
 	Token      token.Token
-	Expression *Condition
+	Expression Expression
 }
 
 func (ls WhereCommand) CommandNode()         {}
