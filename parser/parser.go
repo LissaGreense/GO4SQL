@@ -210,6 +210,28 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	return whereCommand
 }
 
+// DELETE FROM table
+func (parser *Parser) parseDeleteCommand() ast.Command {
+	// token.DELETE already at current position in parser
+	deleteCommand := &ast.DeleteCommand{Token: parser.currentToken}
+
+	// token.DELETE no longer needed
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.Type{token.FROM})
+
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	deleteCommand.Name = &ast.Identifier{Token: parser.currentToken}
+
+	// token.IDENT no longer needed
+	parser.nextToken()
+
+	// expect WHERE
+	validateToken(parser.currentToken.Type, []token.Type{token.WHERE})
+
+	return deleteCommand
+}
+
 func (parser *Parser) getExpression() (bool, ast.Expression) {
 	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
@@ -232,7 +254,7 @@ func (parser *Parser) getExpression() (bool, ast.Expression) {
 	return false, nil
 }
 
-func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpresion) (bool, *ast.OperationExpression) {
+func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpression) (bool, *ast.OperationExpression) {
 	operationExpression := &ast.OperationExpression{}
 
 	if (booleanExpressionExists || conditionalExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
@@ -274,9 +296,9 @@ func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpresion) {
 	return isValid, booleanExpression
 }
 
-func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpresion) {
+func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression) {
 	// TODO REFACTOR THIS
-	conditionalExpression := &ast.ConditionExpresion{}
+	conditionalExpression := &ast.ConditionExpression{}
 
 	if parser.currentToken.Type == token.IDENT {
 		conditionalExpression.Left = ast.Identifier{
@@ -351,9 +373,15 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 			command = parser.parseInsertCommand()
 		case token.SELECT:
 			command = parser.parseSelectCommand()
+		case token.DELETE:
+			command = parser.parseDeleteCommand()
 		case token.WHERE:
-			if len(sequence.Commands) == 0 || sequence.Commands[len(sequence.Commands)-1].TokenLiteral() != token.SELECT {
-				log.Fatal("Syntax error, WHERE command needs SELECT command before")
+			if len(sequence.Commands) == 0 {
+				log.Fatal("Syntax error, Where Command can't be used without predecessor")
+			}
+			lastStartingToken := sequence.Commands[len(sequence.Commands)-1].TokenLiteral()
+			if lastStartingToken != token.SELECT && lastStartingToken != token.DELETE {
+				log.Fatal("Syntax error, WHERE command needs SELECT or DELETE command before")
 			}
 			command = parser.parseWhereCommand()
 		default:

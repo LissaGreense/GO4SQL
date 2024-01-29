@@ -6,3 +6,5 @@
 		SELECT one, three FROM tbl WHERE two NOT 3;
 		SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL 3;
 		SELECT * FROM tbl WHERE FALSE;
+		DELETE FROM tbl WHERE one EQUAL 'byebye';
+		SELECT * FROM tbl;
