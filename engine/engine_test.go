@@ -14,7 +14,7 @@ func TestSelectCommand(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
@@ -36,7 +36,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
@@ -58,7 +58,7 @@ func TestSelectWithWhereEqual(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
@@ -79,7 +79,7 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
@@ -101,7 +101,7 @@ func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
@@ -122,7 +122,7 @@ func TestSelectWithWhereLogicalOperationOR(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
@@ -144,7 +144,7 @@ func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
@@ -166,7 +166,7 @@ func TestSelectWithWhereEqualToTrue(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
@@ -189,7 +189,7 @@ func TestSelectWithWhereEqualToFalse(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
@@ -207,7 +207,7 @@ func TestDelete(t *testing.T) {
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
-		insertInputs: []string{
+		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
 			"DELETE FROM tb1 WHERE two EQUAL 3;",
@@ -217,7 +217,6 @@ func TestDelete(t *testing.T) {
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
-			{"byebye", "3", "33", "e"}, // TODO DELETE THAT LINE LATER ON
 			{"goodbye", "2", "22", "w"},
 		},
 	}
@@ -226,10 +225,10 @@ func TestDelete(t *testing.T) {
 }
 
 type engineTestSuite struct {
-	createInputs   []string
-	insertInputs   []string
-	selectInput    string
-	expectedOutput [][]string
+	createInputs          []string
+	insertAndDeleteInputs []string
+	selectInput           string
+	expectedOutput        [][]string
 }
 
 func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
@@ -238,11 +237,11 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	for inputIndex := 0; inputIndex < len(engineTestSuite.createInputs); inputIndex++ {
 		input += engineTestSuite.createInputs[inputIndex] + "\n"
 	}
-	for inputIndex := 0; inputIndex < len(engineTestSuite.insertInputs); inputIndex++ {
-		if strings.HasPrefix(engineTestSuite.insertInputs[inputIndex], "DELETE") {
+	for inputIndex := 0; inputIndex < len(engineTestSuite.insertAndDeleteInputs); inputIndex++ {
+		if strings.HasPrefix(engineTestSuite.insertAndDeleteInputs[inputIndex], "DELETE") {
 			expectedSequencesNumber++
 		}
-		input += engineTestSuite.insertInputs[inputIndex] + "\n"
+		input += engineTestSuite.insertAndDeleteInputs[inputIndex] + "\n"
 	}
 	input += engineTestSuite.selectInput
 
@@ -250,7 +249,7 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
-	expectedSequencesNumber += len(engineTestSuite.createInputs) + len(engineTestSuite.insertInputs) + 1
+	expectedSequencesNumber += len(engineTestSuite.createInputs) + len(engineTestSuite.insertAndDeleteInputs) + 1
 
 	var actualTable *Table
 

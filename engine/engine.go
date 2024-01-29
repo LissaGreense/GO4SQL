@@ -94,12 +94,7 @@ func (engine *DbEngine) DeleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 		log.Fatal("Table with the name of " + deleteCommand.Name.Token.Literal + " doesn't exist!")
 	}
 
-	columns := table.Columns
-
-	for columnIndex := 0; columnIndex < len(columns); columnIndex++ {
-
-	}
-	//TODO
+	engine.Tables[deleteCommand.Name.Token.Literal] = engine.getFilteredTable(table, whereCommand, true)
 }
 
 func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) *Table {
@@ -109,11 +104,17 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
 	}
 
-	filteredTable := getCopyOfTableWithoutRows(table)
-
 	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
-		return engine.selectFromProvidedTable(selectCommand, filteredTable)
+		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
 	}
+
+	filteredTable := engine.getFilteredTable(table, whereCommand, false)
+
+	return engine.selectFromProvidedTable(selectCommand, filteredTable)
+}
+
+func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
+	filteredTable := getCopyOfTableWithoutRows(table)
 
 	//TODO: maybe rows should have separate structure, so it would would have it's on methods
 	rows := mapTableToRows(table)
@@ -124,15 +125,18 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 			log.Fatal(err.Error())
 		}
 
-		if fulfilledFilters {
+		if XOR(fulfilledFilters, negation) {
 			for _, filteredColumn := range filteredTable.Columns {
 				value := row[filteredColumn.Name]
 				filteredColumn.Values = append(filteredColumn.Values, value)
 			}
 		}
 	}
+	return filteredTable
+}
 
-	return engine.selectFromProvidedTable(selectCommand, filteredTable)
+func XOR(fulfilledFilters bool, negation bool) bool {
+	return (fulfilledFilters || negation) && !(fulfilledFilters && negation)
 }
 
 func getCopyOfTableWithoutRows(table *Table) *Table {
