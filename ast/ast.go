@@ -68,14 +68,14 @@ func (ls BooleanExpresion) GetIdentifiers() []*Identifier {
 	return identifiers
 }
 
-type ConditionExpresion struct {
+type ConditionExpression struct {
 	Left      Tifier      // name of column
 	Right     Tifier      // value which column should have
 	Condition token.Token // example: token.EQUAL
 }
 
-func (ls ConditionExpresion) ExpressionNode() {}
-func (ls ConditionExpresion) GetIdentifiers() []*Identifier {
+func (ls ConditionExpression) ExpressionNode() {}
+func (ls ConditionExpression) GetIdentifiers() []*Identifier {
 	var identifiers []*Identifier
 
 	if ls.Left.IsIdentifier() {
@@ -140,3 +140,11 @@ type WhereCommand struct {
 
 func (ls WhereCommand) CommandNode()         {}
 func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }
+
+type DeleteCommand struct {
+	Token token.Token
+	Name  *Identifier // name of the table
+}
+
+func (ls DeleteCommand) CommandNode()         {}
+func (ls DeleteCommand) TokenLiteral() string { return ls.Token.Literal }

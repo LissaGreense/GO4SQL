@@ -87,6 +87,21 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	}
 }
 
+func (engine *DbEngine) DeleteFromTable(deleteCommand *ast.DeleteCommand, whereCommand *ast.WhereCommand) {
+	table, exist := engine.Tables[deleteCommand.Name.Token.Literal]
+
+	if !exist {
+		log.Fatal("Table with the name of " + deleteCommand.Name.Token.Literal + " doesn't exist!")
+	}
+
+	columns := table.Columns
+
+	for columnIndex := 0; columnIndex < len(columns); columnIndex++ {
+
+	}
+	//TODO
+}
+
 func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) *Table {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
@@ -160,7 +175,7 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 		return processBooleanExpression(booleanExpression)
 	}
 
-	conditionExpression, conditionExpressionIsValid := expressionTree.(*ast.ConditionExpresion)
+	conditionExpression, conditionExpressionIsValid := expressionTree.(*ast.ConditionExpression)
 	if conditionExpressionIsValid {
 		return processConditionExpression(row, conditionExpression)
 	}
@@ -168,7 +183,7 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 	return false, fmt.Errorf("unsupported expression has been used in WHERE command: %v", expressionTree.GetIdentifiers())
 }
 
-func processConditionExpression(row map[string]ValueInterface, conditionExpression *ast.ConditionExpresion) (bool, error) {
+func processConditionExpression(row map[string]ValueInterface, conditionExpression *ast.ConditionExpression) (bool, error) {
 	valueLeft, isValueLeftValid := getTifierValue(conditionExpression.Left, row)
 	if isValueLeftValid != nil {
 		log.Fatal(isValueLeftValid.Error())

@@ -143,13 +143,13 @@ func TestParseSelectCommand(t *testing.T) {
 }
 
 func TestParseWhereCommand(t *testing.T) {
-	firstExpression := ast.ConditionExpresion{
+	firstExpression := ast.ConditionExpression{
 		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
 		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
 		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
 	}
 
-	secondExpression := ast.ConditionExpresion{
+	secondExpression := ast.ConditionExpression{
 		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
 		Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
 		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
@@ -184,14 +184,52 @@ func TestParseWhereCommand(t *testing.T) {
 	}
 }
 
+func TestParseDeleteCommand(t *testing.T) {
+	input := "DELETE FROM colName1 WHERE colName2 EQUAL 6462389;"
+	expectedDeleteCommand := ast.DeleteCommand{
+		Token: token.Token{Type: token.DELETE, Literal: "DELETE"},
+		Name:  &ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+	}
+	expectedWhereCommand := ast.ConditionExpression{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
+		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+	}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences := parserInstance.ParseSequence()
+
+	if len(sequences.Commands) != 2 {
+		t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+	}
+
+	actualDeleteCommand, ok := sequences.Commands[0].(*ast.DeleteCommand)
+	if !ok {
+		t.Errorf("actualDeleteCommand is not %T. got=%T", &ast.DeleteCommand{}, sequences.Commands[0])
+	}
+
+	if expectedDeleteCommand.TokenLiteral() != actualDeleteCommand.TokenLiteral() {
+		t.Errorf("TokenLiteral of DeleteCommand is not %s. got=%s", expectedDeleteCommand.TokenLiteral(), actualDeleteCommand.TokenLiteral())
+	}
+
+	if expectedDeleteCommand.Name.GetToken().Literal != actualDeleteCommand.Name.GetToken().Literal {
+		t.Errorf("Table name of DeleteCommand is not %s. got=%s", expectedDeleteCommand.Name.GetToken().Literal, actualDeleteCommand.Name.GetToken().Literal)
+	}
+
+	if !whereStatementIsValid(t, sequences.Commands[1], expectedWhereCommand) {
+		return
+	}
+}
+
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
 	firstExpression := ast.OperationExpression{
-		Left: ast.ConditionExpresion{
+		Left: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "fda"}},
 			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
-		Right: ast.ConditionExpresion{
+		Right: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "123"}},
 			Condition: token.Token{Type: token.EQUAL, Literal: "NOT"}},
@@ -199,11 +237,11 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 	}
 
 	secondExpression := ast.OperationExpression{
-		Left: ast.ConditionExpresion{
+		Left: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "6462389"}},
 			Condition: token.Token{Type: token.NOT, Literal: "NOT"}},
-		Right: ast.ConditionExpresion{
+		Right: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
 			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "qwe"}},
 			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}},
@@ -323,7 +361,7 @@ func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 		return validateBooleanExpressions(second, booleanExpression)
 	}
 
-	conditionExpression, conditionExpressionIsValid := first.(*ast.ConditionExpresion)
+	conditionExpression, conditionExpressionIsValid := first.(*ast.ConditionExpression)
 	if conditionExpressionIsValid {
 		return validateConditionExpression(second, conditionExpression)
 	}
@@ -350,8 +388,8 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
 }
 
-func validateConditionExpression(second ast.Expression, conditionExpresion *ast.ConditionExpresion) bool {
-	secondConditionExpression, secondConditionExpressionIsValid := second.(ast.ConditionExpresion)
+func validateConditionExpression(second ast.Expression, conditionExpresion *ast.ConditionExpression) bool {
+	secondConditionExpression, secondConditionExpressionIsValid := second.(ast.ConditionExpression)
 
 	if !secondConditionExpressionIsValid {
 		return false

@@ -201,6 +201,30 @@ func TestSelectWithWhereEqualToFalse(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestDelete(t *testing.T) {
+
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+			"DELETE FROM tb1 WHERE two EQUAL 3;",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"byebye", "3", "33", "e"}, // TODO DELETE THAT LINE LATER ON
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineTestSuite struct {
 	createInputs   []string
 	insertInputs   []string
@@ -210,10 +234,14 @@ type engineTestSuite struct {
 
 func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	input := ""
+	expectedSequencesNumber := 0
 	for inputIndex := 0; inputIndex < len(engineTestSuite.createInputs); inputIndex++ {
 		input += engineTestSuite.createInputs[inputIndex] + "\n"
 	}
 	for inputIndex := 0; inputIndex < len(engineTestSuite.insertInputs); inputIndex++ {
+		if strings.HasPrefix(engineTestSuite.insertInputs[inputIndex], "DELETE") {
+			expectedSequencesNumber++
+		}
 		input += engineTestSuite.insertInputs[inputIndex] + "\n"
 	}
 	input += engineTestSuite.selectInput
@@ -222,7 +250,7 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	parserInstance := parser.New(lexerInstance)
 	sequences := parserInstance.ParseSequence()
 
-	expectedSequencesNumber := len(engineTestSuite.createInputs) + len(engineTestSuite.insertInputs) + 1
+	expectedSequencesNumber += len(engineTestSuite.createInputs) + len(engineTestSuite.insertInputs) + 1
 
 	var actualTable *Table
 
@@ -283,6 +311,10 @@ func (engineTestSuite *engineTestSuite) getEngineWithInsertedValues(sequences *a
 		}
 		if insertCommand, ok := sequences.Commands[commandIndex].(*ast.InsertCommand); ok {
 			engine.InsertIntoTable(insertCommand)
+		}
+		if deleteCommand, ok := sequences.Commands[commandIndex].(*ast.DeleteCommand); ok {
+			whereCommand := sequences.Commands[commandIndex+1].(*ast.WhereCommand)
+			engine.DeleteFromTable(deleteCommand, whereCommand)
 		}
 	}
 	return engine

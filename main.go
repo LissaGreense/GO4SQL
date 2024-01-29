@@ -29,7 +29,6 @@ func main() {
 		sequences := bytesToSequences(content)
 		evaluateInEngine(sequences, engineSQL)
 	} else if *streamMode {
-
 		reader := bufio.NewScanner(os.Stdin)
 		for reader.Scan() {
 			sequences := bytesToSequences(reader.Bytes())
@@ -80,6 +79,19 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 			continue
 		}
 
+		deleteCommand, deleteCommandIsValid := command.(*ast.DeleteCommand)
+		if deleteCommandIsValid {
+			nextCommandIndex := commandIndex + 1
+
+			if nextCommandIndex != len(commands) {
+				whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
+
+				if whereCommandIsValid {
+					engineSQL.DeleteFromTable(deleteCommand, whereCommand)
+				}
+			}
+			continue
+		}
 	}
 }
 
