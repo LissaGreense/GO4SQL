@@ -283,3 +283,39 @@ func TestDeleteStatement(t *testing.T) {
 		}
 	}
 }
+
+func TestOrderByStatement(t *testing.T) {
+	input := `SELECT * FROM table ORDER BY something ASC;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.SELECT, "SELECT"},
+		{token.ASTERISK, "*"},
+		{token.FROM, "FROM"},
+		{token.IDENT, "table"},
+		{token.ORDER, "ORDER"},
+		{token.BY, "BY"},
+		{token.IDENT, "something"},
+		{token.ASC, "ASC"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	l := RunLexer(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal)
+		}
+	}
+
+}

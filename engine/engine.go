@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -113,6 +114,68 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 	return engine.selectFromProvidedTable(selectCommand, filteredTable)
 }
 
+func (engine *DbEngine) SelectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) *Table {
+	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
+
+	if !exist {
+		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+	}
+
+	filteredTable := engine.getFilteredTable(table, whereCommand, false)
+	filteredCols := filteredTable.Columns
+
+	howDeepWeSort := 0
+	sortPatterns := orderByCommand.SortPatterns
+	columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
+	sortingType := sortPatterns[howDeepWeSort].Order.Type
+
+	wantedColIndex, err := getColumnIndexByName(filteredTable.Columns, columnToSort)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// TODO: We need old indexes instead of values
+	// https://stackoverflow.com/questions/31141202/get-the-indices-of-the-array-after-sorting-in-golang
+	// Maybe will be easier to create new structure with index order?? Rethink it.
+	sort.Slice(filteredCols[wantedColIndex].Values, func(i, j int) bool {
+		values := filteredCols[wantedColIndex].Values
+		for values[i].IsEqual(values[j]) {
+			howDeepWeSort++
+			if howDeepWeSort >= len(orderByCommand.SortPatterns) {
+				howDeepWeSort = 0
+				return true
+			}
+			newWantedColIndex, err := getColumnIndexByName(filteredCols, sortPatterns[howDeepWeSort].ColumnName.Literal)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			values = filteredCols[newWantedColIndex].Values
+		}
+		howDeepWeSort = 0
+		if sortingType == token.DESC {
+			return values[i].isGreaterThan(values[j])
+		}
+		return values[i].isSmallerThan(values[j])
+	})
+
+	// TODO: Swap rows order to match with order set after sorting
+
+	return filteredTable
+}
+func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
+	table := engine.SelectFromTable(selectCommand)
+
+	howDeepWeSort := 0
+	columnToSort := orderByCommand.SortPatterns[howDeepWeSort].ColumnName
+	sortingType := orderByCommand.SortPatterns[howDeepWeSort].Order
+
+	for i, v := range table.Columns {
+
+	}
+
+	return sortedTable
+}
+
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
@@ -174,7 +237,7 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 		return processOperationExpression(row, operationExpression)
 	}
 
-	booleanExpression, booleanExpressionIsValid := expressionTree.(*ast.BooleanExpresion)
+	booleanExpression, booleanExpressionIsValid := expressionTree.(*ast.BooleanExpression)
 	if booleanExpressionIsValid {
 		return processBooleanExpression(booleanExpression)
 	}
@@ -232,7 +295,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 	return false, errors.New("unsupported operation token has been used: " + operationExpression.Operation.Literal)
 }
 
-func processBooleanExpression(booleanExpression *ast.BooleanExpresion) (bool, error) {
+func processBooleanExpression(booleanExpression *ast.BooleanExpression) (bool, error) {
 	if booleanExpression.Boolean.Literal == token.TRUE {
 		return true, nil
 	}
@@ -253,4 +316,13 @@ func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInte
 
 	// TODO: Maybe information in which table this column doesn't exist is needed
 	return nil, errors.New("Column name:'" + tifier.GetToken().Literal + "' doesn't exist!")
+}
+
+func getColumnIndexByName(columns []*Column, columName string) (int, error) {
+	for i, column := range columns {
+		if column.Name == columName {
+			return i, nil
+		}
+	}
+	return -1, errors.New("Column name:'" + columName + "' doesn't exist!")
 }

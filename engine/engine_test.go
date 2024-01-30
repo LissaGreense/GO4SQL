@@ -224,6 +224,73 @@ func TestDelete(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestOrderBy(t *testing.T) {
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"byebye", "1", "33", "e"},
+			{"goodbye", "2", "22", "w"},
+			{"hello", "3", "11", "q"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByWithWhere(t *testing.T) {
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'Ahello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'Bgoodbye', 3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3 AND four EQUAL 'e' ORDER BY one DESC;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"Bgoodbye", "3", "33", "e"},
+			{"Ahello", "1", "11", "q"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByWithMultipleSorts(t *testing.T) {
+	engineTestSuite := engineTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
+		},
+		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, four DESC;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"byebye"},
+			{"sorry"},
+			{"goodbye"},
+			{"hello"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineTestSuite struct {
 	createInputs          []string
 	insertAndDeleteInputs []string

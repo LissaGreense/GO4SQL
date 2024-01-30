@@ -55,8 +55,14 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 	commands := sequences.Commands
 	for commandIndex, command := range commands {
 
+		// ARE THOSE GUYS HERE NECESSARY?!
 		_, whereCommandIsValid := command.(*ast.WhereCommand)
 		if whereCommandIsValid {
+			continue
+		}
+
+		_, orderByCommandIsValid := command.(*ast.OrderByCommand)
+		if orderByCommandIsValid {
 			continue
 		}
 
@@ -92,6 +98,7 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 			}
 			continue
 		}
+
 	}
 }
 
@@ -101,8 +108,21 @@ func getSelectResponse(commandIndex int, commands []ast.Command, engineSQL *engi
 	if nextCommandIndex != len(commands) {
 		whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
 
+		// TODO: It cannot be like that. Have to be refactored to tree structure.
 		if whereCommandIsValid {
+			orderByCommand, orderByCommandIsValid := commands[nextCommandIndex+1].(*ast.OrderByCommand)
+
+			if orderByCommandIsValid {
+				return engineSQL.SelectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
+			}
+
 			return engineSQL.SelectFromTableWithWhere(selectCommand, whereCommand).ToString()
+		}
+
+		orderByCommand, orderByCommandIsValid := commands[nextCommandIndex].(*ast.OrderByCommand)
+
+		if orderByCommandIsValid {
+			return engineSQL.SelectFromTableWithOrderBy(selectCommand, orderByCommand).ToString()
 		}
 	}
 
