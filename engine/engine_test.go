@@ -278,7 +278,7 @@ func TestOrderByWithMultipleSorts(t *testing.T) {
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'aa'  );",
 			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
 		},
-		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, four DESC;",
+		selectInput: "SELECT one FROM tb1 WHERE TRUE ORDER BY two ASC, four DESC;",
 		expectedOutput: [][]string{
 			{"one"},
 			{"byebye"},
@@ -320,6 +320,10 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 
 	var actualTable *Table
 
+	if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
+		expectedSequencesNumber++
+	}
+
 	if strings.Contains(engineTestSuite.selectInput, " WHERE ") {
 
 		// WHERE CONDITION
@@ -331,7 +335,12 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 
 		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
 
-		actualTable = engine.SelectFromTableWithWhere(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.WhereCommand))
+		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
+			actualTable = engine.SelectFromTableWithWhereAndOrderBy(sequences.Commands[len(sequences.Commands)-3].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-2].(*ast.WhereCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.OrderByCommand))
+		} else {
+			actualTable = engine.SelectFromTableWithWhere(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.WhereCommand))
+		}
+
 	} else {
 
 		// NO WHERE CONDITION
@@ -342,7 +351,11 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 
 		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
 
-		actualTable = engine.SelectFromTable(sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand))
+		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
+			actualTable = engine.SelectFromTableWithOrderBy(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.OrderByCommand))
+		} else {
+			actualTable = engine.SelectFromTable(sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand))
+		}
 	}
 
 	if len(engineTestSuite.expectedOutput) == 0 {

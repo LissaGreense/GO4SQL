@@ -106,6 +106,12 @@ func (parser *Parser) skipIfCurrentTokenIsApostrophe() {
 	}
 }
 
+func (parser *Parser) skipIfCurrentTokenIsSemicolon() {
+	if parser.currentToken.Type == token.SEMICOLON {
+		parser.nextToken()
+	}
+}
+
 // insert into tbl values( 'hello',	 10 );
 func (parser *Parser) parseInsertCommand() ast.Command {
 	// token.INSERT already at current position in parser
@@ -183,7 +189,9 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 	// expect SEMICOLON or WHERE
 	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER})
 
-	parser.skipIfCurrentTokenIsApostrophe()
+	if parser.currentToken.Type == token.SEMICOLON {
+		parser.nextToken()
+	}
 
 	return selectCommand
 }
@@ -200,12 +208,12 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	expressionIsValid, whereCommand.Expression = parser.getExpression()
 
 	if !expressionIsValid {
-		log.Fatal("Expression withing Where statment couldn't be parsed correctly")
+		log.Fatal("Expression withing Where statement couldn't be parsed correctly")
 	}
 
 	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.ORDER})
 
-	parser.skipIfCurrentTokenIsApostrophe()
+	parser.skipIfCurrentTokenIsSemicolon()
 
 	return whereCommand
 }
@@ -434,7 +442,7 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 			}
 			command = parser.parseOrderByCommand()
 		default:
-			log.Fatal("Syntax error, invalid command found")
+			log.Fatal("Syntax error, invalid command found: ", parser.currentToken.Type)
 		}
 
 		// Add command to the list of parsed commands

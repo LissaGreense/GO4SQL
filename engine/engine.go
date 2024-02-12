@@ -122,58 +122,60 @@ func (engine *DbEngine) SelectFromTableWithWhereAndOrderBy(selectCommand *ast.Se
 	}
 
 	filteredTable := engine.getFilteredTable(table, whereCommand, false)
-	filteredCols := filteredTable.Columns
 
-	howDeepWeSort := 0
-	sortPatterns := orderByCommand.SortPatterns
-	columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
-	sortingType := sortPatterns[howDeepWeSort].Order.Type
+	emptyTable := getCopyOfTableWithoutRows(table)
 
-	wantedColIndex, err := getColumnIndexByName(filteredTable.Columns, columnToSort)
-	if err != nil {
-		log.Fatal(err.Error())
+	return engine.selectFromProvidedTable(selectCommand, engine.getSortedTable(orderByCommand, filteredTable, emptyTable))
+}
+
+func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
+	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
+
+	if !exist {
+		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
 	}
 
-	// TODO: We need old indexes instead of values
-	// https://stackoverflow.com/questions/31141202/get-the-indices-of-the-array-after-sorting-in-golang
-	// Maybe will be easier to create new structure with index order?? Rethink it.
-	sort.Slice(filteredCols[wantedColIndex].Values, func(i, j int) bool {
-		values := filteredCols[wantedColIndex].Values
-		for values[i].IsEqual(values[j]) {
+	emptyTable := getCopyOfTableWithoutRows(table)
+
+	sortedTable := engine.getSortedTable(orderByCommand, table, emptyTable)
+
+	return engine.selectFromProvidedTable(selectCommand, sortedTable)
+}
+
+func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, filteredTable *Table, copyOfTable *Table) *Table {
+	sortPatterns := orderByCommand.SortPatterns
+
+	rows := mapTableToRows(filteredTable)
+
+	sort.Slice(rows, func(i, j int) bool {
+		howDeepWeSort := 0
+		sortingType := sortPatterns[howDeepWeSort].Order.Type
+		columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
+
+		for rows[i][columnToSort].IsEqual(rows[j][columnToSort]) {
 			howDeepWeSort++
+			sortingType = sortPatterns[howDeepWeSort].Order.Type
+
 			if howDeepWeSort >= len(orderByCommand.SortPatterns) {
-				howDeepWeSort = 0
 				return true
 			}
-			newWantedColIndex, err := getColumnIndexByName(filteredCols, sortPatterns[howDeepWeSort].ColumnName.Literal)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-			values = filteredCols[newWantedColIndex].Values
+			columnToSort = sortPatterns[howDeepWeSort].ColumnName.Literal
 		}
-		howDeepWeSort = 0
+
 		if sortingType == token.DESC {
-			return values[i].isGreaterThan(values[j])
+			return rows[i][columnToSort].isGreaterThan(rows[j][columnToSort])
 		}
-		return values[i].isSmallerThan(values[j])
+
+		return rows[i][columnToSort].isSmallerThan(rows[j][columnToSort])
 	})
 
-	// TODO: Swap rows order to match with order set after sorting
-
-	return filteredTable
-}
-func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
-	table := engine.SelectFromTable(selectCommand)
-
-	howDeepWeSort := 0
-	columnToSort := orderByCommand.SortPatterns[howDeepWeSort].ColumnName
-	sortingType := orderByCommand.SortPatterns[howDeepWeSort].Order
-
-	for i, v := range table.Columns {
-
+	for _, row := range rows {
+		for _, newColumn := range copyOfTable.Columns {
+			value := row[newColumn.Name]
+			newColumn.Values = append(newColumn.Values, value)
+		}
 	}
-
-	return sortedTable
+	return copyOfTable
 }
 
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
