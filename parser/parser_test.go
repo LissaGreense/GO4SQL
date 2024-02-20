@@ -222,6 +222,39 @@ func TestParseDeleteCommand(t *testing.T) {
 	}
 }
 
+func TestSelectWithOrderByCommand(t *testing.T) {
+	input := "SELECT * FROM tableName ORDER BY colName1 DESC;"
+	expectedSortPattern := ast.SortPattern{
+		ColumnName: token.Token{Type: token.IDENT, Literal: "colName1"},
+		Order:      token.Token{Type: token.DESC, Literal: "DESC"},
+	}
+	expectedOrderByCommand := ast.OrderByCommand{
+		Token:        token.Token{Type: token.ORDER, Literal: "ORDER"},
+		SortPatterns: []ast.SortPattern{expectedSortPattern},
+	}
+	expectedTableName := "tableName"
+	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences := parserInstance.ParseSequence()
+
+	if len(sequences.Commands) != 2 {
+		t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+	}
+
+	if !testSelectStatement(t, sequences.Commands[0], expectedTableName, expectedColumnName) {
+		return
+	}
+
+	actualOrderByCommand, orderByCommandIsOk := sequences.Commands[1].(*ast.OrderByCommand)
+	if !orderByCommandIsOk {
+		t.Errorf("actualDeleteCommand is not %T. got=%T", &ast.OrderByCommand{}, sequences.Commands[0])
+	}
+
+	testOrderByCommands(t, expectedOrderByCommand, actualOrderByCommand)
+}
+
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
 	firstExpression := ast.OperationExpression{
@@ -248,7 +281,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		Operation: token.Token{Type: token.OR, Literal: "OR"},
 	}
 
-	thirdExpression := ast.BooleanExpresion{
+	thirdExpression := ast.BooleanExpression{
 		Boolean: token.Token{Type: token.TRUE, Literal: "TRUE"},
 	}
 
@@ -354,9 +387,32 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 	return true
 }
 
+func testOrderByCommands(t *testing.T, expectedOrderByCommand ast.OrderByCommand, actualOrderByCommand *ast.OrderByCommand) {
+
+	if expectedOrderByCommand.Token.Type != actualOrderByCommand.Token.Type {
+		t.Errorf("Expecting Token Type: %q, got: %q", expectedOrderByCommand.Token.Type, actualOrderByCommand.Token.Type)
+	}
+	if expectedOrderByCommand.Token.Literal != actualOrderByCommand.Token.Literal {
+		t.Errorf("Expecting Token Literal: %s, got: %s", expectedOrderByCommand.Token.Literal, actualOrderByCommand.Token.Literal)
+	}
+	if len(expectedOrderByCommand.SortPatterns) != len(actualOrderByCommand.SortPatterns) {
+		t.Errorf("Expecting Sorting Pattern Array to have: %d elements, got: %d", len(expectedOrderByCommand.SortPatterns), len(actualOrderByCommand.SortPatterns))
+	}
+
+	for i, expectedSortPattern := range expectedOrderByCommand.SortPatterns {
+		if expectedSortPattern.Order.Literal != actualOrderByCommand.SortPatterns[i].Order.Literal {
+			t.Errorf("Expecting Order: %s, got: %s", expectedSortPattern.Order.Literal, actualOrderByCommand.SortPatterns[i].Order.Literal)
+		}
+		if expectedSortPattern.ColumnName.Literal != expectedOrderByCommand.SortPatterns[i].ColumnName.Literal {
+			t.Errorf("Expecting Column Name: %s, got: %s", expectedSortPattern.ColumnName.Literal, actualOrderByCommand.SortPatterns[i].ColumnName.Literal)
+		}
+	}
+
+}
+
 func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 
-	booleanExpression, booleanExpressionIsValid := first.(*ast.BooleanExpresion)
+	booleanExpression, booleanExpressionIsValid := first.(*ast.BooleanExpression)
 	if booleanExpressionIsValid {
 		return validateBooleanExpressions(second, booleanExpression)
 	}
@@ -388,38 +444,38 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
 }
 
-func validateConditionExpression(second ast.Expression, conditionExpresion *ast.ConditionExpression) bool {
+func validateConditionExpression(second ast.Expression, conditionExpression *ast.ConditionExpression) bool {
 	secondConditionExpression, secondConditionExpressionIsValid := second.(ast.ConditionExpression)
 
 	if !secondConditionExpressionIsValid {
 		return false
 	}
 
-	if conditionExpresion.Left.GetToken().Literal != secondConditionExpression.Left.GetToken().Literal &&
-		conditionExpresion.Left.IsIdentifier() == secondConditionExpression.Left.IsIdentifier() {
+	if conditionExpression.Left.GetToken().Literal != secondConditionExpression.Left.GetToken().Literal &&
+		conditionExpression.Left.IsIdentifier() == secondConditionExpression.Left.IsIdentifier() {
 		return false
 	}
 
-	if conditionExpresion.Right.GetToken().Literal != secondConditionExpression.Right.GetToken().Literal &&
-		conditionExpresion.Right.IsIdentifier() == secondConditionExpression.Right.IsIdentifier() {
+	if conditionExpression.Right.GetToken().Literal != secondConditionExpression.Right.GetToken().Literal &&
+		conditionExpression.Right.IsIdentifier() == secondConditionExpression.Right.IsIdentifier() {
 		return false
 	}
 
-	if conditionExpresion.Condition.Literal != secondConditionExpression.Condition.Literal {
+	if conditionExpression.Condition.Literal != secondConditionExpression.Condition.Literal {
 		return false
 	}
 
 	return true
 }
 
-func validateBooleanExpressions(second ast.Expression, booleanExpresion *ast.BooleanExpresion) bool {
-	secondBooleanExpresion, secondBooleanExpresionIsValid := second.(ast.BooleanExpresion)
+func validateBooleanExpressions(second ast.Expression, booleanExpression *ast.BooleanExpression) bool {
+	secondBooleanExpresion, secondBooleanExpresionIsValid := second.(ast.BooleanExpression)
 
 	if !secondBooleanExpresionIsValid {
 		return false
 	}
 
-	if booleanExpresion.Boolean.Literal != secondBooleanExpresion.Boolean.Literal {
+	if booleanExpression.Boolean.Literal != secondBooleanExpresion.Boolean.Literal {
 		return false
 	}
 

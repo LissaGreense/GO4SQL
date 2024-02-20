@@ -100,8 +100,14 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	return createCommand
 }
 
-func (parser *Parser) skipApostrophe() {
+func (parser *Parser) skipIfCurrentTokenIsApostrophe() {
 	if parser.currentToken.Type == token.APOSTROPHE {
+		parser.nextToken()
+	}
+}
+
+func (parser *Parser) skipIfCurrentTokenIsSemicolon() {
+	if parser.currentToken.Type == token.SEMICOLON {
 		parser.nextToken()
 	}
 }
@@ -126,13 +132,13 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 
 	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
 		// TODO: Add apostrophe validation
-		parser.skipApostrophe()
+		parser.skipIfCurrentTokenIsApostrophe()
 
 		validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
 		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
 		// Ignore token.IDENT or token.LITERAL
 		parser.nextToken()
-		parser.skipApostrophe()
+		parser.skipIfCurrentTokenIsApostrophe()
 
 		if parser.currentToken.Type != token.COMMA {
 			break
@@ -181,7 +187,7 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 	parser.nextToken()
 
 	// expect SEMICOLON or WHERE
-	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE})
+	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER})
 
 	if parser.currentToken.Type == token.SEMICOLON {
 		parser.nextToken()
@@ -202,10 +208,12 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	expressionIsValid, whereCommand.Expression = parser.getExpression()
 
 	if !expressionIsValid {
-		log.Fatal("Expression withing Where statment couldn't be parsed correctly")
+		log.Fatal("Expression withing Where statement couldn't be parsed correctly")
 	}
 
-	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+	validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.ORDER})
+
+	parser.skipIfCurrentTokenIsSemicolon()
 
 	return whereCommand
 }
@@ -232,6 +240,46 @@ func (parser *Parser) parseDeleteCommand() ast.Command {
 	return deleteCommand
 }
 
+// ORDER BY colName ASC
+func (parser *Parser) parseOrderByCommand() ast.Command {
+	// token.ORDER already at current position in parser
+	orderCommand := &ast.OrderByCommand{Token: parser.currentToken}
+
+	// token.ORDER no longer needed
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.Type{token.BY})
+
+	// ensure that loop below will execute at least once
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+
+	// array of SortPattern
+	for parser.currentToken.Type == token.IDENT {
+		// Get column name
+		validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+		columnName := parser.currentToken
+		parser.nextToken()
+
+		// Get ASC or DESC
+		validateToken(parser.currentToken.Type, []token.Type{token.ASC, token.DESC})
+		order := parser.currentToken
+		parser.nextToken()
+
+		// append sortPattern
+		orderCommand.SortPatterns = append(orderCommand.SortPatterns, ast.SortPattern{ColumnName: columnName, Order: order})
+
+		if parser.currentToken.Type != token.COMMA {
+			break
+		}
+		// Ignore token.COMMA
+		parser.nextToken()
+	}
+
+	validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+
+	return orderCommand
+}
+
 func (parser *Parser) getExpression() (bool, ast.Expression) {
 	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
@@ -254,7 +302,7 @@ func (parser *Parser) getExpression() (bool, ast.Expression) {
 	return false, nil
 }
 
-func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpresion, conditionalExpression *ast.ConditionExpression) (bool, *ast.OperationExpression) {
+func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpression, conditionalExpression *ast.ConditionExpression) (bool, *ast.OperationExpression) {
 	operationExpression := &ast.OperationExpression{}
 
 	if (booleanExpressionExists || conditionalExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
@@ -283,8 +331,8 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 	return false, operationExpression
 }
 
-func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpresion) {
-	booleanExpression := &ast.BooleanExpresion{}
+func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
+	booleanExpression := &ast.BooleanExpression{}
 	isValid := false
 
 	if parser.currentToken.Type == token.TRUE || parser.currentToken.Type == token.FALSE {
@@ -307,7 +355,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		parser.nextToken()
 
 	} else if parser.currentToken.Type == token.APOSTROPHE {
-		parser.skipApostrophe()
+		parser.skipIfCurrentTokenIsApostrophe()
 
 		conditionalExpression.Left = ast.Anonymitifier{
 			Token: parser.currentToken,
@@ -337,7 +385,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		parser.nextToken()
 
 	} else if parser.currentToken.Type == token.APOSTROPHE {
-		parser.skipApostrophe()
+		parser.skipIfCurrentTokenIsApostrophe()
 
 		conditionalExpression.Right = ast.Anonymitifier{
 			Token: parser.currentToken,
@@ -384,8 +432,17 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 				log.Fatal("Syntax error, WHERE command needs SELECT or DELETE command before")
 			}
 			command = parser.parseWhereCommand()
+		case token.ORDER:
+			if len(sequence.Commands) == 0 {
+				log.Fatal("Syntax error, Order Command can't be used without predecessor")
+			}
+			lastStartingToken := sequence.Commands[len(sequence.Commands)-1].TokenLiteral()
+			if lastStartingToken != token.SELECT && lastStartingToken != token.WHERE {
+				log.Fatal("Syntax error, WHERE command needs SELECT or WHERE command before")
+			}
+			command = parser.parseOrderByCommand()
 		default:
-			log.Fatal("Syntax error, invalid command found")
+			log.Fatal("Syntax error, invalid command found: ", parser.currentToken.Type)
 		}
 
 		// Add command to the list of parsed commands

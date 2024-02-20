@@ -32,6 +32,10 @@ const (
 	FROM   = "FROM"
 	WHERE  = "WHERE"
 	DELETE = "DELETE"
+	ORDER  = "ORDER"
+	BY     = "BY"
+	ASC    = "ASC"
+	DESC   = "DESC"
 
 	// EQUAL - Logical operations
 	EQUAL = "EQUAL"
@@ -64,6 +68,10 @@ var keywords = map[string]Type{
 	"SELECT": SELECT,
 	"FROM":   FROM,
 	"DELETE": DELETE,
+	"ORDER":  ORDER,
+	"BY":     BY,
+	"ASC":    ASC,
+	"DESC":   DESC,
 	"VALUES": VALUES,
 	"WHERE":  WHERE,
 	"EQUAL":  EQUAL,

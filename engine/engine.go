@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -113,6 +114,70 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 	return engine.selectFromProvidedTable(selectCommand, filteredTable)
 }
 
+func (engine *DbEngine) SelectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) *Table {
+	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
+
+	if !exist {
+		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+	}
+
+	filteredTable := engine.getFilteredTable(table, whereCommand, false)
+
+	emptyTable := getCopyOfTableWithoutRows(table)
+
+	return engine.selectFromProvidedTable(selectCommand, engine.getSortedTable(orderByCommand, filteredTable, emptyTable))
+}
+
+func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
+	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
+
+	if !exist {
+		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+	}
+
+	emptyTable := getCopyOfTableWithoutRows(table)
+
+	sortedTable := engine.getSortedTable(orderByCommand, table, emptyTable)
+
+	return engine.selectFromProvidedTable(selectCommand, sortedTable)
+}
+
+func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, filteredTable *Table, copyOfTable *Table) *Table {
+	sortPatterns := orderByCommand.SortPatterns
+
+	rows := mapTableToRows(filteredTable)
+
+	sort.Slice(rows, func(i, j int) bool {
+		howDeepWeSort := 0
+		sortingType := sortPatterns[howDeepWeSort].Order.Type
+		columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
+
+		for rows[i][columnToSort].IsEqual(rows[j][columnToSort]) {
+			howDeepWeSort++
+			sortingType = sortPatterns[howDeepWeSort].Order.Type
+
+			if howDeepWeSort >= len(orderByCommand.SortPatterns) {
+				return true
+			}
+			columnToSort = sortPatterns[howDeepWeSort].ColumnName.Literal
+		}
+
+		if sortingType == token.DESC {
+			return rows[i][columnToSort].isGreaterThan(rows[j][columnToSort])
+		}
+
+		return rows[i][columnToSort].isSmallerThan(rows[j][columnToSort])
+	})
+
+	for _, row := range rows {
+		for _, newColumn := range copyOfTable.Columns {
+			value := row[newColumn.Name]
+			newColumn.Values = append(newColumn.Values, value)
+		}
+	}
+	return copyOfTable
+}
+
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
@@ -174,7 +239,7 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 		return processOperationExpression(row, operationExpression)
 	}
 
-	booleanExpression, booleanExpressionIsValid := expressionTree.(*ast.BooleanExpresion)
+	booleanExpression, booleanExpressionIsValid := expressionTree.(*ast.BooleanExpression)
 	if booleanExpressionIsValid {
 		return processBooleanExpression(booleanExpression)
 	}
@@ -232,7 +297,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 	return false, errors.New("unsupported operation token has been used: " + operationExpression.Operation.Literal)
 }
 
-func processBooleanExpression(booleanExpression *ast.BooleanExpresion) (bool, error) {
+func processBooleanExpression(booleanExpression *ast.BooleanExpression) (bool, error) {
 	if booleanExpression.Boolean.Literal == token.TRUE {
 		return true, nil
 	}
@@ -253,4 +318,13 @@ func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInte
 
 	// TODO: Maybe information in which table this column doesn't exist is needed
 	return nil, errors.New("Column name:'" + tifier.GetToken().Literal + "' doesn't exist!")
+}
+
+func getColumnIndexByName(columns []*Column, columName string) (int, error) {
+	for i, column := range columns {
+		if column.Name == columName {
+			return i, nil
+		}
+	}
+	return -1, errors.New("Column name:'" + columName + "' doesn't exist!")
 }

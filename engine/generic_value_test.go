@@ -4,6 +4,68 @@ import (
 	"testing"
 )
 
+func TestIsGreaterThan(t *testing.T) {
+	oneInt := IntegerValue{
+		Value: 1,
+	}
+	twoInt := IntegerValue{
+		Value: 2,
+	}
+	oneString := StringValue{
+		Value: "aaa",
+	}
+	twoString := StringValue{
+		Value: "aab",
+	}
+
+	if oneInt.isGreaterThan(twoInt) {
+		t.Errorf("1 shouldn't be greater than 2")
+	}
+
+	if !twoInt.isGreaterThan(oneInt) {
+		t.Errorf("1 shouldn't be greater than 2")
+	}
+
+	if oneString.isGreaterThan(twoString) {
+		t.Errorf("aaa shouldn't be greater than aab")
+	}
+
+	if !twoString.isGreaterThan(oneString) {
+		t.Errorf("1 shouldn't be greater than 2")
+	}
+}
+
+func TestIsSmallerThan(t *testing.T) {
+	oneInt := IntegerValue{
+		Value: 1,
+	}
+	twoInt := IntegerValue{
+		Value: 2,
+	}
+	oneString := StringValue{
+		Value: "aaa",
+	}
+	twoString := StringValue{
+		Value: "aab",
+	}
+
+	if !oneInt.isSmallerThan(twoInt) {
+		t.Errorf("1 should be smaller than 2")
+	}
+
+	if twoInt.isSmallerThan(oneInt) {
+		t.Errorf("1 should be smaller than 2")
+	}
+
+	if !oneString.isSmallerThan(twoString) {
+		t.Errorf("aaa should be smaller than aab")
+	}
+
+	if twoString.isSmallerThan(oneString) {
+		t.Errorf("1 should be smaller than 2")
+	}
+}
+
 func TestEquals(t *testing.T) {
 
 	oneInt := IntegerValue{

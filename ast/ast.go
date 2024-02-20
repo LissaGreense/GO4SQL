@@ -58,12 +58,12 @@ type Anonymitifier struct {
 func (ls Anonymitifier) IsIdentifier() bool    { return false }
 func (ls Anonymitifier) GetToken() token.Token { return ls.Token }
 
-type BooleanExpresion struct {
+type BooleanExpression struct {
 	Boolean token.Token // example: token.TRUE
 }
 
-func (ls BooleanExpresion) ExpressionNode() {}
-func (ls BooleanExpresion) GetIdentifiers() []*Identifier {
+func (ls BooleanExpression) ExpressionNode() {}
+func (ls BooleanExpression) GetIdentifiers() []*Identifier {
 	var identifiers []*Identifier
 	return identifiers
 }
@@ -148,3 +148,16 @@ type DeleteCommand struct {
 
 func (ls DeleteCommand) CommandNode()         {}
 func (ls DeleteCommand) TokenLiteral() string { return ls.Token.Literal }
+
+type OrderByCommand struct {
+	Token        token.Token
+	SortPatterns []SortPattern // column name and sorting type
+}
+
+func (ls OrderByCommand) CommandNode()         {}
+func (ls OrderByCommand) TokenLiteral() string { return ls.Token.Literal }
+
+type SortPattern struct {
+	ColumnName token.Token // column name
+	Order      token.Token // ASC or DESC
+}

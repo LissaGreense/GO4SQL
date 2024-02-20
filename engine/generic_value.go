@@ -1,11 +1,16 @@
 package engine
 
-import "strconv"
+import (
+	"log"
+	"strconv"
+)
 
 type ValueInterface interface {
 	ToString() string
 	GetType() SupportedTypes
 	IsEqual(valueInterface ValueInterface) bool
+	isSmallerThan(valueInterface ValueInterface) bool
+	isGreaterThan(valueInterface ValueInterface) bool
 }
 
 type SupportedTypes int
@@ -37,6 +42,46 @@ func (value IntegerValue) IsEqual(valueInterface ValueInterface) bool {
 }
 func (value StringValue) IsEqual(valueInterface ValueInterface) bool {
 	return areEqual(value, valueInterface)
+}
+
+// isSmallerThan implementations
+func (firstValue IntegerValue) isSmallerThan(secondValue ValueInterface) bool {
+	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
+
+	if !isInteger {
+		log.Fatal("Can't compare Integer with other type")
+	}
+
+	return firstValue.Value < secondValueAsInteger.Value
+}
+func (firstValue StringValue) isSmallerThan(secondValue ValueInterface) bool {
+	secondValueAsString, isString := secondValue.(StringValue)
+
+	if !isString {
+		log.Fatal("Can't compare String with other type")
+	}
+
+	return firstValue.Value < secondValueAsString.Value
+}
+
+// isGreaterThan implementations
+func (firstValue IntegerValue) isGreaterThan(secondValue ValueInterface) bool {
+	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
+
+	if !isInteger {
+		log.Fatal("Can't compare Integer with other type")
+	}
+
+	return firstValue.Value > secondValueAsInteger.Value
+}
+func (firstValue StringValue) isGreaterThan(secondValue ValueInterface) bool {
+	secondValueAsString, isString := secondValue.(StringValue)
+
+	if !isString {
+		log.Fatal("Can't compare String with other type")
+	}
+
+	return firstValue.Value > secondValueAsString.Value
 }
 
 func areEqual(first ValueInterface, second ValueInterface) bool {
