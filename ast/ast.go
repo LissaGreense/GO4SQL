@@ -4,8 +4,8 @@ import "github.com/LissaGreense/GO4SQL/token"
 
 // Sequence - Sequence of operations commands
 // Example:
-// Command[0] = SELECT * FROM Customers
-// Command[1] = WHERE City LIKE '%es%';
+// Commands[0] = SELECT * FROM Customers
+// Commands[1] = WHERE City LIKE '%es%';
 type Sequence struct {
 	Commands []Command
 }
