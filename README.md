@@ -54,10 +54,25 @@ in your console (from standard input).
   ```sql
   SELECT column1, column2
   FROM table_name
-  WHERE condition;
+  WHERE column1 NOT 'goodbye' OR column2 EQUAL 3;
   ```
-* ***DELETE FROM*** tb1 WHERE two EQUAL 3
-* ***ORDER BY***
+  Supported logical operations are: ``EQUAL``, ``NOT``, ``OR``, ``AND``, ```FALSE```, ```TRUE```.
+* ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
+  ```sql
+  DELETE FROM tb1 WHERE two EQUAL 3;
+  ```
+  ``tb1`` is the name of the table, and ``WHERE`` specify records that fulfill a
+  specified condition and afterward will be deleted.
+* ***ORDER BY***  is used to sort the result-set in ascending or descending order. It can be used
+  with ``SELECT`` like this:
+  ```sql
+  SELECT column1, column2,
+  FROM table_name
+  ORDER BY column1 ASC, column2 DESC;
+  ```
+  In this case, this command will order by ``column1`` in ascending order, but if some rows have the
+  same ``column1``, it orders them by column2 in descending order. 
+
 
 ## UNIT TESTS
 
@@ -83,5 +98,3 @@ To run this docker image in interactive mode use this command:
 ```
 docker run -i go4sql:test
 ```
-
-
