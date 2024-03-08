@@ -52,5 +52,3 @@ To run this docker image in interactive mode use this command:
 ```
 docker run -i go4sql:test
 ```
-
-
