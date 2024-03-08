@@ -34,6 +34,8 @@ in your console (from standard input).
   ```
   First column is called ``one`` and it contains strings (keyword ``TEXT``), second
   one is called ``two`` and it contains integers (keyword ``INT``).
+
+
 * ***INSERT INTO*** - you can insert values into table called ``table1`` with
   command:
   ```sql
@@ -41,6 +43,8 @@ in your console (from standard input).
   ```
   Please note that the number of arguments and types of the values
   must be the same as you declared with ``CREATE``.
+
+
 * ***SELECT FROM*** - you can either select everything from  ``table1`` with:
   ```SELECT * FROM table1;```
   Or you can specify column names that you're interested in:
@@ -49,6 +53,8 @@ in your console (from standard input).
   ```
   Note that column names must be the
   same as you declared with ``CREATE`` and also duplicated column names will be ignored.
+
+
 * ***WHERE*** - is used to filter records. It is used to extract only those records that fulfill a
   specified condition. It can be used with ``SELECT`` like this:
   ```sql
@@ -57,12 +63,16 @@ in your console (from standard input).
   WHERE column1 NOT 'goodbye' OR column2 EQUAL 3;
   ```
   Supported logical operations are: ``EQUAL``, ``NOT``, ``OR``, ``AND``, ```FALSE```, ```TRUE```.
+
+
 * ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
   ```sql
   DELETE FROM tb1 WHERE two EQUAL 3;
   ```
   ``tb1`` is the name of the table, and ``WHERE`` specify records that fulfill a
   specified condition and afterward will be deleted.
+
+
 * ***ORDER BY***  is used to sort the result-set in ascending or descending order. It can be used
   with ``SELECT`` like this:
   ```sql
@@ -77,7 +87,7 @@ in your console (from standard input).
 ## UNIT TESTS
 
 To run all the tests locally run this in root directory:
-```
+```shell
 go clean -testcache; go test ./...
 ```
 
@@ -90,11 +100,11 @@ This is integrated into github workflows.
 ## DOCKER
 
 To build your docker image run this command in root directory:
-```
+```shell
 docker build -t go4sql:test .
 ```
 
 To run this docker image in interactive mode use this command:
-```
+```shell
 docker run -i go4sql:test
 ```

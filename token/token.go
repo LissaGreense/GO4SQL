@@ -83,7 +83,7 @@ var keywords = map[string]Type{
 	"FALSE":  FALSE,
 }
 
-// LookupIdent - returns keyword type from defined list if exists, otherwise it returns IDENT type
+// LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type
 func LookupIdent(ident string) Type {
 	if tok, ok := keywords[ident]; ok {
 		return tok
