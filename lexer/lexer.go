@@ -6,6 +6,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
+// Lexer - Represent the text input (commands) provided by client before tokenization
 type Lexer struct {
 	input             string
 	position          int  // current position in input (points to current char)
@@ -14,12 +15,14 @@ type Lexer struct {
 	insideApostrophes bool // flag which tells if lexer is between apostrophes
 }
 
+// RunLexer - Start lexer by moving to the first position
 func RunLexer(input string) *Lexer {
 	l := &Lexer{input: input, insideApostrophes: false}
 	l.readChar()
 	return l
 }
 
+// NextToken - Return the next token structure which is appearing after current position.
 func (lexer *Lexer) NextToken() token.Token {
 	var tok token.Token
 

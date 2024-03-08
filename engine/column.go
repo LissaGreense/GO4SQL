@@ -6,6 +6,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
+// Column - part of the Table containing name of Column and values in it
 type Column struct {
 	Name   string
 	Type   token.Token

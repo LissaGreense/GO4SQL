@@ -2,6 +2,7 @@ package engine
 
 import "github.com/LissaGreense/GO4SQL/token"
 
+// Table - Contain Columns that store values in engine
 type Table struct {
 	Columns []*Column
 }
@@ -34,6 +35,7 @@ func (table *Table) isEqual(secondTable *Table) bool {
 	return true
 }
 
+// ToString - Return string contain all values and Column names in Table
 func (table *Table) ToString() string {
 	columWidths := getColumWidths(table.Columns)
 	bar := getBar(columWidths)

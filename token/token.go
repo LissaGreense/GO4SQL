@@ -2,6 +2,12 @@ package token
 
 type Type string
 
+// Token - contains
+type Token struct {
+	Type    Type
+	Literal string
+}
+
 const (
 	// ASTERISK - Operators
 	ASTERISK = "*"
@@ -53,11 +59,6 @@ const (
 	ILLEGAL = "ILLEGAL"
 )
 
-type Token struct {
-	Type    Type
-	Literal string
-}
-
 var keywords = map[string]Type{
 	"TEXT":   TEXT,
 	"INT":    INT,
@@ -82,6 +83,7 @@ var keywords = map[string]Type{
 	"FALSE":  FALSE,
 }
 
+// LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type
 func LookupIdent(ident string) Type {
 	if tok, ok := keywords[ident]; ok {
 		return tok
