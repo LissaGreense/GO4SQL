@@ -7,11 +7,11 @@ name: Docker
 
 on:
   push:
-    branches: [ "main", "dev", "cicd/docker-image" ]
+    branches: [ "main", "cicd/docker-image" ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ "main", "dev", "cicd/docker-image" ]
+    branches: [ "main", "cicd/docker-image" ]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -74,7 +74,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: "latest" # ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
