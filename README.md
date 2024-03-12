@@ -19,16 +19,22 @@ GO4SQL is an open source project to write in-memory SQL engine using nothing but
 ## HOW TO USE
 
 You can compile the project with ``go build``, this will create ``GO4SQL`` binary.
-You can either specify file path with ``./GO4SQL -file file_path``, that will read the input
-data directly into the program and print the result.
 
-Also with ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands
-in your console (from standard input).
+Currently, there are 3 modes to chose from:
+
+1. `File Mode` - You can specify file path with ``./GO4SQL -file file_path``, that will read the input
+   data directly into the program and print the result.
+
+2. `Stream Mode` - With ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands
+   in your console (from standard input).
+
+3. `Socket Mode` - To start Socket Server use `./GO4SQL -socket`, it will be listening on port `1433` by default. To
+   choose port different other than that, for example equal to `1444`, go with: `./GO4SQL -socket -port 1444`
 
 ## FUNCTIONALITY
 
 * ***CREATE TABLE*** - you can create table with name ``table1`` using
-  command: 
+  command:
   ```sql
   CREATE TABLE table1( one TEXT , two INT);
   ```
@@ -81,30 +87,32 @@ in your console (from standard input).
   ORDER BY column1 ASC, column2 DESC;
   ```
   In this case, this command will order by ``column1`` in ascending order, but if some rows have the
-  same ``column1``, it orders them by column2 in descending order. 
-
+  same ``column1``, it orders them by column2 in descending order.
 
 ## UNIT TESTS
 
 To run all the tests locally run this in root directory:
+
 ```shell
 go clean -testcache; go test ./...
 ```
 
 ## E2E TEST
 
-In root directory there is **test_file** containing input commands for E2E tests. File 
+In root directory there is **test_file** containing input commands for E2E tests. File
 **.github/expected_results/end2end.txt** has expected results for it.
 This is integrated into github workflows.
 
 ## DOCKER
 
 To build your docker image run this command in root directory:
+
 ```shell
 docker build -t go4sql:test .
 ```
 
 To run this docker image in interactive mode use this command:
+
 ```shell
 docker run -i go4sql:test
 ```
