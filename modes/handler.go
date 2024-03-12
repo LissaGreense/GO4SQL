@@ -22,7 +22,7 @@ func HandleFileMode(filePath string, engine *engine.DbEngine, evaluate func(sequ
 	}
 
 	sequences := bytesToSequences(content)
-	fmt.Println(evaluate(sequences, engine))
+	fmt.Print(evaluate(sequences, engine))
 }
 
 // HandleStreamMode - Handle GO4SQL use case where client sends input via stdin
@@ -30,7 +30,7 @@ func HandleStreamMode(engine *engine.DbEngine, evaluate func(sequences *ast.Sequ
 	reader := bufio.NewScanner(os.Stdin)
 	for reader.Scan() {
 		sequences := bytesToSequences(reader.Bytes())
-		fmt.Println(evaluate(sequences, engine))
+		fmt.Print(evaluate(sequences, engine))
 	}
 	err := reader.Err()
 	if err != nil {
