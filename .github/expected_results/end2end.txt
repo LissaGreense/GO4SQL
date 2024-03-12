@@ -22,7 +22,7 @@ Data Inserted
 | one | two | three | four |
 +-----+-----+-------+------+
 +-----+-----+-------+------+
-Data from 'tbl' has been deleted.
+Data from 'tbl' has been deleted
 +-----------+-----+-------+------+
 |       one | two | three | four |
 +-----------+-----+-------+------+

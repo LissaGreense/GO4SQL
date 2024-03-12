@@ -76,7 +76,7 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) strin
 					engineSQL.DeleteFromTable(deleteCommand, whereCommand)
 				}
 			}
-			result += "Data from '" + deleteCommand.Name.GetToken().Literal + "' has been deleted.\n"
+			result += "Data from '" + deleteCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
 		}
 
