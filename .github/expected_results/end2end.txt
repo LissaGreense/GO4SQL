@@ -1,3 +1,7 @@
+Table 'tbl' has been created
+Data Inserted
+Data Inserted
+Data Inserted
 +----------+-----+-------+------+
 |      one | two | three | four |
 +----------+-----+-------+------+
@@ -18,6 +22,7 @@
 | one | two | three | four |
 +-----+-----+-------+------+
 +-----+-----+-------+------+
+Data from 'tbl' has been deleted.
 +-----------+-----+-------+------+
 |       one | two | three | four |
 +-----------+-----+-------+------+
