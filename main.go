@@ -1,61 +1,40 @@
 package main
 
 import (
-	"bufio"
 	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/engine"
-	"github.com/LissaGreense/GO4SQL/lexer"
-	"github.com/LissaGreense/GO4SQL/parser"
+	"github.com/LissaGreense/GO4SQL/modes"
+	"log"
 )
 
 func main() {
 	filePath := flag.String("file", "", "Provide a path to the .sql file")
 	streamMode := flag.Bool("stream", false, "Use to redirect stdin to stdout")
+	socketMode := flag.Bool("socket", false, "Use to start socket server")
+	port := flag.Int("port", 1433, "States on which port socket server will listen")
+
 	flag.Parse()
 	engineSQL := engine.New()
 
 	if len(*filePath) > 0 {
-		content, err := ioutil.ReadFile(*filePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		sequences := bytesToSequences(content)
-		evaluateInEngine(sequences, engineSQL)
+		modes.HandleFileMode(*filePath, engineSQL, evaluateInEngine)
 	} else if *streamMode {
-		reader := bufio.NewScanner(os.Stdin)
-		for reader.Scan() {
-			sequences := bytesToSequences(reader.Bytes())
-			evaluateInEngine(sequences, engineSQL)
-		}
-		err := reader.Err()
-		if err != nil {
-			log.Fatal(err)
-		}
+		modes.HandleStreamMode(engineSQL, evaluateInEngine)
+	} else if *socketMode {
+		modes.HandleSocketMode(*port, engineSQL, evaluateInEngine)
 	} else {
 		log.Println("No mode has been providing. Exiting.")
 	}
 }
 
-func bytesToSequences(content []byte) *ast.Sequence {
-	lex := lexer.RunLexer(string(content))
-	parserInstance := parser.New(lex)
-	sequences := parserInstance.ParseSequence()
-
-	return sequences
-}
-
-func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
+func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) string {
 	commands := sequences.Commands
+
+	result := ""
 	for commandIndex, command := range commands {
 
-		// ARE THOSE GUYS HERE NECESSARY?!
+		// TODO: Check if those statements are necessary
 		_, whereCommandIsValid := command.(*ast.WhereCommand)
 		if whereCommandIsValid {
 			continue
@@ -69,19 +48,20 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 		createCommand, createCommandIsValid := command.(*ast.CreateCommand)
 		if createCommandIsValid {
 			engineSQL.CreateTable(createCommand)
+			result += "Table '" + createCommand.Name.GetToken().Literal + "' has been created\n"
 			continue
 		}
 
 		insertCommand, insertCommandIsValid := command.(*ast.InsertCommand)
 		if insertCommandIsValid {
 			engineSQL.InsertIntoTable(insertCommand)
+			result += "Data Inserted\n"
 			continue
 		}
 
 		selectCommand, selectCommandIsValid := command.(*ast.SelectCommand)
 		if selectCommandIsValid {
-			result := getSelectResponse(commandIndex, commands, engineSQL, selectCommand)
-			fmt.Println(result)
+			result += getSelectResponse(commandIndex, commands, engineSQL, selectCommand) + "\n"
 			continue
 		}
 
@@ -96,10 +76,13 @@ func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) {
 					engineSQL.DeleteFromTable(deleteCommand, whereCommand)
 				}
 			}
+			result += "Data from '" + deleteCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
 		}
 
 	}
+
+	return result
 }
 
 func getSelectResponse(commandIndex int, commands []ast.Command, engineSQL *engine.DbEngine, selectCommand *ast.SelectCommand) string {
@@ -110,10 +93,12 @@ func getSelectResponse(commandIndex int, commands []ast.Command, engineSQL *engi
 
 		// TODO: It cannot be like that. Have to be refactored to tree structure.
 		if whereCommandIsValid {
-			orderByCommand, orderByCommandIsValid := commands[nextCommandIndex+1].(*ast.OrderByCommand)
+			if nextCommandIndex+1 < len(commands) {
+				orderByCommand, orderByCommandIsValid := commands[nextCommandIndex+1].(*ast.OrderByCommand)
 
-			if orderByCommandIsValid {
-				return engineSQL.SelectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
+				if orderByCommandIsValid {
+					return engineSQL.SelectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
+				}
 			}
 
 			return engineSQL.SelectFromTableWithWhere(selectCommand, whereCommand).ToString()

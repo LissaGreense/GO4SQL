@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// ValueInterface - Represent all supported types of data that can be inserted into Table
 type ValueInterface interface {
 	ToString() string
 	GetType() SupportedTypes
@@ -20,10 +21,12 @@ const (
 	StringType
 )
 
+// IntegerValue - Implementation of ValueInterface that is containing integer values
 type IntegerValue struct {
 	Value int
 }
 
+// StringValue - Implementation of ValueInterface that is containing string values
 type StringValue struct {
 	Value string
 }

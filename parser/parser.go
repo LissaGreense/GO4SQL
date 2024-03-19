@@ -8,13 +8,15 @@ import (
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
+// Parser - Contain token that is currently analyzed by parser and the next one. Lexer is used to tokenize the client
+// text input.
 type Parser struct {
 	lexer        *lexer.Lexer
 	currentToken token.Token
 	peekToken    token.Token
 }
 
-// New Return new Parser struct
+// New - Return new Parser struct
 func New(lexer *lexer.Lexer) *Parser {
 	p := &Parser{lexer: lexer}
 	// Read two tokens, so curToken and peekToken are both set
@@ -23,11 +25,13 @@ func New(lexer *lexer.Lexer) *Parser {
 	return p
 }
 
+// nextToken - Move pointer to the next token
 func (parser *Parser) nextToken() {
 	parser.currentToken = parser.peekToken
 	parser.peekToken = parser.lexer.NextToken()
 }
 
+// validateTokenAndSkip - Check if current token type is appearing in provided expectedTokens array then move to the next token
 func validateTokenAndSkip(parser *Parser, expectedTokens []token.Type) {
 	validateToken(parser.currentToken.Type, expectedTokens)
 
@@ -35,6 +39,7 @@ func validateTokenAndSkip(parser *Parser, expectedTokens []token.Type) {
 	parser.nextToken()
 }
 
+// validateToken - Check if current token type is appearing in provided expectedTokens array
 func validateToken(tokenType token.Type, expectedTokens []token.Type) {
 	var contains = false
 	var tokensPrintMessage = ""
@@ -56,6 +61,9 @@ func validateToken(tokenType token.Type, expectedTokens []token.Type) {
 	}
 }
 
+// parseCreateCommand - Return ast.CreateCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.CreateCommand:
 // create table tbl( one TEXT , two INT );
 func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return the pointer
 	// token.CREATE already at current position in parser
@@ -112,6 +120,9 @@ func (parser *Parser) skipIfCurrentTokenIsSemicolon() {
 	}
 }
 
+// parseInsertCommand - Return ast.InsertCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.InsertCommand:
 // insert into tbl values( 'hello',	 10 );
 func (parser *Parser) parseInsertCommand() ast.Command {
 	// token.INSERT already at current position in parser
@@ -153,6 +164,9 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 	return insertCommand
 }
 
+// parseSelectCommand - Return ast.SelectCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.SelectCommand:
 // SELECT col1, col2, col3 FROM tbl;
 func (parser *Parser) parseSelectCommand() ast.Command {
 	// token.SELECT already at current position in parser
@@ -196,6 +210,9 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 	return selectCommand
 }
 
+// parseWhereCommand - Return ast.WhereCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.WhereCommand:
 // WHERE colName EQUAL 'potato'
 func (parser *Parser) parseWhereCommand() ast.Command {
 	// token.WHERE already at current position in parser
@@ -218,6 +235,9 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 	return whereCommand
 }
 
+// parseDeleteCommand - Return ast.DeleteCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.DeleteCommand:
 // DELETE FROM table
 func (parser *Parser) parseDeleteCommand() ast.Command {
 	// token.DELETE already at current position in parser
@@ -240,6 +260,9 @@ func (parser *Parser) parseDeleteCommand() ast.Command {
 	return deleteCommand
 }
 
+// parseOrderByCommand - Return ast.OrderByCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.OrderByCommand:
 // ORDER BY colName ASC
 func (parser *Parser) parseOrderByCommand() ast.Command {
 	// token.ORDER already at current position in parser
@@ -280,6 +303,12 @@ func (parser *Parser) parseOrderByCommand() ast.Command {
 	return orderCommand
 }
 
+// getExpression - Return proper structure of ast.Expression and validate the syntax
+//
+// Available expressions:
+// - ast.OperationExpression
+// - ast.BooleanExpression
+// - ast.ConditionExpression
 func (parser *Parser) getExpression() (bool, ast.Expression) {
 	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
@@ -302,6 +331,7 @@ func (parser *Parser) getExpression() (bool, ast.Expression) {
 	return false, nil
 }
 
+// getOperationExpression - Return ast.OperationExpression created from tokens and validate the syntax
 func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpression, conditionalExpression *ast.ConditionExpression) (bool, *ast.OperationExpression) {
 	operationExpression := &ast.OperationExpression{}
 
@@ -331,6 +361,7 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 	return false, operationExpression
 }
 
+// getBooleanExpression - Return ast.BooleanExpression created from tokens and validate the syntax
 func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
 	booleanExpression := &ast.BooleanExpression{}
 	isValid := false
@@ -344,6 +375,7 @@ func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
 	return isValid, booleanExpression
 }
 
+// getConditionalExpression - Return ast.ConditionExpression created from tokens and validate the syntax
 func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression) {
 	// TODO REFACTOR THIS
 	conditionalExpression := &ast.ConditionExpression{}
@@ -408,6 +440,9 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 	return true, conditionalExpression
 }
 
+// ParseSequence - Return ast.Sequence (sequence of commands) created from client input after tokenization
+//
+// Parse tokens returned by lexer to structures defines in ast package, and it's responsible for syntax validation.
 func (parser *Parser) ParseSequence() *ast.Sequence {
 	// Create variable holding sequence/commands
 	sequence := &ast.Sequence{}

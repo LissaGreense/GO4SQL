@@ -22,6 +22,7 @@ func New() *DbEngine {
 	return engine
 }
 
+// CreateTable - initialize new table in engine with specified name
 func (engine *DbEngine) CreateTable(command *ast.CreateCommand) {
 	_, exist := engine.Tables[command.Name.Token.Literal]
 
@@ -40,6 +41,7 @@ func (engine *DbEngine) CreateTable(command *ast.CreateCommand) {
 	}
 }
 
+// InsertIntoTable - Insert row of values into the table
 func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 	table, exist := engine.Tables[command.Name.Token.Literal]
 	if !exist {
@@ -61,6 +63,7 @@ func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 	}
 }
 
+// SelectFromTable - Return Table containing all values requested by SelectCommand
 func (engine *DbEngine) SelectFromTable(command *ast.SelectCommand) *Table {
 	table, exist := engine.Tables[command.Name.Token.Literal]
 
@@ -88,6 +91,7 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	}
 }
 
+// DeleteFromTable - Delete all rows of data from table that match given condition
 func (engine *DbEngine) DeleteFromTable(deleteCommand *ast.DeleteCommand, whereCommand *ast.WhereCommand) {
 	table, exist := engine.Tables[deleteCommand.Name.Token.Literal]
 
@@ -98,6 +102,7 @@ func (engine *DbEngine) DeleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 	engine.Tables[deleteCommand.Name.Token.Literal] = engine.getFilteredTable(table, whereCommand, true)
 }
 
+// SelectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand
 func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) *Table {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
@@ -114,6 +119,8 @@ func (engine *DbEngine) SelectFromTableWithWhere(selectCommand *ast.SelectComman
 	return engine.selectFromProvidedTable(selectCommand, filteredTable)
 }
 
+// SelectFromTableWithWhereAndOrderBy - Return Table containing all values requested by SelectCommand,
+// filtered by WhereCommand and sorted by OrderByCommand
 func (engine *DbEngine) SelectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) *Table {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
@@ -128,6 +135,7 @@ func (engine *DbEngine) SelectFromTableWithWhereAndOrderBy(selectCommand *ast.Se
 	return engine.selectFromProvidedTable(selectCommand, engine.getSortedTable(orderByCommand, filteredTable, emptyTable))
 }
 
+// SelectFromTableWithOrderBy - Return Table containing all values requested by SelectCommand and sorted by OrderByCommand
 func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
@@ -190,7 +198,7 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 			log.Fatal(err.Error())
 		}
 
-		if XOR(fulfilledFilters, negation) {
+		if xor(fulfilledFilters, negation) {
 			for _, filteredColumn := range filteredTable.Columns {
 				value := row[filteredColumn.Name]
 				filteredColumn.Values = append(filteredColumn.Values, value)
@@ -200,7 +208,7 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 	return filteredTable
 }
 
-func XOR(fulfilledFilters bool, negation bool) bool {
+func xor(fulfilledFilters bool, negation bool) bool {
 	return (fulfilledFilters || negation) && !(fulfilledFilters && negation)
 }
 
