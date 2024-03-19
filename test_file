@@ -1,5 +1,11 @@
 		CREATE TABLE 	tbl( one TEXT , two INT, three INT, four TEXT );
 		INSERT INTO tbl 	VALUES( 'hello',	1, 	11, 'q'  );
-		INSERT 	INTO tbl  	VALUES( 'goodbye', 	2, 	22, 'w'  );
+		INSERT 	INTO tbl  	VALUES( 'goodbye', 	1, 	22, 'w'  );
 		INSERT 	INTO tbl  	VALUES( 'byebye', 	3, 	33,	'e'  );
+		SELECT * FROM tbl WHERE one EQUAL 'byebye';
+		SELECT one, three FROM tbl WHERE two NOT 3;
+		SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL 3;
+		SELECT * FROM tbl WHERE FALSE;
+		DELETE FROM tbl WHERE one EQUAL 'byebye';
 		SELECT * FROM tbl;
+		SELECT one FROM tbl WHERE TRUE ORDER BY two ASC, four DESC;

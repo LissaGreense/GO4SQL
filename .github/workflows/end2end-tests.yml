@@ -1,4 +1,3 @@
-
 name: end2end-tests
 
 on:
@@ -16,18 +15,18 @@ jobs:
       matrix:
         go: [ '1.16.15', '1.17.11' ]
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
 
-    - name: Build
-      run: go build -v
+      - name: Build
+        run: go build -v
 
-    - name: Run
-      run: ./GO4SQL -file test_file > output.txt
+      - name: Run
+        run: ./GO4SQL -file test_file > output.txt
 
-    - name: Check Result
-      run: diff output.txt ./.github/expected_results/end2end.txt
+      - name: Check Result
+        run: diff output.txt ./.github/expected_results/end2end.txt
