@@ -24,6 +24,11 @@ program.
 Also with ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands in your console (
 from standard input).
 
+### Docker
+1. Pull docker image: `docker pull kajedot/go4sql:latest`
+2. Run docker container in the interactive mode, remember to provide flag, for example: `docker run -i kajedot/go4sql -stream`
+3. You can test this image with `test_file` provided in this repo: `docker run -i kajedot/go4sql -stream < test_file`
+
 ## FUNCTIONALITY
 
 * ***CREATE TABLE*** - you can create table with name ``table1`` using
@@ -42,13 +47,7 @@ To run all the tests locally use "go clean -testcache; go test ./..." in root di
 
 ## DOCKER
 
-To build your docker image run this command in root directory:
+To build docker image locally, run this command in the root directory:
 ```
 docker build -t go4sql:test .
-```
-
-To run this docker image in interactive mode use this command:
-
-```
-docker run -i go4sql:test
 ```
