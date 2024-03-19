@@ -23,13 +23,13 @@ jobs:
         
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
-        uses: sigstore/cosign-installer@3.4.0
+        uses: sigstore/cosign-installer@v3.4.0
         with:
           cosign-release: 'v2.1.1'
 
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@3.2.0
+        uses: docker/setup-buildx-action@v3.2.0
 
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
