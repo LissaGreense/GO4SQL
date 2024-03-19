@@ -7,12 +7,11 @@ COPY ./engine /app/engine
 COPY ./lexer /app/lexer
 COPY ./parser /app/parser
 COPY ./token /app/token
+COPY ./modes /app/modes
 
 COPY go.mod /app
 COPY main.go /app
 
 RUN go build -o go4sql-docker
 
-CMD ["-stream"]
 ENTRYPOINT ["./go4sql-docker"]
-
