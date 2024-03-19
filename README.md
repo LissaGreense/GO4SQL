@@ -110,7 +110,46 @@ This is integrated into github workflows.
 
 ## DOCKER
 
-To build docker image locally, run this command in the root directory:
-```
+To build your docker image run this command in root directory:
+
+```shell
 docker build -t go4sql:test .
+```
+
+### Run docker in interactive stream mode
+To run this docker image in interactive stream mode mode use this command:
+
+```shell
+docker run -i go4sql:test -stream
+```
+
+### Run docker in socket mode
+To run this docker image in socket mode use this command:
+
+```shell
+docker run go4sql:test -socket
+```
+
+### Run docker in file mode
+**NOT RECOMMENDED**
+
+Alternatively you can run a docker image in file mode:
+
+```shell
+docker run -i go4sql:test -file <PATH_TO_FILE>
+```
+
+## HELM
+
+To create a pod deployment using helm chart, there is configuration under `./helm` directory.
+
+Commands:
+```shell
+cd ./helm
+helm install go4sql_pod_name GO4SQL/
+```
+
+To check status of pod, use:
+```shell
+kubectl get pods
 ```
