@@ -31,6 +31,11 @@ Currently, there are 3 modes to chose from:
 3. `Socket Mode` - To start Socket Server use `./GO4SQL -socket`, it will be listening on port `1433` by default. To
    choose port different other than that, for example equal to `1444`, go with: `./GO4SQL -socket -port 1444`
 
+### Docker
+1. Pull docker image: `docker pull kajedot/go4sql:latest`
+2. Run docker container in the interactive mode, remember to provide flag, for example: `docker run -i kajedot/go4sql -stream`
+3. You can test this image with `test_file` provided in this repo: `docker run -i kajedot/go4sql -stream < test_file`
+
 ## FUNCTIONALITY
 
 * ***CREATE TABLE*** - you can create table with name ``table1`` using
@@ -105,14 +110,7 @@ This is integrated into github workflows.
 
 ## DOCKER
 
-To build your docker image run this command in root directory:
-
-```shell
-docker build -t go4sql:test .
+To build docker image locally, run this command in the root directory:
 ```
-
-To run this docker image in interactive mode use this command:
-
-```shell
-docker run -i go4sql:test
+docker build -t go4sql:test .
 ```
