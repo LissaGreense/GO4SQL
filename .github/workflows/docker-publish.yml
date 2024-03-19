@@ -8,7 +8,7 @@ on:
 env:
   IMAGE_NAME: go4sql
   IMAGE_TAG: latest
-  REGISTRY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+  REGISTRY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/go4sql
 
 jobs:
   build:
