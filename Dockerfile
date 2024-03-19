@@ -13,6 +13,4 @@ COPY main.go /app
 
 RUN go build -o go4sql-docker
 
-CMD ["-stream"]
 ENTRYPOINT ["./go4sql-docker"]
-
