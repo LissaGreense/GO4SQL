@@ -188,7 +188,7 @@ func TestParseDeleteCommand(t *testing.T) {
 	input := "DELETE FROM colName1 WHERE colName2 EQUAL 6462389;"
 	expectedDeleteCommand := ast.DeleteCommand{
 		Token: token.Token{Type: token.DELETE, Literal: "DELETE"},
-		Name:  &ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
+		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName1"}},
 	}
 	expectedWhereCommand := ast.ConditionExpression{
 		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName2"}},
