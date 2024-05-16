@@ -31,7 +31,7 @@ func tokenMapper(inputToken token.Type) token.Type {
 	}
 }
 
-func unique(arr []string) []string {
+func unique(arr []string) *[]string {
 	occurred := map[string]bool{}
 	var result []string
 
@@ -41,5 +41,5 @@ func unique(arr []string) []string {
 			result = append(result, arr[e])
 		}
 	}
-	return result
+	return &result
 }

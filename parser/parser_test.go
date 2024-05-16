@@ -390,7 +390,7 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 func testOrderByCommands(t *testing.T, expectedOrderByCommand ast.OrderByCommand, actualOrderByCommand *ast.OrderByCommand) {
 
 	if expectedOrderByCommand.Token.Type != actualOrderByCommand.Token.Type {
-		t.Errorf("Expecting Token Type: %q, got: %q", expectedOrderByCommand.Token.Type, actualOrderByCommand.Token.Type)
+		t.Errorf("Expecting Token TokenType: %q, got: %q", expectedOrderByCommand.Token.Type, actualOrderByCommand.Token.Type)
 	}
 	if expectedOrderByCommand.Token.Literal != actualOrderByCommand.Token.Literal {
 		t.Errorf("Expecting Token Literal: %s, got: %s", expectedOrderByCommand.Token.Literal, actualOrderByCommand.Token.Literal)

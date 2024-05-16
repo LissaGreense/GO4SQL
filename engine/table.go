@@ -12,7 +12,7 @@ func (table *Table) isEqual(secondTable *Table) bool {
 		return false
 	}
 
-	for i := 0; i < len(table.Columns); i++ {
+	for i := range table.Columns {
 		if table.Columns[i].Name != secondTable.Columns[i].Name {
 			return false
 		}
@@ -25,7 +25,7 @@ func (table *Table) isEqual(secondTable *Table) bool {
 		if len(table.Columns[i].Values) != len(secondTable.Columns[i].Values) {
 			return false
 		}
-		for j := 0; j < len(table.Columns[i].Values); j++ {
+		for j := range table.Columns[i].Values {
 			if table.Columns[i].Values[j].ToString() != secondTable.Columns[i].Values[j].ToString() {
 				return false
 			}
@@ -42,7 +42,7 @@ func (table *Table) ToString() string {
 	result := bar + "\n"
 
 	result += "|"
-	for i := 0; i < len(table.Columns); i++ {
+	for i := range table.Columns {
 		result += " "
 		for j := 0; j < columWidths[i]-len(table.Columns[i].Name); j++ {
 			result += " "
@@ -57,7 +57,7 @@ func (table *Table) ToString() string {
 	for iRow := 0; iRow < rowsCount; iRow++ {
 		result += "|"
 
-		for iColumn := 0; iColumn < len(table.Columns); iColumn++ {
+		for iColumn := range table.Columns {
 			result += " "
 
 			printedValue := table.Columns[iColumn].Values[iRow].ToString()
@@ -94,9 +94,9 @@ func getBar(columWidths []int) string {
 func getColumWidths(columns []*Column) []int {
 	widths := make([]int, 0)
 
-	for iColumn := 0; iColumn < len(columns); iColumn++ {
+	for iColumn := range columns {
 		maxLength := len(columns[iColumn].Name)
-		for iRow := 0; iRow < len(columns[iColumn].Values); iRow++ {
+		for iRow := range columns[iColumn].Values {
 			valueLength := len(columns[iColumn].Values[iRow].ToString())
 			if columns[iColumn].Type.Literal == token.TEXT {
 				valueLength += 2 // double "'"

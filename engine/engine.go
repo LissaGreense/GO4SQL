@@ -12,13 +12,15 @@ import (
 )
 
 type DbEngine struct {
-	Tables map[string]*Table
+	Tables Tables
 }
+type Tables map[string]*Table
 
 // New Return new DbEngine struct
 func New() *DbEngine {
 	engine := &DbEngine{}
-	engine.Tables = make(map[string]*Table)
+	engine.Tables = make(Tables)
+
 	return engine
 }
 
@@ -54,10 +56,10 @@ func (engine *DbEngine) InsertIntoTable(command *ast.InsertCommand) {
 		log.Fatal("Invalid number of parameters in insert, should be: " + strconv.Itoa(len(columns)) + ", but got: " + strconv.Itoa(len(columns)))
 	}
 
-	for i := 0; i < len(columns); i++ {
+	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
 		if expectedToken != command.Values[i].Type {
-			log.Fatal("Invalid Token Type in Insert Command, expecting: " + expectedToken + ", got: " + command.Values[i].Type)
+			log.Fatal("Invalid Token TokenType in Insert Command, expecting: " + expectedToken + ", got: " + command.Values[i].Type)
 		}
 		columns[i].Values = append(columns[i].Values, getInterfaceValue(command.Values[i]))
 	}
@@ -82,7 +84,7 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 		for i := 0; i < len(columns); i++ {
 			wantedColumnNames = append(wantedColumnNames, columns[i].Name)
 		}
-		return extractColumnContent(columns, wantedColumnNames)
+		return extractColumnContent(columns, &wantedColumnNames)
 	} else {
 		for i := 0; i < len(command.Space); i++ {
 			wantedColumnNames = append(wantedColumnNames, command.Space[i].Literal)
@@ -153,7 +155,7 @@ func (engine *DbEngine) SelectFromTableWithOrderBy(selectCommand *ast.SelectComm
 func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, filteredTable *Table, copyOfTable *Table) *Table {
 	sortPatterns := orderByCommand.SortPatterns
 
-	rows := mapTableToRows(filteredTable)
+	rows := MapTableToRows(filteredTable).rows
 
 	sort.Slice(rows, func(i, j int) bool {
 		howDeepWeSort := 0
@@ -189,10 +191,7 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, filte
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
-	//TODO: maybe rows should have separate structure, so it would would have it's on methods
-	rows := mapTableToRows(table)
-
-	for _, row := range rows {
+	for _, row := range MapTableToRows(table).rows {
 		fulfilledFilters, err := isFulfillingFilters(row, whereCommand.Expression)
 		if err != nil {
 			log.Fatal(err.Error())
@@ -226,38 +225,17 @@ func getCopyOfTableWithoutRows(table *Table) *Table {
 	return filteredTable
 }
 
-func mapTableToRows(table *Table) []map[string]ValueInterface {
-	rows := make([]map[string]ValueInterface, 0)
-
-	numberOfRows := len(table.Columns[0].Values)
-
-	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
-		row := make(map[string]ValueInterface)
-		for _, column := range table.Columns {
-			row[column.Name] = column.Values[rowIndex]
-		}
-		rows = append(rows, row)
-	}
-	return rows
-}
-
 func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expression) (bool, error) {
-	operationExpression, operationExpressionIsValid := expressionTree.(*ast.OperationExpression)
-	if operationExpressionIsValid {
-		return processOperationExpression(row, operationExpression)
+	switch mappedExpression := expressionTree.(type) {
+	case *ast.OperationExpression:
+		return processOperationExpression(row, mappedExpression)
+	case *ast.BooleanExpression:
+		return processBooleanExpression(mappedExpression)
+	case *ast.ConditionExpression:
+		return processConditionExpression(row, mappedExpression)
+	default:
+		return false, fmt.Errorf("unsupported expression has been used in WHERE command: %v", expressionTree.GetIdentifiers())
 	}
-
-	booleanExpression, booleanExpressionIsValid := expressionTree.(*ast.BooleanExpression)
-	if booleanExpressionIsValid {
-		return processBooleanExpression(booleanExpression)
-	}
-
-	conditionExpression, conditionExpressionIsValid := expressionTree.(*ast.ConditionExpression)
-	if conditionExpressionIsValid {
-		return processConditionExpression(row, conditionExpression)
-	}
-
-	return false, fmt.Errorf("unsupported expression has been used in WHERE command: %v", expressionTree.GetIdentifiers())
 }
 
 func processConditionExpression(row map[string]ValueInterface, conditionExpression *ast.ConditionExpression) (bool, error) {
@@ -313,26 +291,12 @@ func processBooleanExpression(booleanExpression *ast.BooleanExpression) (bool, e
 }
 
 func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInterface, error) {
-	identifier, identifierIsValid := tifier.(ast.Identifier)
-
-	if identifierIsValid {
-		return row[identifier.GetToken().Literal], nil
+	switch mappedTifier := tifier.(type) {
+	case ast.Identifier:
+		return row[mappedTifier.GetToken().Literal], nil
+	case ast.Anonymitifier:
+		return getInterfaceValue(mappedTifier.GetToken()), nil
+	default:
+		return nil, errors.New("Couldn't map interface to any implementation of it: " + tifier.GetToken().Literal)
 	}
-
-	anonymitifier, anonymitifierIsValid := tifier.(ast.Anonymitifier)
-	if anonymitifierIsValid {
-		return getInterfaceValue(anonymitifier.GetToken()), nil
-	}
-
-	// TODO: Maybe information in which table this column doesn't exist is needed
-	return nil, errors.New("Column name:'" + tifier.GetToken().Literal + "' doesn't exist!")
-}
-
-func getColumnIndexByName(columns []*Column, columName string) (int, error) {
-	for i, column := range columns {
-		if column.Name == columName {
-			return i, nil
-		}
-	}
-	return -1, errors.New("Column name:'" + columName + "' doesn't exist!")
 }

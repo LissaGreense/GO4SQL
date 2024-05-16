@@ -13,22 +13,22 @@ type Column struct {
 	Values []ValueInterface
 }
 
-func extractColumnContent(columns []*Column, wantedColumnNames []string) *Table {
+func extractColumnContent(columns []*Column, wantedColumnNames *[]string) *Table {
 	selectedTable := &Table{Columns: make([]*Column, 0)}
 	mappedIndexes := make([]int, 0)
-	for wantedColumnIndex := 0; wantedColumnIndex < len(wantedColumnNames); wantedColumnIndex++ {
-		for columnNameIndex := 0; columnNameIndex < len(columns); columnNameIndex++ {
-			if columns[columnNameIndex].Name == wantedColumnNames[wantedColumnIndex] {
+	for wantedColumnIndex := range *wantedColumnNames {
+		for columnNameIndex := range columns {
+			if columns[columnNameIndex].Name == (*wantedColumnNames)[wantedColumnIndex] {
 				mappedIndexes = append(mappedIndexes, columnNameIndex)
 				break
 			}
 			if columnNameIndex == len(columns)-1 {
-				log.Fatal("Provided column name: " + wantedColumnNames[wantedColumnIndex] + " doesn't exist")
+				log.Fatal("Provided column name: " + (*wantedColumnNames)[wantedColumnIndex] + " doesn't exist")
 			}
 		}
 	}
 
-	for i := 0; i < len(mappedIndexes); i++ {
+	for i := range mappedIndexes {
 		selectedTable.Columns = append(selectedTable.Columns, &Column{
 			Name:   columns[mappedIndexes[i]].Name,
 			Type:   columns[mappedIndexes[i]].Type,

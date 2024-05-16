@@ -29,12 +29,9 @@ type Command interface {
 //
 // Methods:
 //
-// ExpressionNode: Abstraction needed for creating tree abstraction in order to optimise evaluating
-// GetIdentifiers - Return array of pointers for all Identifiers within expression
+// GetIdentifiers - Return array for all Identifiers within expression
 type Expression interface {
-	// ExpressionNode TODO: Check if ExpressionNode is needed
-	ExpressionNode()
-	GetIdentifiers() []*Identifier
+	GetIdentifiers() []Identifier
 }
 
 // Tifier - Interface that represent Token with string value
@@ -73,7 +70,7 @@ type Anonymitifier struct {
 func (ls Anonymitifier) IsIdentifier() bool    { return false }
 func (ls Anonymitifier) GetToken() token.Token { return ls.Token }
 
-// BooleanExpression - Type of Expression that represent single boolean value
+// BooleanExpression - TokenType of Expression that represent single boolean value
 //
 // Example:
 // TRUE
@@ -81,13 +78,12 @@ type BooleanExpression struct {
 	Boolean token.Token // example: token.TRUE
 }
 
-func (ls BooleanExpression) ExpressionNode() {}
-func (ls BooleanExpression) GetIdentifiers() []*Identifier {
-	var identifiers []*Identifier
+func (ls BooleanExpression) GetIdentifiers() []Identifier {
+	var identifiers []Identifier
 	return identifiers
 }
 
-// ConditionExpression - Type of Expression that represent condition that is comparing value from column to static one
+// ConditionExpression - TokenType of Expression that represent condition that is comparing value from column to static one
 //
 // Example:
 // column1 EQUAL 123
@@ -97,22 +93,21 @@ type ConditionExpression struct {
 	Condition token.Token // example: token.EQUAL
 }
 
-func (ls ConditionExpression) ExpressionNode() {}
-func (ls ConditionExpression) GetIdentifiers() []*Identifier {
-	var identifiers []*Identifier
+func (ls ConditionExpression) GetIdentifiers() []Identifier {
+	var identifiers []Identifier
 
 	if ls.Left.IsIdentifier() {
-		identifiers = append(identifiers, &Identifier{ls.Left.GetToken()})
+		identifiers = append(identifiers, Identifier{ls.Left.GetToken()})
 	}
 
 	if ls.Right.IsIdentifier() {
-		identifiers = append(identifiers, &Identifier{ls.Right.GetToken()})
+		identifiers = append(identifiers, Identifier{ls.Right.GetToken()})
 	}
 
 	return identifiers
 }
 
-// OperationExpression - Type of Expression that represent 2 other Expressions and conditional operation
+// OperationExpression - TokenType of Expression that represent 2 other Expressions and conditional operation
 //
 // Example:
 // TRUE OR FALSE
@@ -122,9 +117,8 @@ type OperationExpression struct {
 	Operation token.Token // example: token.AND
 }
 
-func (ls OperationExpression) ExpressionNode() {}
-func (ls OperationExpression) GetIdentifiers() []*Identifier {
-	var identifiers []*Identifier
+func (ls OperationExpression) GetIdentifiers() []Identifier {
+	var identifiers []Identifier
 
 	identifiers = append(identifiers, ls.Left.GetIdentifiers()...)
 	identifiers = append(identifiers, ls.Right.GetIdentifiers()...)
@@ -138,7 +132,7 @@ func (ls OperationExpression) GetIdentifiers() []*Identifier {
 // CREATE TABLE table1( one TEXT , two INT);
 type CreateCommand struct {
 	Token       token.Token
-	Name        *Identifier // name of the table
+	Name        Identifier // name of the table
 	ColumnNames []string
 	ColumnTypes []token.Token
 }
@@ -149,10 +143,10 @@ func (ls CreateCommand) TokenLiteral() string { return ls.Token.Literal }
 // InsertCommand - Part of Command that represent insertion of values into columns
 //
 // Example:
-// INSERT INTO table1 VALUES( 'hello', 1);
+// INSERT INTO table1 VALUES('hello', 1);
 type InsertCommand struct {
 	Token  token.Token
-	Name   *Identifier // name of the table
+	Name   Identifier // name of the table
 	Values []token.Token
 }
 
@@ -165,7 +159,7 @@ func (ls InsertCommand) TokenLiteral() string { return ls.Token.Literal }
 // SELECT one, two FROM table1;
 type SelectCommand struct {
 	Token token.Token
-	Name  *Identifier
+	Name  Identifier
 	Space []token.Token // ex. column names
 }
 
@@ -190,7 +184,7 @@ func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }
 // DELETE FROM tb1 WHERE two EQUAL 3;
 type DeleteCommand struct {
 	Token token.Token
-	Name  *Identifier // name of the table
+	Name  Identifier // name of the table
 }
 
 func (ls DeleteCommand) CommandNode()         {}

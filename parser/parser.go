@@ -11,17 +11,19 @@ import (
 // Parser - Contain token that is currently analyzed by parser and the next one. Lexer is used to tokenize the client
 // text input.
 type Parser struct {
-	lexer        *lexer.Lexer
+	lexer        lexer.Lexer
 	currentToken token.Token
 	peekToken    token.Token
 }
 
 // New - Return new Parser struct
 func New(lexer *lexer.Lexer) *Parser {
-	p := &Parser{lexer: lexer}
+	p := &Parser{lexer: *lexer}
+
 	// Read two tokens, so curToken and peekToken are both set
 	p.nextToken()
 	p.nextToken()
+
 	return p
 }
 
@@ -65,7 +67,7 @@ func validateToken(tokenType token.Type, expectedTokens []token.Type) {
 //
 // Example of input parsable to the ast.CreateCommand:
 // create table tbl( one TEXT , two INT );
-func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return the pointer
+func (parser *Parser) parseCreateCommand() ast.Command {
 	// token.CREATE already at current position in parser
 	createCommand := &ast.CreateCommand{Token: parser.currentToken}
 
@@ -75,7 +77,7 @@ func (parser *Parser) parseCreateCommand() ast.Command { // TODO make it return 
 	validateTokenAndSkip(parser, []token.Type{token.TABLE})
 
 	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	createCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	createCommand.Name = ast.Identifier{Token: parser.currentToken}
 
 	// Skip token.IDENT
 	parser.nextToken()
@@ -134,7 +136,7 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 	validateTokenAndSkip(parser, []token.Type{token.INTO})
 
 	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	insertCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	insertCommand.Name = ast.Identifier{Token: parser.currentToken}
 	// Ignore token.INDENT
 	parser.nextToken()
 
@@ -142,13 +144,13 @@ func (parser *Parser) parseInsertCommand() ast.Command {
 	validateTokenAndSkip(parser, []token.Type{token.LPAREN})
 
 	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
-		// TODO: Add apostrophe validation
 		parser.skipIfCurrentTokenIsApostrophe()
 
 		validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
 		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
 		// Ignore token.IDENT or token.LITERAL
 		parser.nextToken()
+
 		parser.skipIfCurrentTokenIsApostrophe()
 
 		if parser.currentToken.Type != token.COMMA {
@@ -196,7 +198,7 @@ func (parser *Parser) parseSelectCommand() ast.Command {
 
 	validateTokenAndSkip(parser, []token.Type{token.FROM})
 
-	selectCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	selectCommand.Name = ast.Identifier{Token: parser.currentToken}
 	// Ignore token.INDENT
 	parser.nextToken()
 
@@ -249,7 +251,7 @@ func (parser *Parser) parseDeleteCommand() ast.Command {
 	validateTokenAndSkip(parser, []token.Type{token.FROM})
 
 	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	deleteCommand.Name = &ast.Identifier{Token: parser.currentToken}
+	deleteCommand.Name = ast.Identifier{Token: parser.currentToken}
 
 	// token.IDENT no longer needed
 	parser.nextToken()
@@ -377,32 +379,21 @@ func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
 
 // getConditionalExpression - Return ast.ConditionExpression created from tokens and validate the syntax
 func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression) {
-	// TODO REFACTOR THIS
 	conditionalExpression := &ast.ConditionExpression{}
 
-	if parser.currentToken.Type == token.IDENT {
-		conditionalExpression.Left = ast.Identifier{
-			Token: parser.currentToken,
-		}
+	switch parser.currentToken.Type {
+	case token.IDENT:
+		conditionalExpression.Left = ast.Identifier{Token: parser.currentToken}
 		parser.nextToken()
-
-	} else if parser.currentToken.Type == token.APOSTROPHE {
+	case token.APOSTROPHE:
 		parser.skipIfCurrentTokenIsApostrophe()
-
-		conditionalExpression.Left = ast.Anonymitifier{
-			Token: parser.currentToken,
-		}
-
+		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
-
 		validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
-	} else if parser.currentToken.Type == token.LITERAL {
-		conditionalExpression.Left = ast.Anonymitifier{
-			Token: parser.currentToken,
-		}
+	case token.LITERAL:
+		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
-
-	} else {
+	default:
 		return false, conditionalExpression
 	}
 
@@ -410,30 +401,19 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 	conditionalExpression.Condition = parser.currentToken
 	parser.nextToken()
 
-	if parser.currentToken.Type == token.IDENT {
-		conditionalExpression.Right = ast.Identifier{
-			Token: parser.currentToken,
-		}
+	switch parser.currentToken.Type {
+	case token.IDENT:
+		conditionalExpression.Right = ast.Identifier{Token: parser.currentToken}
 		parser.nextToken()
-
-	} else if parser.currentToken.Type == token.APOSTROPHE {
+	case token.APOSTROPHE:
 		parser.skipIfCurrentTokenIsApostrophe()
-
-		conditionalExpression.Right = ast.Anonymitifier{
-			Token: parser.currentToken,
-		}
-
+		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
-
 		validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
-
-	} else if parser.currentToken.Type == token.LITERAL {
-		conditionalExpression.Right = ast.Anonymitifier{
-			Token: parser.currentToken,
-		}
+	case token.LITERAL:
+		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
-
-	} else {
+	default:
 		log.Fatal("Syntax error, expecting: ", token.APOSTROPHE, ",", token.IDENT, ",", token.LITERAL, ", got: ", parser.currentToken.Literal)
 	}
 
