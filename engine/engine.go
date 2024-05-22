@@ -29,7 +29,7 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 	commands := sequences.Commands
 
 	result := ""
-	for commandIndex, command := range commands {
+	for _, command := range commands {
 
 		switch mappedCommand := command.(type) {
 		case *ast.WhereCommand:
@@ -48,13 +48,9 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 			result += engine.GetSelectResponse(mappedCommand) + "\n"
 			continue
 		case *ast.DeleteCommand:
-			nextCommandIndex := commandIndex + 1
-			if nextCommandIndex != len(commands) {
-				whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
-
-				if whereCommandIsValid {
-					engine.deleteFromTable(mappedCommand, whereCommand)
-				}
+			deleteCommand := command.(*ast.DeleteCommand)
+			if deleteCommand.HasWhereCommand() {
+				engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
 			}
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
