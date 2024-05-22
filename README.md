@@ -117,7 +117,7 @@ docker build -t go4sql:test .
 ```
 
 ### Run docker in interactive stream mode
-To run this docker image in interactive stream mode mode use this command:
+To run this docker image in interactive stream mode use this command:
 
 ```shell
 docker run -i go4sql:test -stream

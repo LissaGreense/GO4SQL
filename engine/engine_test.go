@@ -305,9 +305,6 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 		input += engineTestSuite.createInputs[inputIndex] + "\n"
 	}
 	for inputIndex := 0; inputIndex < len(engineTestSuite.insertAndDeleteInputs); inputIndex++ {
-		if strings.HasPrefix(engineTestSuite.insertAndDeleteInputs[inputIndex], "DELETE") {
-			expectedSequencesNumber++
-		}
 		input += engineTestSuite.insertAndDeleteInputs[inputIndex] + "\n"
 	}
 	input += engineTestSuite.selectInput
@@ -319,42 +316,31 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 	expectedSequencesNumber += len(engineTestSuite.createInputs) + len(engineTestSuite.insertAndDeleteInputs) + 1
 
 	var actualTable *Table
-
-	if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
-		expectedSequencesNumber++
-	}
+	engine := engineTestSuite.getEngineWithInsertedValues(sequences)
+	selectCommand := sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand)
 
 	if strings.Contains(engineTestSuite.selectInput, " WHERE ") {
 
 		// WHERE CONDITION
-
-		expectedSequencesNumber++
 		if len(sequences.Commands) != expectedSequencesNumber {
 			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
 		}
-
-		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
-
 		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
-			actualTable = engine.SelectFromTableWithWhereAndOrderBy(sequences.Commands[len(sequences.Commands)-3].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-2].(*ast.WhereCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.OrderByCommand))
+			actualTable = engine.selectFromTableWithWhereAndOrderBy(selectCommand, selectCommand.WhereCommand, selectCommand.OrderByCommand)
 		} else {
-			actualTable = engine.SelectFromTableWithWhere(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.WhereCommand))
+			actualTable = engine.selectFromTableWithWhere(selectCommand, selectCommand.WhereCommand)
 		}
 
 	} else {
 
 		// NO WHERE CONDITION
-
 		if len(sequences.Commands) != expectedSequencesNumber {
 			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
 		}
-
-		engine := engineTestSuite.getEngineWithInsertedValues(sequences)
-
 		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
-			actualTable = engine.SelectFromTableWithOrderBy(sequences.Commands[len(sequences.Commands)-2].(*ast.SelectCommand), sequences.Commands[len(sequences.Commands)-1].(*ast.OrderByCommand))
+			actualTable = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand)
 		} else {
-			actualTable = engine.SelectFromTable(sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand))
+			actualTable = engine.selectFromTable(selectCommand)
 		}
 	}
 
@@ -386,14 +372,14 @@ func (engineTestSuite *engineTestSuite) getEngineWithInsertedValues(sequences *a
 	engine := New()
 	for commandIndex := 0; commandIndex < len(sequences.Commands); commandIndex++ {
 		if createCommand, ok := sequences.Commands[commandIndex].(*ast.CreateCommand); ok {
-			engine.CreateTable(createCommand)
+			engine.createTable(createCommand)
 		}
 		if insertCommand, ok := sequences.Commands[commandIndex].(*ast.InsertCommand); ok {
-			engine.InsertIntoTable(insertCommand)
+			engine.insertIntoTable(insertCommand)
 		}
 		if deleteCommand, ok := sequences.Commands[commandIndex].(*ast.DeleteCommand); ok {
-			whereCommand := sequences.Commands[commandIndex+1].(*ast.WhereCommand)
-			engine.DeleteFromTable(deleteCommand, whereCommand)
+			whereCommand := deleteCommand.WhereCommand
+			engine.deleteFromTable(deleteCommand, whereCommand)
 		}
 	}
 	return engine

@@ -439,23 +439,24 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 		case token.DELETE:
 			command = parser.parseDeleteCommand()
 		case token.WHERE:
-			if len(sequence.Commands) == 0 {
-				log.Fatal("Syntax error, Where Command can't be used without predecessor")
-			}
-			lastStartingToken := sequence.Commands[len(sequence.Commands)-1].TokenLiteral()
-			if lastStartingToken != token.SELECT && lastStartingToken != token.DELETE {
+			lastCommand := parser.getLastCommand(sequence)
+
+			if lastCommand.TokenLiteral() == token.SELECT {
+				lastCommand.(*ast.SelectCommand).WhereCommand = parser.parseWhereCommand().(*ast.WhereCommand)
+			} else if lastCommand.TokenLiteral() == token.DELETE {
+				lastCommand.(*ast.DeleteCommand).WhereCommand = parser.parseWhereCommand().(*ast.WhereCommand)
+			} else {
 				log.Fatal("Syntax error, WHERE command needs SELECT or DELETE command before")
 			}
-			command = parser.parseWhereCommand()
 		case token.ORDER:
-			if len(sequence.Commands) == 0 {
-				log.Fatal("Syntax error, Order Command can't be used without predecessor")
+			lastCommand := parser.getLastCommand(sequence)
+
+			if lastCommand.TokenLiteral() != token.SELECT {
+				log.Fatal("Syntax error, ORDER BY command needs SELECT command before")
 			}
-			lastStartingToken := sequence.Commands[len(sequence.Commands)-1].TokenLiteral()
-			if lastStartingToken != token.SELECT && lastStartingToken != token.WHERE {
-				log.Fatal("Syntax error, WHERE command needs SELECT or WHERE command before")
-			}
-			command = parser.parseOrderByCommand()
+
+			selectCommand := lastCommand.(*ast.SelectCommand)
+			selectCommand.OrderByCommand = parser.parseOrderByCommand().(*ast.OrderByCommand)
 		default:
 			log.Fatal("Syntax error, invalid command found: ", parser.currentToken.Type)
 		}
@@ -467,4 +468,12 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 	}
 
 	return sequence
+}
+
+func (parser *Parser) getLastCommand(sequence *ast.Sequence) ast.Command {
+	if len(sequence.Commands) == 0 {
+		log.Fatal("Syntax error, Where Command can't be used without predecessor")
+	}
+	lastCommand := sequence.Commands[len(sequence.Commands)-1]
+	return lastCommand
 }

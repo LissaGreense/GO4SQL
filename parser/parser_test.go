@@ -174,11 +174,16 @@ func TestParseWhereCommand(t *testing.T) {
 		parserInstance := New(lexer)
 		sequences := parserInstance.ParseSequence()
 
-		if len(sequences.Commands) != 2 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements, got=%d", len(sequences.Commands))
 		}
 
-		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
+		selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+		if !selectCommand.HasWhereCommand() {
+			t.Fatalf("sequences does not contain where command")
+		}
+
+		if !whereStatementIsValid(t, selectCommand.WhereCommand, tt.expectedExpression) {
 			return
 		}
 	}
@@ -200,8 +205,8 @@ func TestParseDeleteCommand(t *testing.T) {
 	parserInstance := New(lexer)
 	sequences := parserInstance.ParseSequence()
 
-	if len(sequences.Commands) != 2 {
-		t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 	}
 
 	actualDeleteCommand, ok := sequences.Commands[0].(*ast.DeleteCommand)
@@ -217,7 +222,11 @@ func TestParseDeleteCommand(t *testing.T) {
 		t.Errorf("Table name of DeleteCommand is not %s. got=%s", expectedDeleteCommand.Name.GetToken().Literal, actualDeleteCommand.Name.GetToken().Literal)
 	}
 
-	if !whereStatementIsValid(t, sequences.Commands[1], expectedWhereCommand) {
+	if !actualDeleteCommand.HasWhereCommand() {
+		t.Fatalf("sequences does not contain where command")
+	}
+
+	if !whereStatementIsValid(t, actualDeleteCommand.WhereCommand, expectedWhereCommand) {
 		return
 	}
 }
@@ -239,20 +248,21 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 	parserInstance := New(lexer)
 	sequences := parserInstance.ParseSequence()
 
-	if len(sequences.Commands) != 2 {
-		t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 	}
 
-	if !testSelectStatement(t, sequences.Commands[0], expectedTableName, expectedColumnName) {
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
 		return
 	}
 
-	actualOrderByCommand, orderByCommandIsOk := sequences.Commands[1].(*ast.OrderByCommand)
-	if !orderByCommandIsOk {
-		t.Errorf("actualDeleteCommand is not %T. got=%T", &ast.OrderByCommand{}, sequences.Commands[0])
+	if !selectCommand.HasOrderByCommand() {
+		t.Fatalf("sequences does not contain where command")
 	}
 
-	testOrderByCommands(t, expectedOrderByCommand, actualOrderByCommand)
+	testOrderByCommands(t, expectedOrderByCommand, selectCommand.OrderByCommand)
 }
 
 func TestParseLogicOperatorsInCommand(t *testing.T) {
@@ -308,11 +318,17 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		parserInstance := New(lexer)
 		sequences := parserInstance.ParseSequence()
 
-		if len(sequences.Commands) != 2 {
-			t.Fatalf("sequences does not contain 2 statements. got=%d", len(sequences.Commands))
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
 		}
 
-		if !whereStatementIsValid(t, sequences.Commands[1], tt.expectedExpression) {
+		selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+		if !selectCommand.HasWhereCommand() {
+			t.Fatalf("sequences does not contain where command")
+		}
+
+		if !whereStatementIsValid(t, selectCommand.WhereCommand, tt.expectedExpression) {
 			t.Fatalf("Actual expression and expected one are different")
 		}
 	}
@@ -469,13 +485,13 @@ func validateConditionExpression(second ast.Expression, conditionExpression *ast
 }
 
 func validateBooleanExpressions(second ast.Expression, booleanExpression *ast.BooleanExpression) bool {
-	secondBooleanExpresion, secondBooleanExpresionIsValid := second.(ast.BooleanExpression)
+	secondBooleanExpression, secondBooleanExpressionIsValid := second.(ast.BooleanExpression)
 
-	if !secondBooleanExpresionIsValid {
+	if !secondBooleanExpressionIsValid {
 		return false
 	}
 
-	if booleanExpression.Boolean.Literal != secondBooleanExpresion.Boolean.Literal {
+	if booleanExpression.Boolean.Literal != secondBooleanExpression.Boolean.Literal {
 		return false
 	}
 

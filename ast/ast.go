@@ -158,13 +158,45 @@ func (ls InsertCommand) TokenLiteral() string { return ls.Token.Literal }
 // Example:
 // SELECT one, two FROM table1;
 type SelectCommand struct {
-	Token token.Token
-	Name  Identifier
-	Space []token.Token // ex. column names
+	Token          token.Token
+	Name           Identifier      // ex. name of table
+	Space          []token.Token   // ex. column names
+	WhereCommand   *WhereCommand   // optional
+	OrderByCommand *OrderByCommand // optional
 }
 
 func (ls SelectCommand) CommandNode()         {}
 func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
+
+// HasWhereCommand - returns true if optional HasWhereCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table WHERE column1 NOT 'hi';
+// Returns true
+//
+// SELECT * FROM table;
+// Returns false
+func (ls SelectCommand) HasWhereCommand() bool {
+	if ls.WhereCommand == nil {
+		return false
+	}
+	return true
+}
+
+// HasOrderByCommand - returns true if optional OrderByCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table ORDER BY column1 ASC;
+// Returns true
+//
+// SELECT * FROM table;
+// Returns false
+func (ls SelectCommand) HasOrderByCommand() bool {
+	if ls.OrderByCommand == nil {
+		return false
+	}
+	return true
+}
 
 // WhereCommand - Part of Command that represent Where statement with expression that will qualify values from Select
 //
@@ -183,12 +215,28 @@ func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }
 // Example:
 // DELETE FROM tb1 WHERE two EQUAL 3;
 type DeleteCommand struct {
-	Token token.Token
-	Name  Identifier // name of the table
+	Token        token.Token
+	Name         Identifier    // name of the table
+	WhereCommand *WhereCommand // optional
 }
 
 func (ls DeleteCommand) CommandNode()         {}
 func (ls DeleteCommand) TokenLiteral() string { return ls.Token.Literal }
+
+// HasWhereCommand - returns true if optional HasWhereCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table WHERE column1 NOT 'hi';
+// Returns true
+//
+// SELECT * FROM table;
+// Returns false
+func (ls DeleteCommand) HasWhereCommand() bool {
+	if ls.WhereCommand == nil {
+		return false
+	}
+	return true
+}
 
 // OrderByCommand - Part of Command that ordering columns from SelectCommand
 //

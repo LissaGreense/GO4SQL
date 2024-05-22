@@ -21,7 +21,7 @@ func HandleFileMode(filePath string, engine *engine.DbEngine) {
 	}
 
 	sequences := bytesToSequences(content)
-	fmt.Print(evaluateInEngine(sequences, engine))
+	fmt.Print(engine.Evaluate(sequences))
 }
 
 // HandleStreamMode - Handle GO4SQL use case where client sends input via stdin
@@ -29,7 +29,7 @@ func HandleStreamMode(engine *engine.DbEngine) {
 	reader := bufio.NewScanner(os.Stdin)
 	for reader.Scan() {
 		sequences := bytesToSequences(reader.Bytes())
-		fmt.Print(evaluateInEngine(sequences, engine))
+		fmt.Print(engine.Evaluate(sequences))
 	}
 	err := reader.Err()
 	if err != nil {
@@ -63,76 +63,6 @@ func HandleSocketMode(port int, engine *engine.DbEngine) {
 		go handleSocketClient(conn, engine)
 	}
 }
-func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) string {
-	commands := sequences.Commands
-
-	result := ""
-	for commandIndex, command := range commands {
-
-		switch mappedCommand := command.(type) {
-		case *ast.WhereCommand:
-			continue
-		case *ast.OrderByCommand:
-			continue
-		case *ast.CreateCommand:
-			engineSQL.CreateTable(mappedCommand)
-			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
-			continue
-		case *ast.InsertCommand:
-			engineSQL.InsertIntoTable(mappedCommand)
-			result += "Data Inserted\n"
-			continue
-		case *ast.SelectCommand:
-			result += getSelectResponse(commandIndex, &commands, engineSQL, mappedCommand) + "\n"
-			continue
-		case *ast.DeleteCommand:
-			nextCommandIndex := commandIndex + 1
-			if nextCommandIndex != len(commands) {
-				whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
-
-				if whereCommandIsValid {
-					engineSQL.DeleteFromTable(mappedCommand, whereCommand)
-				}
-			}
-			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
-			continue
-		default:
-			log.Fatalf("Unsupported Command detected: %v", command)
-		}
-	}
-
-	return result
-}
-
-func getSelectResponse(commandIndex int, commands *[]ast.Command, engineSQL *engine.DbEngine, selectCommand *ast.SelectCommand) string {
-	// TODO: this function should be a method of ast.SelectCommand
-	nextCommandIndex := commandIndex + 1
-
-	if nextCommandIndex != len(*commands) {
-		whereCommand, whereCommandIsValid := (*commands)[nextCommandIndex].(*ast.WhereCommand)
-
-		// TODO: It cannot be like that. Have to be refactored to tree structure.
-		if whereCommandIsValid {
-			if nextCommandIndex+1 < len(*commands) {
-				orderByCommand, orderByCommandIsValid := (*commands)[nextCommandIndex+1].(*ast.OrderByCommand)
-
-				if orderByCommandIsValid {
-					return engineSQL.SelectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
-				}
-			}
-
-			return engineSQL.SelectFromTableWithWhere(selectCommand, whereCommand).ToString()
-		}
-
-		orderByCommand, orderByCommandIsValid := (*commands)[nextCommandIndex].(*ast.OrderByCommand)
-
-		if orderByCommandIsValid {
-			return engineSQL.SelectFromTableWithOrderBy(selectCommand, orderByCommand).ToString()
-		}
-	}
-
-	return engineSQL.SelectFromTable(selectCommand).ToString()
-}
 
 func bytesToSequences(content []byte) *ast.Sequence {
 	lex := lexer.RunLexer(string(content))
@@ -158,7 +88,7 @@ func handleSocketClient(conn net.Conn, engine *engine.DbEngine) {
 			log.Fatal("Error:", err)
 		}
 		sequences := bytesToSequences(buffer)
-		commandResult := evaluateInEngine(sequences, engine)
+		commandResult := engine.Evaluate(sequences)
 
 		if len(commandResult) > 0 {
 			_, err = conn.Write([]byte(commandResult))
