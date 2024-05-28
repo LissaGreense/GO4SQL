@@ -45,7 +45,7 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 			result += "Data Inserted\n"
 			continue
 		case *ast.SelectCommand:
-			result += engine.GetSelectResponse(mappedCommand) + "\n"
+			result += engine.getSelectResponse(mappedCommand).ToString() + "\n"
 			continue
 		case *ast.DeleteCommand:
 			deleteCommand := command.(*ast.DeleteCommand)
@@ -53,6 +53,10 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 				engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
 			}
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
+			continue
+		case *ast.DropCommand:
+			engine.dropTable(mappedCommand)
+			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		default:
 			log.Fatalf("Unsupported Command detected: %v", command)
@@ -62,21 +66,21 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 	return result
 }
 
-// GetSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
-func (engine *DbEngine) GetSelectResponse(selectCommand *ast.SelectCommand) string {
+// getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
+func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) *Table {
 	if selectCommand.HasWhereCommand() {
 		whereCommand := selectCommand.WhereCommand
 		if selectCommand.HasOrderByCommand() {
 			orderByCommand := selectCommand.OrderByCommand
-			return engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
+			return engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand)
 		}
-		return engine.selectFromTableWithWhere(selectCommand, whereCommand).ToString()
+		return engine.selectFromTableWithWhere(selectCommand, whereCommand)
 	}
 	if selectCommand.HasOrderByCommand() {
 		orderByCommand := selectCommand.OrderByCommand
-		return engine.selectFromTableWithOrderBy(selectCommand, orderByCommand).ToString()
+		return engine.selectFromTableWithOrderBy(selectCommand, orderByCommand)
 	}
-	return engine.selectFromTable(selectCommand).ToString()
+	return engine.selectFromTable(selectCommand)
 }
 
 // createTable - initialize new table in engine with specified name
@@ -157,6 +161,11 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 	}
 
 	engine.Tables[deleteCommand.Name.Token.Literal] = engine.getFilteredTable(table, whereCommand, true)
+}
+
+// dropTable - Drop table with given name
+func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
+	delete(engine.Tables, dropCommand.Name.GetToken().Literal)
 }
 
 // selectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand

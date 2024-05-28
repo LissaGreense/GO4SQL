@@ -35,3 +35,4 @@ Data from 'tbl' has been deleted
 | 'goodbye' |
 |   'hello' |
 +-----------+
+Table: 'tbl' has been dropped

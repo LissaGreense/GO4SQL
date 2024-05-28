@@ -223,6 +223,18 @@ type DeleteCommand struct {
 func (ls DeleteCommand) CommandNode()         {}
 func (ls DeleteCommand) TokenLiteral() string { return ls.Token.Literal }
 
+// DropCommand - Part of Command that represent dropping table
+//
+// Example:
+// DROP TABLE table;
+type DropCommand struct {
+	Token token.Token
+	Name  Identifier // name of the table
+}
+
+func (ls DropCommand) CommandNode()         {}
+func (ls DropCommand) TokenLiteral() string { return ls.Token.Literal }
+
 // HasWhereCommand - returns true if optional HasWhereCommand is present in SelectCommand
 //
 // Example:

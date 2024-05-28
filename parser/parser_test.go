@@ -231,6 +231,35 @@ func TestParseDeleteCommand(t *testing.T) {
 	}
 }
 
+func TestParseDropCommand(t *testing.T) {
+	input := "DROP TABLE table;"
+	expectedDropCommand := ast.DropCommand{
+		Token: token.Token{Type: token.DROP, Literal: "DROP"},
+		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "table"}},
+	}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences := parserInstance.ParseSequence()
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	actualDropCommand, ok := sequences.Commands[0].(*ast.DropCommand)
+	if !ok {
+		t.Errorf("actualDropCommand is not %T. got=%T", &ast.DropCommand{}, sequences.Commands[0])
+	}
+
+	if expectedDropCommand.TokenLiteral() != actualDropCommand.TokenLiteral() {
+		t.Errorf("TokenLiteral of DropCommand is not %s. got=%s", expectedDropCommand.TokenLiteral(), actualDropCommand.TokenLiteral())
+	}
+
+	if expectedDropCommand.Name.GetToken().Literal != actualDropCommand.Name.GetToken().Literal {
+		t.Errorf("Table name of DropCommand is not %s. got=%s", expectedDropCommand.Name.GetToken().Literal, actualDropCommand.Name.GetToken().Literal)
+	}
+}
+
 func TestSelectWithOrderByCommand(t *testing.T) {
 	input := "SELECT * FROM tableName ORDER BY colName1 DESC;"
 	expectedSortPattern := ast.SortPattern{

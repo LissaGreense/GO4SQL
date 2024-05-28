@@ -9,3 +9,4 @@
 		DELETE FROM tbl WHERE one EQUAL 'byebye';
 		SELECT * FROM tbl;
 		SELECT one FROM tbl WHERE TRUE ORDER BY two ASC, four DESC;
+		DROP TABLE tbl;

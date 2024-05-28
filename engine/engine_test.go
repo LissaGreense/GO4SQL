@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -9,8 +8,39 @@ import (
 	"github.com/LissaGreense/GO4SQL/parser"
 )
 
+func TestCreate(t *testing.T) {
+	simpleCreateCase := engineDBContentTestSuite{
+		inputs:             []string{"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );"},
+		expectedTableNames: []string{"tb1"},
+	}
+
+	simpleCreateCase.runTestSuite(t)
+
+	multiplyCreationCase := engineDBContentTestSuite{
+		inputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+			"CREATE TABLE tb2( one TEXT, two INT, three INT, four TEXT );",
+		},
+		expectedTableNames: []string{"tb1", "tb2"},
+	}
+
+	multiplyCreationCase.runTestSuite(t)
+
+}
+
+func TestDrop(t *testing.T) {
+	simpleDropCase := engineDBContentTestSuite{
+		inputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+			"DROP TABLE tb1;",
+		},
+		expectedTableNames: []string{},
+	}
+	simpleDropCase.runTestSuite(t)
+}
+
 func TestSelectCommand(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -32,7 +62,7 @@ func TestSelectCommand(t *testing.T) {
 }
 
 func TestSelectWithColumnNamesCommand(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -54,7 +84,7 @@ func TestSelectWithColumnNamesCommand(t *testing.T) {
 }
 
 func TestSelectWithWhereEqual(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -75,7 +105,7 @@ func TestSelectWithWhereEqual(t *testing.T) {
 
 func TestSelectWithWhereNotEqual(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -97,7 +127,7 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 
 func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -118,7 +148,7 @@ func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 
 func TestSelectWithWhereLogicalOperationOR(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -140,7 +170,7 @@ func TestSelectWithWhereLogicalOperationOR(t *testing.T) {
 
 func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -162,7 +192,7 @@ func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
 
 func TestSelectWithWhereEqualToTrue(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -185,7 +215,7 @@ func TestSelectWithWhereEqualToTrue(t *testing.T) {
 
 func TestSelectWithWhereEqualToFalse(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -203,7 +233,7 @@ func TestSelectWithWhereEqualToFalse(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -225,7 +255,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestOrderBy(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -247,7 +277,7 @@ func TestOrderBy(t *testing.T) {
 }
 
 func TestOrderByWithWhere(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -268,7 +298,7 @@ func TestOrderByWithWhere(t *testing.T) {
 }
 
 func TestOrderByWithMultipleSorts(t *testing.T) {
-	engineTestSuite := engineTestSuite{
+	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
 		},
@@ -291,58 +321,51 @@ func TestOrderByWithMultipleSorts(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
-type engineTestSuite struct {
+type engineDBContentTestSuite struct {
+	inputs             []string
+	expectedTableNames []string
+}
+
+func (engineTestSuite *engineDBContentTestSuite) runTestSuite(t *testing.T) {
+	sequences := getSequences(inputsToString(engineTestSuite.inputs))
+	engine := New()
+	engine.Evaluate(sequences)
+
+	if len(engine.Tables) != len(engineTestSuite.expectedTableNames) {
+		t.Fatalf("Number of tables is incorrect, should be %d, got %d", len(engineTestSuite.expectedTableNames), len(engine.Tables))
+	}
+
+	for _, tableName := range engineTestSuite.expectedTableNames {
+		if engine.Tables[tableName] == nil {
+			t.Fatalf("Expected table '%s' does not exist", tableName)
+		}
+	}
+}
+
+type engineTableContentTestSuite struct {
 	createInputs          []string
 	insertAndDeleteInputs []string
 	selectInput           string
 	expectedOutput        [][]string
 }
 
-func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
-	input := ""
+func (engineTestSuite *engineTableContentTestSuite) runTestSuite(t *testing.T) {
 	expectedSequencesNumber := 0
-	for inputIndex := 0; inputIndex < len(engineTestSuite.createInputs); inputIndex++ {
-		input += engineTestSuite.createInputs[inputIndex] + "\n"
-	}
-	for inputIndex := 0; inputIndex < len(engineTestSuite.insertAndDeleteInputs); inputIndex++ {
-		input += engineTestSuite.insertAndDeleteInputs[inputIndex] + "\n"
-	}
-	input += engineTestSuite.selectInput
 
-	lexerInstance := lexer.RunLexer(input)
-	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
+	input := inputsToString(engineTestSuite.createInputs) + inputsToString(engineTestSuite.insertAndDeleteInputs)
+
+	sequencesWithoutSelect := getSequences(input)
+	selectCommand := getSequences(engineTestSuite.selectInput)
 
 	expectedSequencesNumber += len(engineTestSuite.createInputs) + len(engineTestSuite.insertAndDeleteInputs) + 1
 
-	var actualTable *Table
-	engine := engineTestSuite.getEngineWithInsertedValues(sequences)
-	selectCommand := sequences.Commands[len(sequences.Commands)-1].(*ast.SelectCommand)
-
-	if strings.Contains(engineTestSuite.selectInput, " WHERE ") {
-
-		// WHERE CONDITION
-		if len(sequences.Commands) != expectedSequencesNumber {
-			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
-		}
-		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
-			actualTable = engine.selectFromTableWithWhereAndOrderBy(selectCommand, selectCommand.WhereCommand, selectCommand.OrderByCommand)
-		} else {
-			actualTable = engine.selectFromTableWithWhere(selectCommand, selectCommand.WhereCommand)
-		}
-
-	} else {
-
-		// NO WHERE CONDITION
-		if len(sequences.Commands) != expectedSequencesNumber {
-			t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequences.Commands))
-		}
-		if strings.Contains(engineTestSuite.selectInput, "ORDER BY") {
-			actualTable = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand)
-		} else {
-			actualTable = engine.selectFromTable(selectCommand)
-		}
+	if len(sequencesWithoutSelect.Commands)+len(selectCommand.Commands) != expectedSequencesNumber {
+		t.Fatalf("sequences does not contain %d statements. got=%d", expectedSequencesNumber, len(sequencesWithoutSelect.Commands))
 	}
+
+	engine := New()
+	engine.Evaluate(sequencesWithoutSelect)
+	actualTable := engine.getSelectResponse(selectCommand.Commands[0].(*ast.SelectCommand))
 
 	if len(engineTestSuite.expectedOutput) == 0 {
 		if len(actualTable.Columns[0].Values) != 0 {
@@ -368,19 +391,20 @@ func (engineTestSuite *engineTestSuite) runTestSuite(t *testing.T) {
 
 }
 
-func (engineTestSuite *engineTestSuite) getEngineWithInsertedValues(sequences *ast.Sequence) *DbEngine {
-	engine := New()
-	for commandIndex := 0; commandIndex < len(sequences.Commands); commandIndex++ {
-		if createCommand, ok := sequences.Commands[commandIndex].(*ast.CreateCommand); ok {
-			engine.createTable(createCommand)
-		}
-		if insertCommand, ok := sequences.Commands[commandIndex].(*ast.InsertCommand); ok {
-			engine.insertIntoTable(insertCommand)
-		}
-		if deleteCommand, ok := sequences.Commands[commandIndex].(*ast.DeleteCommand); ok {
-			whereCommand := deleteCommand.WhereCommand
-			engine.deleteFromTable(deleteCommand, whereCommand)
-		}
+func inputsToString(inputs []string) string {
+	input := ""
+
+	for inputIndex := 0; inputIndex < len(inputs); inputIndex++ {
+		input += inputs[inputIndex] + "\n"
 	}
-	return engine
+
+	return input
+}
+
+func getSequences(input string) *ast.Sequence {
+	lexerInstance := lexer.RunLexer(input)
+	parserInstance := parser.New(lexerInstance)
+	sequences := parserInstance.ParseSequence()
+
+	return sequences
 }
