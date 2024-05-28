@@ -55,21 +55,7 @@ func TestLexer(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := RunLexer(input)
-
-	for i, tt := range tests {
-		tok := l.NextToken()
-
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
-		}
-
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
-				i, tt.expectedLiteral, tok.Literal)
-		}
-	}
+	runLexerTestSuite(t, input, tests)
 }
 
 func TestLexerWithNumbersMixedInLitterals(t *testing.T) {
@@ -121,21 +107,7 @@ func TestLexerWithNumbersMixedInLitterals(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := RunLexer(input)
-
-	for i, tt := range tests {
-		tok := l.NextToken()
-
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
-		}
-
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
-				i, tt.expectedLiteral, tok.Literal)
-		}
-	}
+	runLexerTestSuite(t, input, tests)
 }
 
 func TestLexerWithNumbersWithWhitespacesIdentifier(t *testing.T) {
@@ -187,21 +159,7 @@ func TestLexerWithNumbersWithWhitespacesIdentifier(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := RunLexer(input)
-
-	for i, tt := range tests {
-		tok := l.NextToken()
-
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
-		}
-
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
-				i, tt.expectedLiteral, tok.Literal)
-		}
-	}
+	runLexerTestSuite(t, input, tests)
 }
 
 func TestLogicalStatements(t *testing.T) {
@@ -231,21 +189,7 @@ func TestLogicalStatements(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := RunLexer(input)
-
-	for i, tt := range tests {
-		tok := l.NextToken()
-
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
-		}
-
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
-				i, tt.expectedLiteral, tok.Literal)
-		}
-	}
+	runLexerTestSuite(t, input, tests)
 }
 
 func TestDeleteStatement(t *testing.T) {
@@ -267,21 +211,7 @@ func TestDeleteStatement(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := RunLexer(input)
-
-	for i, tt := range tests {
-		tok := l.NextToken()
-
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - tokentype wrong. expected=%q, got=%q",
-				i, tt.expectedType, tok.Type)
-		}
-
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q",
-				i, tt.expectedLiteral, tok.Literal)
-		}
-	}
+	runLexerTestSuite(t, input, tests)
 }
 
 func TestOrderByStatement(t *testing.T) {
@@ -302,6 +232,29 @@ func TestOrderByStatement(t *testing.T) {
 		{token.EOF, ""},
 	}
 
+	runLexerTestSuite(t, input, tests)
+}
+
+func TestDropStatement(t *testing.T) {
+	input := `DROP TABLE table;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.DROP, "DROP"},
+		{token.TABLE, "TABLE"},
+		{token.IDENT, "table"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
+func runLexerTestSuite(t *testing.T, input string, tests []struct {
+	expectedType    token.Type
+	expectedLiteral string
+}) {
 	l := RunLexer(input)
 
 	for i, tt := range tests {
@@ -317,5 +270,4 @@ func TestOrderByStatement(t *testing.T) {
 				i, tt.expectedLiteral, tok.Literal)
 		}
 	}
-
 }

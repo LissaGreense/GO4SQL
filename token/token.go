@@ -30,6 +30,7 @@ const (
 
 	// CREATE - Keywords
 	CREATE = "CREATE"
+	DROP   = "DROP"
 	TABLE  = "TABLE"
 	INSERT = "INSERT"
 	INTO   = "INTO"
@@ -63,6 +64,7 @@ var keywords = map[string]Type{
 	"TEXT":   TEXT,
 	"INT":    INT,
 	"CREATE": CREATE,
+	"DROP":   DROP,
 	"TABLE":  TABLE,
 	"INSERT": INSERT,
 	"INTO":   INTO,

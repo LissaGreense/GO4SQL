@@ -240,7 +240,7 @@ func (parser *Parser) parseWhereCommand() ast.Command {
 // parseDeleteCommand - Return ast.DeleteCommand created from tokens and validate the syntax
 //
 // Example of input parsable to the ast.DeleteCommand:
-// DELETE FROM table
+// DELETE FROM table;
 func (parser *Parser) parseDeleteCommand() ast.Command {
 	// token.DELETE already at current position in parser
 	deleteCommand := &ast.DeleteCommand{Token: parser.currentToken}
@@ -260,6 +260,30 @@ func (parser *Parser) parseDeleteCommand() ast.Command {
 	validateToken(parser.currentToken.Type, []token.Type{token.WHERE})
 
 	return deleteCommand
+}
+
+// parseDropCommand - Return ast.DropCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.DropCommand:
+// DROP TABLE table;
+func (parser *Parser) parseDropCommand() ast.Command {
+	// token.DROP already at current position in parser
+	dropCommand := &ast.DropCommand{Token: parser.currentToken}
+
+	// token.DROP no longer needed
+	parser.nextToken()
+
+	validateTokenAndSkip(parser, []token.Type{token.TABLE})
+
+	validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	dropCommand.Name = ast.Identifier{Token: parser.currentToken}
+
+	// token.IDENT no longer needed
+	parser.nextToken()
+
+	parser.skipIfCurrentTokenIsSemicolon()
+
+	return dropCommand
 }
 
 // parseOrderByCommand - Return ast.OrderByCommand created from tokens and validate the syntax
@@ -438,6 +462,8 @@ func (parser *Parser) ParseSequence() *ast.Sequence {
 			command = parser.parseSelectCommand()
 		case token.DELETE:
 			command = parser.parseDeleteCommand()
+		case token.DROP:
+			command = parser.parseDropCommand()
 		case token.WHERE:
 			lastCommand := parser.getLastCommand(sequence)
 
