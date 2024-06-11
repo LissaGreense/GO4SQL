@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -364,8 +365,14 @@ func (engineTestSuite *engineTableContentTestSuite) runTestSuite(t *testing.T) {
 	}
 
 	engine := New()
-	engine.Evaluate(sequencesWithoutSelect)
-	actualTable := engine.getSelectResponse(selectCommand.Commands[0].(*ast.SelectCommand))
+	_, err := engine.Evaluate(sequencesWithoutSelect)
+	if err != nil {
+		log.Fatal(err)
+	}
+	actualTable, err := engine.getSelectResponse(selectCommand.Commands[0].(*ast.SelectCommand))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if len(engineTestSuite.expectedOutput) == 0 {
 		if len(actualTable.Columns[0].Values) != 0 {
@@ -404,7 +411,9 @@ func inputsToString(inputs []string) string {
 func getSequences(input string) *ast.Sequence {
 	lexerInstance := lexer.RunLexer(input)
 	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return sequences
 }

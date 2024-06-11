@@ -1,11 +1,8 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
-	"log"
 	"sort"
-	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -25,7 +22,7 @@ func New() *DbEngine {
 }
 
 // Evaluate - it takes sequences, map them to specific implementation and then process it in SQL engine
-func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
+func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 	commands := sequences.Commands
 
 	result := ""
@@ -37,20 +34,33 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 		case *ast.OrderByCommand:
 			continue
 		case *ast.CreateCommand:
-			engine.createTable(mappedCommand)
+			err := engine.createTable(mappedCommand)
+			if err != nil {
+				return "", err
+			}
 			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
 			continue
 		case *ast.InsertCommand:
-			engine.insertIntoTable(mappedCommand)
+			err := engine.insertIntoTable(mappedCommand)
+			if err != nil {
+				return "", err
+			}
 			result += "Data Inserted\n"
 			continue
 		case *ast.SelectCommand:
-			result += engine.getSelectResponse(mappedCommand).ToString() + "\n"
+			selectOutput, err := engine.getSelectResponse(mappedCommand)
+			if err != nil {
+				return "", err
+			}
+			result += selectOutput.ToString() + "\n"
 			continue
 		case *ast.DeleteCommand:
 			deleteCommand := command.(*ast.DeleteCommand)
 			if deleteCommand.HasWhereCommand() {
-				engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
+				err := engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
+				if err != nil {
+					return "", err
+				}
 			}
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
@@ -59,15 +69,15 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) string {
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		default:
-			log.Fatalf("Unsupported Command detected: %v", command)
+			return "", fmt.Errorf("unsupported Command detected: %v", command)
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
-func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) *Table {
+func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Table, error) {
 	if selectCommand.HasWhereCommand() {
 		whereCommand := selectCommand.WhereCommand
 		if selectCommand.HasOrderByCommand() {
@@ -84,11 +94,11 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) *Tab
 }
 
 // createTable - initialize new table in engine with specified name
-func (engine *DbEngine) createTable(command *ast.CreateCommand) {
+func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 	_, exist := engine.Tables[command.Name.Token.Literal]
 
 	if exist {
-		log.Fatal("Table with the name of " + command.Name.Token.Literal + " already exist!")
+		return fmt.Errorf("table with the name of %s already exist", command.Name.Token.Literal)
 	}
 
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
@@ -100,42 +110,48 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) {
 				Name:   columnName,
 			})
 	}
+	return nil
 }
 
 // insertIntoTable - Insert row of values into the table
-func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) {
+func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 	table, exist := engine.Tables[command.Name.Token.Literal]
 	if !exist {
-		log.Fatal("Table with the name of " + command.Name.Token.Literal + " doesn't exist!")
+		return fmt.Errorf("table with the name of %s doesn't exist", command.Name.Token.Literal)
 	}
 
 	columns := table.Columns
 
 	if len(command.Values) != len(columns) {
-		log.Fatal("Invalid number of parameters in insert, should be: " + strconv.Itoa(len(columns)) + ", but got: " + strconv.Itoa(len(columns)))
+		return fmt.Errorf("invalid number of parameters in insert, should be: %d, but got: %d", len(columns), len(columns))
 	}
 
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
 		if expectedToken != command.Values[i].Type {
-			log.Fatal("Invalid Token TokenType in Insert Command, expecting: " + expectedToken + ", got: " + command.Values[i].Type)
+			return fmt.Errorf("invalid Token TokenType in Insert Command, expecting: %s, got: %s", expectedToken, command.Values[i].Type)
 		}
-		columns[i].Values = append(columns[i].Values, getInterfaceValue(command.Values[i]))
+		interfaceValue, err := getInterfaceValue(command.Values[i])
+		if err != nil {
+			return err
+		}
+		columns[i].Values = append(columns[i].Values, interfaceValue)
 	}
+	return nil
 }
 
 // selectFromTable - Return Table containing all values requested by SelectCommand
-func (engine *DbEngine) selectFromTable(command *ast.SelectCommand) *Table {
+func (engine *DbEngine) selectFromTable(command *ast.SelectCommand) (*Table, error) {
 	table, exist := engine.Tables[command.Name.Token.Literal]
 
 	if !exist {
-		log.Fatal("Table with the name of " + command.Name.Token.Literal + " doesn't exist!")
+		return nil, fmt.Errorf("table with the name of %s doesn't exist", command.Name.Token.Literal)
 	}
 
 	return engine.selectFromProvidedTable(command, table)
 }
 
-func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, table *Table) *Table {
+func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, table *Table) (*Table, error) {
 	columns := table.Columns
 
 	wantedColumnNames := make([]string, 0)
@@ -153,14 +169,21 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 }
 
 // deleteFromTable - Delete all rows of data from table that match given condition
-func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereCommand *ast.WhereCommand) {
+func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereCommand *ast.WhereCommand) error {
 	table, exist := engine.Tables[deleteCommand.Name.Token.Literal]
 
 	if !exist {
-		log.Fatal("Table with the name of " + deleteCommand.Name.Token.Literal + " doesn't exist!")
+		return fmt.Errorf("table with the name of %s doesn't exist", deleteCommand.Name.Token.Literal)
 	}
 
-	engine.Tables[deleteCommand.Name.Token.Literal] = engine.getFilteredTable(table, whereCommand, true)
+	newTable, err := engine.getFilteredTable(table, whereCommand, true)
+
+	if err != nil {
+		return err
+	}
+	engine.Tables[deleteCommand.Name.Token.Literal] = newTable
+
+	return nil
 }
 
 // dropTable - Drop table with given name
@@ -169,32 +192,40 @@ func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
 }
 
 // selectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand
-func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) *Table {
+func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) (*Table, error) {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
 	if !exist {
-		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+		return nil, fmt.Errorf("table with the name of %s doesn't exist", selectCommand.Name.Token.Literal)
 	}
 
 	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
 		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
 	}
 
-	filteredTable := engine.getFilteredTable(table, whereCommand, false)
+	filteredTable, err := engine.getFilteredTable(table, whereCommand, false)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return engine.selectFromProvidedTable(selectCommand, filteredTable)
 }
 
 // selectFromTableWithWhereAndOrderBy - Return Table containing all values requested by SelectCommand,
 // filtered by WhereCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) *Table {
+func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) (*Table, error) {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
 	if !exist {
-		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+		return nil, fmt.Errorf("table with the name of %s doesn't exist", selectCommand.Name.Token.Literal)
 	}
 
-	filteredTable := engine.getFilteredTable(table, whereCommand, false)
+	filteredTable, err := engine.getFilteredTable(table, whereCommand, false)
+
+	if err != nil {
+		return nil, err
+	}
 
 	emptyTable := getCopyOfTableWithoutRows(table)
 
@@ -202,11 +233,11 @@ func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.Se
 }
 
 // selectFromTableWithOrderBy - Return Table containing all values requested by SelectCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) *Table {
+func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) (*Table, error) {
 	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
 
 	if !exist {
-		log.Fatal("Table with the name of " + selectCommand.Name.Token.Literal + " doesn't exist!")
+		return nil, fmt.Errorf("table with the name of %s doesn't exist", selectCommand.Name.Token.Literal)
 	}
 
 	emptyTable := getCopyOfTableWithoutRows(table)
@@ -252,13 +283,13 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, filte
 	return copyOfTable
 }
 
-func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) *Table {
+func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool) (*Table, error) {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
 	for _, row := range MapTableToRows(table).rows {
 		fulfilledFilters, err := isFulfillingFilters(row, whereCommand.Expression)
 		if err != nil {
-			log.Fatal(err.Error())
+			return nil, err
 		}
 
 		if xor(fulfilledFilters, negation) {
@@ -268,7 +299,7 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 			}
 		}
 	}
-	return filteredTable
+	return filteredTable, nil
 }
 
 func xor(fulfilledFilters bool, negation bool) bool {
@@ -303,14 +334,14 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 }
 
 func processConditionExpression(row map[string]ValueInterface, conditionExpression *ast.ConditionExpression) (bool, error) {
-	valueLeft, isValueLeftValid := getTifierValue(conditionExpression.Left, row)
-	if isValueLeftValid != nil {
-		log.Fatal(isValueLeftValid.Error())
+	valueLeft, err := getTifierValue(conditionExpression.Left, row)
+	if err != nil {
+		return false, err
 	}
 
-	valueRight, isValueRightValid := getTifierValue(conditionExpression.Right, row)
-	if isValueLeftValid != nil {
-		log.Fatal(isValueRightValid.Error())
+	valueRight, err := getTifierValue(conditionExpression.Right, row)
+	if err != nil {
+		return false, err
 	}
 
 	switch conditionExpression.Condition.Type {
@@ -319,7 +350,7 @@ func processConditionExpression(row map[string]ValueInterface, conditionExpressi
 	case token.NOT:
 		return !(valueLeft.IsEqual(valueRight)), nil
 	default:
-		return false, errors.New("Operation '" + conditionExpression.Condition.Literal + "' provided in WHERE command isn't allowed!")
+		return false, fmt.Errorf("operation '%s' provided in WHERE command isn't allowed", conditionExpression.Condition.Literal)
 	}
 }
 
@@ -344,7 +375,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 		return left || right, err
 	}
 
-	return false, errors.New("unsupported operation token has been used: " + operationExpression.Operation.Literal)
+	return false, fmt.Errorf("unsupported operation token has been used: %s", operationExpression.Operation.Literal)
 }
 
 func processBooleanExpression(booleanExpression *ast.BooleanExpression) (bool, error) {
@@ -359,8 +390,8 @@ func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInte
 	case ast.Identifier:
 		return row[mappedTifier.GetToken().Literal], nil
 	case ast.Anonymitifier:
-		return getInterfaceValue(mappedTifier.GetToken()), nil
+		return getInterfaceValue(mappedTifier.GetToken())
 	default:
-		return nil, errors.New("Couldn't map interface to any implementation of it: " + tifier.GetToken().Literal)
+		return nil, fmt.Errorf("couldn't map interface to any implementation of it: %s", tifier.GetToken().Literal)
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/LissaGreense/GO4SQL/engine"
 	"github.com/LissaGreense/GO4SQL/modes"
 	"log"
@@ -15,14 +16,19 @@ func main() {
 
 	flag.Parse()
 	engineSQL := engine.New()
+	var err error
 
 	if len(*filePath) > 0 {
-		modes.HandleFileMode(*filePath, engineSQL)
+		err = modes.HandleFileMode(*filePath, engineSQL)
 	} else if *streamMode {
-		modes.HandleStreamMode(engineSQL)
+		err = modes.HandleStreamMode(engineSQL)
 	} else if *socketMode {
 		modes.HandleSocketMode(*port, engineSQL)
 	} else {
-		log.Println("No mode has been providing. Exiting.")
+		err = fmt.Errorf("no mode has been providing, exiting")
+	}
+
+	if err != nil {
+		log.Fatal(err)
 	}
 }
