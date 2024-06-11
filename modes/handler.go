@@ -14,27 +14,40 @@ import (
 )
 
 // HandleFileMode - Handle GO4SQL use case where client sends input via text file
-func HandleFileMode(filePath string, engine *engine.DbEngine) {
+func HandleFileMode(filePath string, engine *engine.DbEngine) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	sequences := bytesToSequences(content)
-	fmt.Print(engine.Evaluate(sequences))
+	sequences, err := bytesToSequences(content)
+	if err != nil {
+		return err
+	}
+	evaluate, err := engine.Evaluate(sequences)
+	if err != nil {
+		return err
+	}
+	fmt.Print(evaluate)
+	return nil
 }
 
 // HandleStreamMode - Handle GO4SQL use case where client sends input via stdin
-func HandleStreamMode(engine *engine.DbEngine) {
+func HandleStreamMode(engine *engine.DbEngine) error {
 	reader := bufio.NewScanner(os.Stdin)
 	for reader.Scan() {
-		sequences := bytesToSequences(reader.Bytes())
-		fmt.Print(engine.Evaluate(sequences))
+		sequences, err := bytesToSequences(reader.Bytes())
+		if err != nil {
+			fmt.Print(err)
+		} else {
+			evaluate, err := engine.Evaluate(sequences)
+			if err != nil {
+				fmt.Print(err)
+			} else {
+				fmt.Print(evaluate)
+			}
+		}
 	}
-	err := reader.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
+	return reader.Err()
 }
 
 // HandleSocketMode - Handle GO4SQL use case where client sends input via socket protocol
@@ -43,7 +56,7 @@ func HandleSocketMode(port int, engine *engine.DbEngine) {
 	log.Printf("Starting Socket Server on %d port\n", port)
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err.Error())
 	}
 
 	defer func(listener net.Listener) {
@@ -64,15 +77,11 @@ func HandleSocketMode(port int, engine *engine.DbEngine) {
 	}
 }
 
-func bytesToSequences(content []byte) *ast.Sequence {
+func bytesToSequences(content []byte) (*ast.Sequence, error) {
 	lex := lexer.RunLexer(string(content))
 	parserInstance := parser.New(lex)
 	sequences, err := parserInstance.ParseSequence()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return sequences
+	return sequences, err
 }
 
 func handleSocketClient(conn net.Conn, engine *engine.DbEngine) {
@@ -88,19 +97,26 @@ func handleSocketClient(conn net.Conn, engine *engine.DbEngine) {
 	for {
 		n, err := conn.Read(buffer)
 		if err != nil && err.Error() != "EOF" {
-			log.Fatal("Error:", err)
+			log.Fatal(err.Error())
 		}
-		sequences := bytesToSequences(buffer)
-		commandResult := engine.Evaluate(sequences)
+		sequences, err := bytesToSequences(buffer)
 
-		if len(commandResult) > 0 {
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		commandResult, err := engine.Evaluate(sequences)
+
+		if err != nil {
+			_, err = conn.Write([]byte(err.Error()))
+		} else if len(commandResult) > 0 {
 			_, err = conn.Write([]byte(commandResult))
 		}
 
 		if err != nil {
-			log.Fatal("Error:", err)
+			log.Fatal(err.Error())
 		}
 
-		fmt.Printf("Received: %s\n", buffer[:n])
+		log.Printf("Received: %s\n", buffer[:n])
 	}
 }

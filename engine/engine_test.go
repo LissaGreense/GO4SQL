@@ -365,8 +365,14 @@ func (engineTestSuite *engineTableContentTestSuite) runTestSuite(t *testing.T) {
 	}
 
 	engine := New()
-	engine.Evaluate(sequencesWithoutSelect)
-	actualTable := engine.getSelectResponse(selectCommand.Commands[0].(*ast.SelectCommand))
+	_, err := engine.Evaluate(sequencesWithoutSelect)
+	if err != nil {
+		log.Fatal(err)
+	}
+	actualTable, err := engine.getSelectResponse(selectCommand.Commands[0].(*ast.SelectCommand))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if len(engineTestSuite.expectedOutput) == 0 {
 		if len(actualTable.Columns[0].Values) != 0 {

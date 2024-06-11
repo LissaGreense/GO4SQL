@@ -1,8 +1,7 @@
 package engine
 
 import (
-	"log"
-
+	"fmt"
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
@@ -13,7 +12,7 @@ type Column struct {
 	Values []ValueInterface
 }
 
-func extractColumnContent(columns []*Column, wantedColumnNames *[]string) *Table {
+func extractColumnContent(columns []*Column, wantedColumnNames *[]string) (*Table, error) {
 	selectedTable := &Table{Columns: make([]*Column, 0)}
 	mappedIndexes := make([]int, 0)
 	for wantedColumnIndex := range *wantedColumnNames {
@@ -23,7 +22,7 @@ func extractColumnContent(columns []*Column, wantedColumnNames *[]string) *Table
 				break
 			}
 			if columnNameIndex == len(columns)-1 {
-				log.Fatal("Provided column name: " + (*wantedColumnNames)[wantedColumnIndex] + " doesn't exist")
+				return nil, fmt.Errorf("provided column name: %s doesn't exist", (*wantedColumnNames)[wantedColumnIndex])
 			}
 		}
 	}
@@ -43,5 +42,5 @@ func extractColumnContent(columns []*Column, wantedColumnNames *[]string) *Table
 				append(selectedTable.Columns[iColumn].Values, columns[mappedIndexes[iColumn]].Values[iRow])
 		}
 	}
-	return selectedTable
+	return selectedTable, nil
 }

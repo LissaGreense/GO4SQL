@@ -1,22 +1,21 @@
 package engine
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
-func getInterfaceValue(t token.Token) ValueInterface {
+func getInterfaceValue(t token.Token) (ValueInterface, error) {
 	switch t.Type {
 	case token.LITERAL:
 		castedInteger, err := strconv.Atoi(t.Literal)
 		if err != nil {
-			log.Fatal("Cannot cast \"" + t.Literal + "\" to Integer")
+			return nil, err
 		}
-		return IntegerValue{Value: castedInteger}
+		return IntegerValue{Value: castedInteger}, nil
 	default:
-		return StringValue{Value: t.Literal}
+		return StringValue{Value: t.Literal}, nil
 	}
 }
 

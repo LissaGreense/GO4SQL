@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"errors"
+	"fmt"
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -62,7 +62,7 @@ func validateToken(tokenType token.Type, expectedTokens []token.Type) error {
 		}
 	}
 	if !contains {
-		return errors.New("Syntax error, expecting: " + tokensPrintMessage + ", got: " + string(tokenType))
+		return fmt.Errorf("syntax error, expecting: %s, got: %s", tokensPrintMessage, string(tokenType))
 	}
 	return nil
 }
@@ -284,7 +284,7 @@ func (parser *Parser) parseWhereCommand() (ast.Command, error) {
 	}
 
 	if !expressionIsValid {
-		return nil, errors.New("Expression withing Where statement couldn't be parsed correctly")
+		return nil, fmt.Errorf("expression withing Where statement couldn't be parsed correctly")
 	}
 
 	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.ORDER})
@@ -466,7 +466,7 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 			return false, nil, err
 		}
 		if !expressionIsValid {
-			return false, nil, errors.New("Couldn't parse right side of the OperationExpression after " + operationExpression.Operation.Literal + " token.")
+			return false, nil, fmt.Errorf("couldn't parse right side of the OperationExpression after %s token", operationExpression.Operation.Literal)
 		}
 
 		operationExpression.Right = expression
@@ -537,7 +537,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
 	default:
-		return false, nil, errors.New("Syntax error, expecting: " + token.APOSTROPHE + "," + token.IDENT + "," + token.LITERAL + ", got: " + parser.currentToken.Literal)
+		return false, nil, fmt.Errorf("syntax error, expecting: { %s, %s, %s }, got: %s", token.APOSTROPHE, token.IDENT, token.LITERAL, parser.currentToken.Literal)
 	}
 
 	return true, conditionalExpression, nil
@@ -583,7 +583,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				}
 				lastCommand.(*ast.DeleteCommand).WhereCommand = newCommand.(*ast.WhereCommand)
 			} else {
-				return nil, errors.New("Syntax error, WHERE command needs SELECT or DELETE command before")
+				return nil, fmt.Errorf("syntax error, WHERE command needs SELECT or DELETE command before")
 			}
 		case token.ORDER:
 			lastCommand, parserError := parser.getLastCommand(sequence)
@@ -592,7 +592,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 
 			if lastCommand.TokenLiteral() != token.SELECT {
-				return nil, errors.New("Syntax error, ORDER BY command needs SELECT command before")
+				return nil, fmt.Errorf("syntax error, ORDER BY command needs SELECT command before")
 			}
 
 			selectCommand := lastCommand.(*ast.SelectCommand)
@@ -602,7 +602,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.OrderByCommand = newCommand.(*ast.OrderByCommand)
 		default:
-			return nil, errors.New("Syntax error, invalid command found: " + parser.currentToken.Literal)
+			return nil, fmt.Errorf("syntax error, invalid command found: %s", parser.currentToken.Literal)
 		}
 
 		if err != nil {
@@ -620,7 +620,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 
 func (parser *Parser) getLastCommand(sequence *ast.Sequence) (ast.Command, error) {
 	if len(sequence.Commands) == 0 {
-		return nil, errors.New("Syntax error, Where Command can't be used without predecessor")
+		return nil, fmt.Errorf("syntax error, Where Command can't be used without predecessor")
 	}
 	lastCommand := sequence.Commands[len(sequence.Commands)-1]
 	return lastCommand, nil
