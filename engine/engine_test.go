@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -404,7 +405,9 @@ func inputsToString(inputs []string) string {
 func getSequences(input string) *ast.Sequence {
 	lexerInstance := lexer.RunLexer(input)
 	parserInstance := parser.New(lexerInstance)
-	sequences := parserInstance.ParseSequence()
-
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return sequences
 }

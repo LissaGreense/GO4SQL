@@ -23,7 +23,10 @@ func TestParserCreateCommand(t *testing.T) {
 	for _, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
-		sequences := parserInstance.ParseSequence()
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
 
 		if len(sequences.Commands) != 1 {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -79,7 +82,10 @@ func TestParseInsertCommand(t *testing.T) {
 	for _, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
-		sequences := parserInstance.ParseSequence()
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
 
 		if len(sequences.Commands) != 1 {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -130,7 +136,10 @@ func TestParseSelectCommand(t *testing.T) {
 	for _, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
-		sequences := parserInstance.ParseSequence()
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
 
 		if len(sequences.Commands) != 1 {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -172,7 +181,10 @@ func TestParseWhereCommand(t *testing.T) {
 	for _, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
-		sequences := parserInstance.ParseSequence()
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
 
 		if len(sequences.Commands) != 1 {
 			t.Fatalf("sequences does not contain 1 statements, got=%d", len(sequences.Commands))
@@ -203,7 +215,10 @@ func TestParseDeleteCommand(t *testing.T) {
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
-	sequences := parserInstance.ParseSequence()
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
 
 	if len(sequences.Commands) != 1 {
 		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -240,7 +255,10 @@ func TestParseDropCommand(t *testing.T) {
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
-	sequences := parserInstance.ParseSequence()
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
 
 	if len(sequences.Commands) != 1 {
 		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -275,7 +293,10 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
-	sequences := parserInstance.ParseSequence()
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
 
 	if len(sequences.Commands) != 1 {
 		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
@@ -345,7 +366,10 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 	for _, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
-		sequences := parserInstance.ParseSequence()
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
 
 		if len(sequences.Commands) != 1 {
 			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))

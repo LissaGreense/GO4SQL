@@ -67,7 +67,10 @@ func HandleSocketMode(port int, engine *engine.DbEngine) {
 func bytesToSequences(content []byte) *ast.Sequence {
 	lex := lexer.RunLexer(string(content))
 	parserInstance := parser.New(lex)
-	sequences := parserInstance.ParseSequence()
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return sequences
 }
