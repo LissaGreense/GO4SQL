@@ -33,6 +33,10 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			continue
 		case *ast.OrderByCommand:
 			continue
+		case *ast.LimitCommand:
+			continue
+		case *ast.OffsetCommand:
+			continue
 		case *ast.CreateCommand:
 			err := engine.createTable(mappedCommand)
 			if err != nil {
@@ -78,19 +82,42 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 
 // getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
 func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Table, error) {
+	var table *Table
+	var err error
+
 	if selectCommand.HasWhereCommand() {
 		whereCommand := selectCommand.WhereCommand
 		if selectCommand.HasOrderByCommand() {
 			orderByCommand := selectCommand.OrderByCommand
-			return engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand)
+			table, err = engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			table, err = engine.selectFromTableWithWhere(selectCommand, whereCommand)
+			if err != nil {
+				return nil, err
+			}
 		}
-		return engine.selectFromTableWithWhere(selectCommand, whereCommand)
+	} else if selectCommand.HasOrderByCommand() {
+		table, err = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if selectCommand.HasOrderByCommand() {
-		orderByCommand := selectCommand.OrderByCommand
-		return engine.selectFromTableWithOrderBy(selectCommand, orderByCommand)
+
+	if table == nil {
+		table, err = engine.selectFromTable(selectCommand)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return engine.selectFromTable(selectCommand)
+
+	if selectCommand.HasLimitCommand() || selectCommand.HasOffsetCommand() {
+		table.applyOffsetAndLimit(selectCommand)
+	}
+
+	return table, nil
 }
 
 // createTable - initialize new table in engine with specified name
@@ -300,6 +327,34 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 		}
 	}
 	return filteredTable, nil
+}
+
+func (table *Table) applyOffsetAndLimit(command *ast.SelectCommand) {
+	var offset = 0
+	var limitRaw = -1
+
+	if command.HasLimitCommand() {
+		limitRaw = command.LimitCommand.Count
+	}
+	if command.HasOffsetCommand() {
+		offset = command.OffsetCommand.Count
+	}
+
+	for _, column := range table.Columns {
+		var limit int
+
+		if limitRaw == -1 || limitRaw+offset > len(column.Values) {
+			limit = len(column.Values)
+		} else {
+			limit = limitRaw + offset
+		}
+
+		if offset > len(column.Values) || limit == 0 {
+			column.Values = make([]ValueInterface, 0)
+		} else {
+			column.Values = column.Values[offset:limit]
+		}
+	}
 }
 
 func xor(fulfilledFilters bool, negation bool) bool {

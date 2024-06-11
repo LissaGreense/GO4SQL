@@ -43,6 +43,8 @@ const (
 	BY     = "BY"
 	ASC    = "ASC"
 	DESC   = "DESC"
+	LIMIT  = "LIMIT"
+	OFFSET = "OFFSET"
 
 	// EQUAL - Logical operations
 	EQUAL = "EQUAL"
@@ -75,6 +77,8 @@ var keywords = map[string]Type{
 	"BY":     BY,
 	"ASC":    ASC,
 	"DESC":   DESC,
+	"LIMIT":  LIMIT,
+	"OFFSET": OFFSET,
 	"VALUES": VALUES,
 	"WHERE":  WHERE,
 	"EQUAL":  EQUAL,

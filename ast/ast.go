@@ -163,6 +163,8 @@ type SelectCommand struct {
 	Space          []token.Token   // ex. column names
 	WhereCommand   *WhereCommand   // optional
 	OrderByCommand *OrderByCommand // optional
+	LimitCommand   *LimitCommand   // optional
+	OffsetCommand  *OffsetCommand  // optional
 }
 
 func (ls SelectCommand) CommandNode()         {}
@@ -193,6 +195,36 @@ func (ls SelectCommand) HasWhereCommand() bool {
 // Returns false
 func (ls SelectCommand) HasOrderByCommand() bool {
 	if ls.OrderByCommand == nil {
+		return false
+	}
+	return true
+}
+
+// HasLimitCommand - returns true if optional HasLimitCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table LIMIT 5;
+// Returns true
+//
+// SELECT * FROM table;
+// Returns false
+func (ls SelectCommand) HasLimitCommand() bool {
+	if ls.LimitCommand == nil {
+		return false
+	}
+	return true
+}
+
+// HasOffsetCommand - returns true if optional HasOffsetCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table OFFSET 100;
+// Returns true
+//
+// SELECT * FROM table LIMIT 10;
+// Returns false
+func (ls SelectCommand) HasOffsetCommand() bool {
+	if ls.OffsetCommand == nil {
 		return false
 	}
 	return true
@@ -267,3 +299,21 @@ type SortPattern struct {
 	ColumnName token.Token // column name
 	Order      token.Token // ASC or DESC
 }
+
+// LimitCommand - Part of Command that limits results from SelectCommand
+type LimitCommand struct {
+	Token token.Token
+	Count int
+}
+
+func (ls LimitCommand) CommandNode()         {}
+func (ls LimitCommand) TokenLiteral() string { return ls.Token.Literal }
+
+// OffsetCommand - Part of Command that skip begging rows from SelectCommand
+type OffsetCommand struct {
+	Token token.Token
+	Count int
+}
+
+func (ls OffsetCommand) CommandNode()         {}
+func (ls OffsetCommand) TokenLiteral() string { return ls.Token.Literal }

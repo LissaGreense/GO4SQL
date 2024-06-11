@@ -5,6 +5,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/token"
+	"strconv"
 )
 
 // Parser - Contain token that is currently analyzed by parser and the next one. Lexer is used to tokenize the client
@@ -254,7 +255,7 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	parser.nextToken()
 
 	// expect SEMICOLON or WHERE
-	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER})
+	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET})
 	if err != nil {
 		return nil, err
 	}
@@ -376,6 +377,9 @@ func (parser *Parser) parseOrderByCommand() (ast.Command, error) {
 
 	// ensure that loop below will execute at least once
 	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	if err != nil {
+		return nil, err
+	}
 
 	// array of SortPattern
 	for parser.currentToken.Type == token.IDENT {
@@ -405,9 +409,79 @@ func (parser *Parser) parseOrderByCommand() (ast.Command, error) {
 		parser.nextToken()
 	}
 
-	err = validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
+	parser.skipIfCurrentTokenIsSemicolon()
 
-	return orderCommand, err
+	return orderCommand, nil
+}
+
+// parseLimitCommand - Return ast.parseLimitCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.parseLimitCommand:
+// LIMIT 10
+func (parser *Parser) parseLimitCommand() (ast.Command, error) {
+	// token.LIMIT already at current position in parser
+	limitCommand := &ast.LimitCommand{Token: parser.currentToken}
+
+	// token.LIMIT no longer needed
+	parser.nextToken()
+
+	err := validateToken(parser.currentToken.Type, []token.Type{token.LITERAL})
+	if err != nil {
+		return nil, err
+	}
+
+	// convert count number to int
+	count, err := strconv.Atoi(parser.currentToken.Literal)
+	if err != nil {
+		return nil, err
+	}
+
+	if count < 0 {
+		return nil, fmt.Errorf("limit value should be more than 0")
+	}
+
+	limitCommand.Count = count
+
+	// Skip token.IDENT
+	parser.nextToken()
+
+	parser.skipIfCurrentTokenIsSemicolon()
+
+	return limitCommand, nil
+}
+
+// parseOffsetCommand - Return ast.parseOffsetCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.parseLimitCommand:
+// OFFSET 10
+func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
+	// token.OFFSET already at current position in parser
+	offsetCommand := &ast.OffsetCommand{Token: parser.currentToken}
+
+	// token.OFFSET no longer needed
+	parser.nextToken()
+
+	err := validateToken(parser.currentToken.Type, []token.Type{token.LITERAL})
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := strconv.Atoi(parser.currentToken.Literal)
+	if err != nil {
+		return nil, err
+	}
+	if count < 0 {
+		return nil, fmt.Errorf("limit value should be more than 0")
+	}
+
+	offsetCommand.Count = count
+
+	// Skip token.IDENT
+	parser.nextToken()
+
+	parser.skipIfCurrentTokenIsSemicolon()
+
+	return offsetCommand, nil
 }
 
 // getExpression - Return proper structure of ast.Expression and validate the syntax
@@ -601,6 +675,34 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				return nil, err
 			}
 			selectCommand.OrderByCommand = newCommand.(*ast.OrderByCommand)
+		case token.LIMIT:
+			lastCommand, parserError := parser.getLastCommand(sequence)
+			if parserError != nil {
+				return nil, parserError
+			}
+			if lastCommand.TokenLiteral() != token.SELECT {
+				return nil, fmt.Errorf("syntax error, LIMIT command needs SELECT command before")
+			}
+			selectCommand := lastCommand.(*ast.SelectCommand)
+			newCommand, err := parser.parseLimitCommand()
+			if err != nil {
+				return nil, err
+			}
+			selectCommand.LimitCommand = newCommand.(*ast.LimitCommand)
+		case token.OFFSET:
+			lastCommand, parserError := parser.getLastCommand(sequence)
+			if parserError != nil {
+				return nil, parserError
+			}
+			if lastCommand.TokenLiteral() != token.SELECT {
+				return nil, fmt.Errorf("syntax error, OFFSET command needs SELECT command before")
+			}
+			selectCommand := lastCommand.(*ast.SelectCommand)
+			newCommand, err := parser.parseOffsetCommand()
+			if err != nil {
+				return nil, err
+			}
+			selectCommand.OffsetCommand = newCommand.(*ast.OffsetCommand)
 		default:
 			return nil, fmt.Errorf("syntax error, invalid command found: %s", parser.currentToken.Literal)
 		}

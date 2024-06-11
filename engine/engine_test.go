@@ -322,6 +322,161 @@ func TestOrderByWithMultipleSorts(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestLimit(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',		3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 		1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 	2, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',		2, 	55, 'ba'  );",
+			"INSERT INTO tb1 VALUES( 'welcome',		2, 	66, 'bb'  );",
+			"INSERT INTO tb1 VALUES( 'seeYouLater', 2, 	95, 'ab'  );",
+		},
+		selectInput: "SELECT one FROM tb1 LIMIT 2;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"hello"},
+			{"byebye"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestLimitEqualToZero(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',		3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 		1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 	2, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',		2, 	55, 'ba'  );",
+			"INSERT INTO tb1 VALUES( 'welcome',		2, 	66, 'bb'  );",
+			"INSERT INTO tb1 VALUES( 'seeYouLater', 2, 	95, 'ab'  );",
+		},
+		selectInput: "SELECT one FROM tb1 LIMIT 0;",
+		expectedOutput: [][]string{
+			{"one"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestLimitThatIsMoreThanSize(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',		3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 		1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 	2, 	22, 'aa'  );",
+		},
+		selectInput: "SELECT one FROM tb1 LIMIT 666;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"hello"},
+			{"byebye"},
+			{"goodbye"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOffset(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 4, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
+		},
+		selectInput: "SELECT one FROM tb1 OFFSET 3;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"sorry"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOffsetThatOverExceedSize(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 4, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
+		},
+		selectInput: "SELECT one FROM tb1 WHERE TRUE ORDER BY two ASC OFFSET 4;",
+		expectedOutput: [][]string{
+			{"one"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOffsetEqualToZero(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 4, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
+		},
+		selectInput: "SELECT one FROM tb1 OFFSET 0;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"hello"},
+			{"byebye"},
+			{"goodbye"},
+			{"sorry"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestLimitAndOffset(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'aa'  );",
+			"INSERT INTO tb1 VALUES( 'sorry',   2, 	55, 'ba'  );",
+		},
+		selectInput: "SELECT one FROM tb1 WHERE TRUE ORDER BY two ASC, four DESC LIMIT 2 OFFSET 2;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"goodbye"},
+			{"hello"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineDBContentTestSuite struct {
 	inputs             []string
 	expectedTableNames []string

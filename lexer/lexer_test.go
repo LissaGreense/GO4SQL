@@ -251,6 +251,23 @@ func TestDropStatement(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestLimitAndOffsetStatement(t *testing.T) {
+	input := `LIMIT 5 OFFSET 6;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.LIMIT, "LIMIT"},
+		{token.LITERAL, "5"},
+		{token.OFFSET, "OFFSET"},
+		{token.LITERAL, "6"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func runLexerTestSuite(t *testing.T, input string, tests []struct {
 	expectedType    token.Type
 	expectedLiteral string

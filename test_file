@@ -6,6 +6,9 @@
 		SELECT one, three FROM tbl WHERE two NOT 3;
 		SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL 3;
 		SELECT * FROM tbl WHERE FALSE;
+		SELECT * FROM tbl LIMIT 1;
+		SELECT * FROM tbl OFFSET 1;
+		SELECT * FROM tbl LIMIT 1 OFFSET 1;
 		DELETE FROM tbl WHERE one EQUAL 'byebye';
 		SELECT * FROM tbl;
 		SELECT one FROM tbl WHERE TRUE ORDER BY two ASC, four DESC;

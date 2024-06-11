@@ -46,6 +46,14 @@ Currently, there are 3 modes to chose from:
   First column is called ``one`` and it contains strings (keyword ``TEXT``), second
   one is called ``two`` and it contains integers (keyword ``INT``).
 
+* ***DROP TABLE*** - you can destroy the table of name ``table1`` using
+  command:
+  ```sql
+  DROP TABLE table1;
+  ```
+  After using this command table1 will no longer be available and all data connected to it (column 
+  definitions and inserted values) will be lost.
+
 
 * ***INSERT INTO*** - you can insert values into table called ``table1`` with
   command:
@@ -93,6 +101,28 @@ Currently, there are 3 modes to chose from:
   ```
   In this case, this command will order by ``column1`` in ascending order, but if some rows have the
   same ``column1``, it orders them by column2 in descending order.
+
+* ***LIMIT***  is used to reduce number of rows printed out by returning only specified number of
+  records with ``SELECT`` like this:
+  ```sql
+  SELECT column1, column2,
+  FROM table_name
+  ORDER BY column1 ASC
+  LIMIT 5;
+  ```
+  In this case, this command will order by ``column1`` in ascending order and return 5 first records.
+
+
+* ***OFFSET***  is used to reduce number of rows printed out by not skipping specified numbers of
+  rows in returned output with ``SELECT`` like this:
+  ```sql
+  SELECT column1, column2,
+  FROM table_name
+  ORDER BY column1 ASC
+  LIMIT 5 OFFSET 3;
+  ```
+  In this case, this command will order by ``column1`` in ascending order and skip 3 first records, 
+  then return records from 4th to 8th.
 
 ## UNIT TESTS
 

@@ -315,6 +315,113 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 	testOrderByCommands(t, expectedOrderByCommand, selectCommand.OrderByCommand)
 }
 
+func TestSelectWithLimitCommand(t *testing.T) {
+	input := "SELECT * FROM tableName LIMIT 5;"
+	expectedLimitCommand := ast.LimitCommand{
+		Token: token.Token{Type: token.LIMIT, Literal: "LIMIT"},
+		Count: 5,
+	}
+	expectedTableName := "tableName"
+	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+		return
+	}
+
+	if !selectCommand.HasLimitCommand() {
+		t.Fatalf("sequences does not contain where command")
+	}
+
+	testLimitCommands(t, expectedLimitCommand, selectCommand.LimitCommand)
+}
+
+func TestSelectWithOffsetCommand(t *testing.T) {
+	input := "SELECT * FROM tableName OFFSET 5;"
+	expectedOffsetCommand := ast.OffsetCommand{
+		Token: token.Token{Type: token.OFFSET, Literal: "OFFSET"},
+		Count: 5,
+	}
+
+	expectedTableName := "tableName"
+	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+		return
+	}
+
+	if !selectCommand.HasOffsetCommand() {
+		t.Fatalf("select command should have offset command")
+	}
+	testOffsetCommands(t, expectedOffsetCommand, selectCommand.OffsetCommand)
+}
+
+func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
+	input := "SELECT * FROM tableName ORDER BY colName1 DESC LIMIT 2 OFFSET 13;"
+	expectedLimitCommand := ast.LimitCommand{
+		Token: token.Token{Type: token.LIMIT, Literal: "LIMIT"},
+		Count: 2,
+	}
+	expectedOffsetCommand := ast.OffsetCommand{
+		Token: token.Token{Type: token.OFFSET, Literal: "OFFSET"},
+		Count: 13,
+	}
+	expectedTableName := "tableName"
+	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+		return
+	}
+
+	if !selectCommand.HasLimitCommand() {
+		t.Fatalf("select command should have limit command")
+	}
+	if !selectCommand.HasOffsetCommand() {
+		t.Fatalf("select command should have offset command")
+	}
+
+	testLimitCommands(t, expectedLimitCommand, selectCommand.LimitCommand)
+	testOffsetCommands(t, expectedOffsetCommand, selectCommand.OffsetCommand)
+}
+
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
 	firstExpression := ast.OperationExpression{
@@ -476,9 +583,33 @@ func testOrderByCommands(t *testing.T, expectedOrderByCommand ast.OrderByCommand
 			t.Errorf("Expecting Column Name: %s, got: %s", expectedSortPattern.ColumnName.Literal, actualOrderByCommand.SortPatterns[i].ColumnName.Literal)
 		}
 	}
-
 }
 
+func testLimitCommands(t *testing.T, expectedLimitCommand ast.LimitCommand, actualLimitCommand *ast.LimitCommand) {
+
+	if expectedLimitCommand.Token.Type != actualLimitCommand.Token.Type {
+		t.Errorf("Expecting Token TokenType: %q, got: %q", expectedLimitCommand.Token.Type, actualLimitCommand.Token.Type)
+	}
+	if expectedLimitCommand.Token.Literal != actualLimitCommand.Token.Literal {
+		t.Errorf("Expecting Token Literal: %s, got: %s", expectedLimitCommand.Token.Literal, actualLimitCommand.Token.Literal)
+	}
+	if expectedLimitCommand.Count != actualLimitCommand.Count {
+		t.Errorf("Expecting Count to have value: %d, got: %d", expectedLimitCommand.Count, actualLimitCommand.Count)
+	}
+}
+
+func testOffsetCommands(t *testing.T, expectedOffsetCommand ast.OffsetCommand, actualOffsetCommand *ast.OffsetCommand) {
+
+	if expectedOffsetCommand.Token.Type != actualOffsetCommand.Token.Type {
+		t.Errorf("Expecting Token TokenType: %q, got: %q", expectedOffsetCommand.Token.Type, actualOffsetCommand.Token.Type)
+	}
+	if expectedOffsetCommand.Token.Literal != actualOffsetCommand.Token.Literal {
+		t.Errorf("Expecting Token Literal: %s, got: %s", expectedOffsetCommand.Token.Literal, actualOffsetCommand.Token.Literal)
+	}
+	if expectedOffsetCommand.Count != actualOffsetCommand.Count {
+		t.Errorf("Expecting Count to have value: %d, got: %d", expectedOffsetCommand.Count, actualOffsetCommand.Count)
+	}
+}
 func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 
 	booleanExpression, booleanExpressionIsValid := first.(*ast.BooleanExpression)
