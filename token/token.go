@@ -45,6 +45,10 @@ const (
 	DESC   = "DESC"
 	LIMIT  = "LIMIT"
 	OFFSET = "OFFSET"
+	UPDATE = "UPDATE"
+	SET    = "SET"
+
+	TO = "TO"
 
 	// EQUAL - Logical operations
 	EQUAL = "EQUAL"
@@ -79,6 +83,9 @@ var keywords = map[string]Type{
 	"DESC":   DESC,
 	"LIMIT":  LIMIT,
 	"OFFSET": OFFSET,
+	"UPDATE": UPDATE,
+	"SET":    SET,
+	"TO":     TO,
 	"VALUES": VALUES,
 	"WHERE":  WHERE,
 	"EQUAL":  EQUAL,

@@ -230,6 +230,35 @@ func (ls SelectCommand) HasOffsetCommand() bool {
 	return true
 }
 
+// UpdateCommand - Part of Command that allow to change existing data
+//
+// Example:
+// UPDATE table SET col1 TO 2 WHERE column1 NOT 'hi';
+type UpdateCommand struct {
+	Token        token.Token
+	Name         Identifier                    // ex. name of table
+	Changes      map[token.Token]Anonymitifier // column names with new values
+	WhereCommand *WhereCommand                 // optional
+}
+
+func (ls UpdateCommand) CommandNode()         {}
+func (ls UpdateCommand) TokenLiteral() string { return ls.Token.Literal }
+
+// HasWhereCommand - returns true if optional HasWhereCommand is present in UpdateCommand
+//
+// Example:
+// UPDATE table SET col1 TO 2 WHERE column1 NOT 'hi';
+// Returns true
+//
+// UPDATE table SET col1 TO 2;
+// Returns false
+func (ls UpdateCommand) HasWhereCommand() bool {
+	if ls.WhereCommand == nil {
+		return false
+	}
+	return true
+}
+
 // WhereCommand - Part of Command that represent Where statement with expression that will qualify values from Select
 //
 // Example:

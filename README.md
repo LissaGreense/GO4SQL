@@ -63,6 +63,14 @@ Currently, there are 3 modes to chose from:
   Please note that the number of arguments and types of the values
   must be the same as you declared with ``CREATE``.
 
+* ***UPDATE*** - you can update values in table called ``table1`` with command:
+  ```sql
+  UPDATE table1
+  SET column_name_1 TO new_value_1, column_name_2 TO new_value_2
+  WHERE id EQUAL 1;
+  ```
+  It will update all rows where column ``id`` is equal to ``1`` by replacing value in
+  ``column_name_1`` with ``new_value_1`` and ``column_name_2`` with ``new_value_2``.
 
 * ***SELECT FROM*** - you can either select everything from  ``table1`` with:
   ```SELECT * FROM table1;```

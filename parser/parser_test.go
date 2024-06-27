@@ -422,6 +422,94 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 	testOffsetCommands(t, expectedOffsetCommand, selectCommand.OffsetCommand)
 }
 
+func TestParseUpdateCommand(t *testing.T) {
+	tests := []struct {
+		input             string
+		expectedTableName string
+		expectedChanges   map[token.Token]ast.Anonymitifier
+	}{
+		{input: "UPDATE tbl SET colName TO 5;", expectedTableName: "tbl", expectedChanges: map[token.Token]ast.Anonymitifier{
+			{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+		},
+		},
+		{input: "UPDATE tbl1 SET colName1 TO 'hi hello', colName2 TO 5;", expectedTableName: "tbl1", expectedChanges: map[token.Token]ast.Anonymitifier{
+			{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.IDENT, Literal: "hi hello"}},
+			{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+		},
+		},
+	}
+
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
+
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+		}
+
+		if !testUpdateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedChanges) {
+			return
+		}
+	}
+}
+
+func TestParseUpdateCommandWithWhere(t *testing.T) {
+	tests := []struct {
+		input                string
+		expectedTableName    string
+		expectedChanges      map[token.Token]ast.Anonymitifier
+		expectedWhereCommand ast.Expression
+	}{
+		{
+			input:             "UPDATE tbl SET colName TO 5 WHERE id EQUAL 3;",
+			expectedTableName: "tbl",
+			expectedChanges: map[token.Token]ast.Anonymitifier{
+				{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+			},
+			expectedWhereCommand: ast.ConditionExpression{
+				Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "id"}},
+				Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "3"}},
+				Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("Got error from parser: %s", err)
+		}
+
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+		}
+
+		actualUpdateCommand, ok := sequences.Commands[0].(*ast.UpdateCommand)
+
+		if !ok {
+			t.Errorf("actualUpdateCommand is not %T. got=%T", &ast.UpdateCommand{}, sequences.Commands[0])
+		}
+
+		if !testUpdateStatement(t, actualUpdateCommand, tt.expectedTableName, tt.expectedChanges) {
+			return
+		}
+
+		if !actualUpdateCommand.HasWhereCommand() {
+			t.Errorf("actualUpdateCommand should have where command")
+		}
+
+		if !whereStatementIsValid(t, actualUpdateCommand.WhereCommand, tt.expectedWhereCommand) {
+			return
+		}
+	}
+}
+
 func TestParseLogicOperatorsInCommand(t *testing.T) {
 
 	firstExpression := ast.OperationExpression{
@@ -519,6 +607,29 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 	return true
 }
 
+func testUpdateStatement(t *testing.T, command ast.Command, expectedTableName string, expectedChanges map[token.Token]ast.Anonymitifier) bool {
+	if command.TokenLiteral() != "UPDATE" {
+		t.Errorf("command.TokenLiteral() not 'UPDATE'. got=%q", command.TokenLiteral())
+		return false
+	}
+	actualUpdateCommand, ok := command.(*ast.UpdateCommand)
+
+	if !ok {
+		t.Errorf("actualUpdateCommand is not %T. got=%T", &ast.UpdateCommand{}, command)
+		return false
+	}
+	if actualUpdateCommand.Name.Token.Literal != expectedTableName {
+		t.Errorf("%s != %s", actualUpdateCommand.TokenLiteral(), expectedTableName)
+		return false
+	}
+	if !tokenMapEquals(actualUpdateCommand.Changes, expectedChanges) {
+		t.Errorf("")
+		return false
+	}
+
+	return true
+}
+
 func whereStatementIsValid(t *testing.T, command ast.Command, expectedExpression ast.Expression) bool {
 	if command.TokenLiteral() != "WHERE" {
 		t.Errorf("command.TokenLiteral() not 'WHERE'. got=%q", command.TokenLiteral())
@@ -557,6 +668,18 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 	}
 	for i, v := range a {
 		if v.Literal != b[i].Literal {
+			return false
+		}
+	}
+	return true
+}
+
+func tokenMapEquals(a map[token.Token]ast.Anonymitifier, b map[token.Token]ast.Anonymitifier) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if v.GetToken().Literal != b[k].GetToken().Literal {
 			return false
 		}
 	}

@@ -255,6 +255,52 @@ func TestDelete(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestUpdateWithWhere(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+			"UPDATE tb1 SET one TO 'hi hello', three TO 5 WHERE two EQUAL 3;",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"hi hello", "3", "5", "e"},
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestUpdateWithoutWhere(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+			"UPDATE tb1 SET one TO 'hi hello', three TO 5;",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hi hello", "1", "5", "q"},
+			{"hi hello", "3", "5", "e"},
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestOrderBy(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

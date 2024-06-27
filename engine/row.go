@@ -12,11 +12,16 @@ func MapTableToRows(table *Table) Rows {
 	numberOfRows := len(table.Columns[0].Values)
 
 	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
-		row := make(map[string]ValueInterface)
-		for _, column := range table.Columns {
-			row[column.Name] = column.Values[rowIndex]
-		}
+		row := getRow(table, rowIndex)
 		rows = append(rows, row)
 	}
 	return Rows{rows: rows}
+}
+
+func getRow(table *Table, rowIndex int) map[string]ValueInterface {
+	row := make(map[string]ValueInterface)
+	for _, column := range table.Columns {
+		row[column.Name] = column.Values[rowIndex]
+	}
+	return row
 }

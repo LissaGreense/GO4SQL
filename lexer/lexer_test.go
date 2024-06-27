@@ -6,7 +6,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/token"
 )
 
-func TestLexer(t *testing.T) {
+func TestLexerWithInsertCommand(t *testing.T) {
 	input :=
 		`
 			CREATE TABLE 	1tbl( one TEXT , two INT );
@@ -58,7 +58,41 @@ func TestLexer(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
-func TestLexerWithNumbersMixedInLitterals(t *testing.T) {
+func TestLexerWithUpdateCommand(t *testing.T) {
+	input :=
+		`
+			UPDATE table1
+			SET column_name_1 TO 'UPDATE', column_name_2 TO 42
+			WHERE column_name_3 EQUAL 1;
+			`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.UPDATE, "UPDATE"},
+		{token.IDENT, "table1"},
+		{token.SET, "SET"},
+		{token.IDENT, "column_name_1"},
+		{token.TO, "TO"},
+		{token.APOSTROPHE, "'"},
+		{token.IDENT, "UPDATE"},
+		{token.APOSTROPHE, "'"},
+		{token.COMMA, ","},
+		{token.IDENT, "column_name_2"},
+		{token.TO, "TO"},
+		{token.LITERAL, "42"},
+		{token.WHERE, "WHERE"},
+		{token.IDENT, "column_name_3"},
+		{token.EQUAL, "EQUAL"},
+		{token.LITERAL, "1"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
+func TestLexerWithNumbersMixedInLiterals(t *testing.T) {
 	input :=
 		`
 			CREATE TABLE 	tbl2( one TEXT , two INT );
