@@ -12,4 +12,6 @@
 		DELETE FROM tbl WHERE one EQUAL 'byebye';
 		SELECT * FROM tbl;
 		SELECT one FROM tbl WHERE TRUE ORDER BY two ASC, four DESC;
+		UPDATE tbl SET two TO 5, four TO 'P' WHERE one EQUAL 'goodbye';
+		SELECT * FROM tbl;
 		DROP TABLE tbl;

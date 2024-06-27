@@ -484,6 +484,78 @@ func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
 	return offsetCommand, nil
 }
 
+// parseUpdateCommand - Return ast.parseUpdateCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.parseUpdateCommand:
+// UPDATE table SET col1 TO 'value' WHERE col2 EQUAL 10;
+func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
+	// token.UPDATE already at current position in parser
+	updateCommand := &ast.UpdateCommand{Token: parser.currentToken}
+
+	// Ignore token.UPDATE
+	parser.nextToken()
+
+	// Get table name
+	err := validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	if err != nil {
+		return nil, err
+	}
+	updateCommand.Name = ast.Identifier{Token: parser.currentToken}
+
+	// Ignore token.INDENT
+	parser.nextToken()
+
+	err = validateToken(parser.currentToken.Type, []token.Type{token.SET})
+	if err != nil {
+		return nil, err
+	}
+
+	// Ignore token.SET
+	parser.nextToken()
+
+	updateCommand.Changes = make(map[token.Token]ast.Anonymitifier)
+	for parser.currentToken.Type == token.IDENT {
+		// Get column name
+		err := validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+		if err != nil {
+			return nil, err
+		}
+		colKey := parser.currentToken
+
+		// skip column name
+		parser.nextToken()
+
+		err = validateToken(parser.currentToken.Type, []token.Type{token.TO})
+		if err != nil {
+			return nil, err
+		}
+		// skip token.TO
+		parser.nextToken()
+
+		parser.skipIfCurrentTokenIsApostrophe()
+		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+		if err != nil {
+			return nil, err
+		}
+		updateCommand.Changes[colKey] = ast.Anonymitifier{Token: parser.currentToken}
+
+		// skip token.IDENT or token.LITERAL
+		parser.nextToken()
+		parser.skipIfCurrentTokenIsApostrophe()
+
+		if parser.currentToken.Type != token.COMMA {
+			break
+		}
+
+		// Skip token.COMMA
+		parser.nextToken()
+	}
+
+	parser.skipIfCurrentTokenIsSemicolon()
+
+	return updateCommand, nil
+}
+
 // getExpression - Return proper structure of ast.Expression and validate the syntax
 //
 // Available expressions:
@@ -632,6 +704,8 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			command, err = parser.parseCreateCommand()
 		case token.INSERT:
 			command, err = parser.parseInsertCommand()
+		case token.UPDATE:
+			command, err = parser.parseUpdateCommand()
 		case token.SELECT:
 			command, err = parser.parseSelectCommand()
 		case token.DELETE:
@@ -656,6 +730,12 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 					return nil, err
 				}
 				lastCommand.(*ast.DeleteCommand).WhereCommand = newCommand.(*ast.WhereCommand)
+			} else if lastCommand.TokenLiteral() == token.UPDATE {
+				newCommand, err := parser.parseWhereCommand()
+				if err != nil {
+					return nil, err
+				}
+				lastCommand.(*ast.UpdateCommand).WhereCommand = newCommand.(*ast.WhereCommand)
 			} else {
 				return nil, fmt.Errorf("syntax error, WHERE command needs SELECT or DELETE command before")
 			}

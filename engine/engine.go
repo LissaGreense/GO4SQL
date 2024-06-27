@@ -72,6 +72,13 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			engine.dropTable(mappedCommand)
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
+		case *ast.UpdateCommand:
+			err := engine.updateTable(mappedCommand)
+			if err != nil {
+				return "", err
+			}
+			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
+			continue
 		default:
 			return "", fmt.Errorf("unsupported Command detected: %v", command)
 		}
@@ -137,6 +144,52 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 				Name:   columnName,
 			})
 	}
+	return nil
+}
+
+func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
+	table, exist := engine.Tables[command.Name.Token.Literal]
+
+	if !exist {
+		return fmt.Errorf("table with the name of %s doesn't exist", command.Name.Token.Literal)
+	}
+
+	columns := table.Columns
+
+	// TODO: This could be optimized
+	mappedChanges := make(map[int]ast.Anonymitifier)
+	for updatedCol, newValue := range command.Changes {
+		for colIndex := 0; colIndex < len(columns); colIndex++ {
+			if columns[colIndex].Name == updatedCol.Literal {
+				mappedChanges[colIndex] = newValue
+				break
+			}
+			if colIndex == len(columns)-1 {
+				return fmt.Errorf("column with the name of %s doesn't exist in table %s", updatedCol.Literal, command.Name.GetToken().Literal)
+			}
+		}
+	}
+
+	numberOfRows := len(columns[0].Values)
+	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
+		if command.HasWhereCommand() {
+			fulfilledFilters, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression)
+			if err != nil {
+				return err
+			}
+			if !fulfilledFilters {
+				continue
+			}
+		}
+		for colIndex, value := range mappedChanges {
+			interfaceValue, err := getInterfaceValue(value.GetToken())
+			if err != nil {
+				return err
+			}
+			table.Columns[colIndex].Values[rowIndex] = interfaceValue
+		}
+	}
+
 	return nil
 }
 
