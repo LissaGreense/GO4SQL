@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -49,13 +48,9 @@ func validateTokenAndSkip(parser *Parser, expectedTokens []token.Type) error {
 // validateToken - Check if current token type is appearing in provided expectedTokens array
 func validateToken(tokenType token.Type, expectedTokens []token.Type) error {
 	var contains = false
-	var tokensPrintMessage = ""
-	for i, x := range expectedTokens {
-		if i == 0 {
-			tokensPrintMessage += string(x)
-		} else {
-			tokensPrintMessage += ", or: " + string(x)
-		}
+	expectedTokensStrings := make([]string, 0)
+	for _, x := range expectedTokens {
+		expectedTokensStrings = append(expectedTokensStrings, string(x))
 
 		if x == tokenType {
 			contains = true
@@ -63,7 +58,7 @@ func validateToken(tokenType token.Type, expectedTokens []token.Type) error {
 		}
 	}
 	if !contains {
-		return fmt.Errorf("syntax error, expecting: %s, got: %s", tokensPrintMessage, string(tokenType))
+		return &SyntaxError{expectedTokensStrings, string(tokenType)}
 	}
 	return nil
 }
@@ -205,10 +200,12 @@ func (parser *Parser) parseInsertCommand() (ast.Command, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 	if err != nil {
 		return nil, err
 	}
+
 	return insertCommand, nil
 }
 
@@ -223,6 +220,10 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	// Ignore token.SELECT
 	parser.nextToken()
 
+	err := validateToken(parser.currentToken.Type, []token.Type{token.ASTERISK, token.IDENT})
+	if err != nil {
+		return nil, err
+	}
 	if parser.currentToken.Type == token.ASTERISK {
 		selectCommand.Space = append(selectCommand.Space, parser.currentToken)
 		parser.nextToken()
@@ -245,13 +246,18 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 		}
 	}
 
-	err := validateTokenAndSkip(parser, []token.Type{token.FROM})
+	err = validateTokenAndSkip(parser, []token.Type{token.FROM})
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
 	if err != nil {
 		return nil, err
 	}
 
 	selectCommand.Name = ast.Identifier{Token: parser.currentToken}
-	// Ignore token.INDENT
+	// Ignore token.IDENT
 	parser.nextToken()
 
 	// expect SEMICOLON or WHERE
@@ -285,7 +291,7 @@ func (parser *Parser) parseWhereCommand() (ast.Command, error) {
 	}
 
 	if !expressionIsValid {
-		return nil, fmt.Errorf("expression withing Where statement couldn't be parsed correctly")
+		return nil, &LogicalExpressionParsingError{}
 	}
 
 	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.ORDER})
@@ -354,9 +360,9 @@ func (parser *Parser) parseDropCommand() (ast.Command, error) {
 	// token.IDENT no longer needed
 	parser.nextToken()
 
-	parser.skipIfCurrentTokenIsSemicolon()
+	err = validateTokenAndSkip(parser, []token.Type{token.SEMICOLON})
 
-	return dropCommand, nil
+	return dropCommand, err
 }
 
 // parseOrderByCommand - Return ast.OrderByCommand created from tokens and validate the syntax
@@ -437,7 +443,7 @@ func (parser *Parser) parseLimitCommand() (ast.Command, error) {
 	}
 
 	if count < 0 {
-		return nil, fmt.Errorf("limit value should be more than 0")
+		return nil, &ArithmeticLessThanZeroParserError{variable: "limit"}
 	}
 
 	limitCommand.Count = count
@@ -471,7 +477,7 @@ func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
 		return nil, err
 	}
 	if count < 0 {
-		return nil, fmt.Errorf("limit value should be more than 0")
+		return nil, &ArithmeticLessThanZeroParserError{variable: "offset"}
 	}
 
 	offsetCommand.Count = count
@@ -502,16 +508,18 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 	}
 	updateCommand.Name = ast.Identifier{Token: parser.currentToken}
 
-	// Ignore token.INDENT
+	// Ignore token.IDENT
 	parser.nextToken()
 
-	err = validateToken(parser.currentToken.Type, []token.Type{token.SET})
+	err = validateTokenAndSkip(parser, []token.Type{token.SET})
 	if err != nil {
 		return nil, err
 	}
 
-	// Ignore token.SET
-	parser.nextToken()
+	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	if err != nil {
+		return nil, err
+	}
 
 	updateCommand.Changes = make(map[token.Token]ast.Anonymitifier)
 	for parser.currentToken.Type == token.IDENT {
@@ -551,8 +559,11 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 		parser.nextToken()
 	}
 
+	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE})
+	if err != nil {
+		return nil, err
+	}
 	parser.skipIfCurrentTokenIsSemicolon()
-
 	return updateCommand, nil
 }
 
@@ -612,7 +623,7 @@ func (parser *Parser) getOperationExpression(booleanExpressionExists bool, condi
 			return false, nil, err
 		}
 		if !expressionIsValid {
-			return false, nil, fmt.Errorf("couldn't parse right side of the OperationExpression after %s token", operationExpression.Operation.Literal)
+			return false, nil, &LogicalExpressionParsingError{afterToken: &operationExpression.Operation.Literal}
 		}
 
 		operationExpression.Right = expression
@@ -683,7 +694,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
 	default:
-		return false, nil, fmt.Errorf("syntax error, expecting: { %s, %s, %s }, got: %s", token.APOSTROPHE, token.IDENT, token.LITERAL, parser.currentToken.Literal)
+		return false, nil, &SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL}, got: parser.currentToken.Literal}
 	}
 
 	return true, conditionalExpression, nil
@@ -713,7 +724,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 		case token.DROP:
 			command, err = parser.parseDropCommand()
 		case token.WHERE:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.WHERE)
 			if parserError != nil {
 				return nil, parserError
 			}
@@ -737,16 +748,16 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				}
 				lastCommand.(*ast.UpdateCommand).WhereCommand = newCommand.(*ast.WhereCommand)
 			} else {
-				return nil, fmt.Errorf("syntax error, WHERE command needs SELECT or DELETE command before")
+				return nil, &SyntaxCommandExpectedError{command: "WHERE", neededCommands: []string{"SELECT", "DELETE", "UPDATE"}}
 			}
 		case token.ORDER:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.ORDER)
 			if parserError != nil {
 				return nil, parserError
 			}
 
 			if lastCommand.TokenLiteral() != token.SELECT {
-				return nil, fmt.Errorf("syntax error, ORDER BY command needs SELECT command before")
+				return nil, &SyntaxCommandExpectedError{command: "ORDER BY", neededCommands: []string{"SELECT"}}
 			}
 
 			selectCommand := lastCommand.(*ast.SelectCommand)
@@ -756,12 +767,12 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.OrderByCommand = newCommand.(*ast.OrderByCommand)
 		case token.LIMIT:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.LIMIT)
 			if parserError != nil {
 				return nil, parserError
 			}
 			if lastCommand.TokenLiteral() != token.SELECT {
-				return nil, fmt.Errorf("syntax error, LIMIT command needs SELECT command before")
+				return nil, &SyntaxCommandExpectedError{command: "LIMIT", neededCommands: []string{"SELECT"}}
 			}
 			selectCommand := lastCommand.(*ast.SelectCommand)
 			newCommand, err := parser.parseLimitCommand()
@@ -770,12 +781,12 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.LimitCommand = newCommand.(*ast.LimitCommand)
 		case token.OFFSET:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.OFFSET)
 			if parserError != nil {
 				return nil, parserError
 			}
 			if lastCommand.TokenLiteral() != token.SELECT {
-				return nil, fmt.Errorf("syntax error, OFFSET command needs SELECT command before")
+				return nil, &SyntaxCommandExpectedError{command: "OFFSET", neededCommands: []string{"SELECT"}}
 			}
 			selectCommand := lastCommand.(*ast.SelectCommand)
 			newCommand, err := parser.parseOffsetCommand()
@@ -784,7 +795,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.OffsetCommand = newCommand.(*ast.OffsetCommand)
 		default:
-			return nil, fmt.Errorf("syntax error, invalid command found: %s", parser.currentToken.Literal)
+			return nil, &SyntaxInvalidCommandError{invalidCommand: parser.currentToken.Literal}
 		}
 
 		if err != nil {
@@ -800,9 +811,9 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 	return sequence, nil
 }
 
-func (parser *Parser) getLastCommand(sequence *ast.Sequence) (ast.Command, error) {
+func (parser *Parser) getLastCommand(sequence *ast.Sequence, currentToken string) (ast.Command, error) {
 	if len(sequence.Commands) == 0 {
-		return nil, fmt.Errorf("syntax error, Where Command can't be used without predecessor")
+		return nil, &NoPredecessorParserError{command: currentToken}
 	}
 	lastCommand := sequence.Commands[len(sequence.Commands)-1]
 	return lastCommand, nil

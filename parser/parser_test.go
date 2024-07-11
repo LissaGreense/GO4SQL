@@ -20,16 +20,16 @@ func TestParserCreateCommand(t *testing.T) {
 		{"CREATE TABLE 	TBL(  );", "TBL", []string{}, []token.Token{}},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
 		if err != nil {
-			t.Fatalf("Got error from parser: %s", err)
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		if !testCreateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumnNames, tt.expectedColumTypes) {
@@ -79,16 +79,16 @@ func TestParseInsertCommand(t *testing.T) {
 		{"INSERT INTO TBL VALUES( 'HELLO',	 10 , 'LOL');", "TBL", []token.Token{{Type: token.IDENT, Literal: "HELLO"}, {Type: token.LITERAL, Literal: "10"}, {Type: token.IDENT, Literal: "LOL"}}},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
 		if err != nil {
-			t.Fatalf("Got error from parser: %s", err)
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		if !testInsertStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedValuesTokens) {
@@ -130,19 +130,18 @@ func TestParseSelectCommand(t *testing.T) {
 	}{
 		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}},
 		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}},
-		{"SELECT FROM TBL;", "TBL", []token.Token{}},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
 		if err != nil {
-			t.Fatalf("Got error from parser: %s", err)
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns) {
@@ -178,21 +177,21 @@ func TestParseWhereCommand(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
 		if err != nil {
-			t.Fatalf("Got error from parser: %s", err)
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements, got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements, got=%d", testIndex, len(sequences.Commands))
 		}
 
 		selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 		if !selectCommand.HasWhereCommand() {
-			t.Fatalf("sequences does not contain where command")
+			t.Fatalf("[%d] sequences does not contain where command", testIndex)
 		}
 
 		if !whereStatementIsValid(t, selectCommand.WhereCommand, tt.expectedExpression) {
@@ -439,16 +438,16 @@ func TestParseUpdateCommand(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
 		if err != nil {
-			t.Fatalf("Got error from parser: %s", err)
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		if !testUpdateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedChanges) {
@@ -478,7 +477,7 @@ func TestParseUpdateCommandWithWhere(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
@@ -487,13 +486,13 @@ func TestParseUpdateCommandWithWhere(t *testing.T) {
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		actualUpdateCommand, ok := sequences.Commands[0].(*ast.UpdateCommand)
 
 		if !ok {
-			t.Errorf("actualUpdateCommand is not %T. got=%T", &ast.UpdateCommand{}, sequences.Commands[0])
+			t.Errorf("[%d] actualUpdateCommand is not %T. got=%T", testIndex, &ast.UpdateCommand{}, sequences.Commands[0])
 		}
 
 		if !testUpdateStatement(t, actualUpdateCommand, tt.expectedTableName, tt.expectedChanges) {
@@ -501,7 +500,7 @@ func TestParseUpdateCommandWithWhere(t *testing.T) {
 		}
 
 		if !actualUpdateCommand.HasWhereCommand() {
-			t.Errorf("actualUpdateCommand should have where command")
+			t.Errorf("[%d] actualUpdateCommand should have where command", testIndex)
 		}
 
 		if !whereStatementIsValid(t, actualUpdateCommand.WhereCommand, tt.expectedWhereCommand) {
@@ -558,7 +557,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for testIndex, tt := range tests {
 		lexer := lexer.RunLexer(tt.input)
 		parserInstance := New(lexer)
 		sequences, err := parserInstance.ParseSequence()
@@ -567,17 +566,17 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		}
 
 		if len(sequences.Commands) != 1 {
-			t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
 		selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
 		if !selectCommand.HasWhereCommand() {
-			t.Fatalf("sequences does not contain where command")
+			t.Fatalf("[%d] sequences does not contain where command", testIndex)
 		}
 
 		if !whereStatementIsValid(t, selectCommand.WhereCommand, tt.expectedExpression) {
-			t.Fatalf("Actual expression and expected one are different")
+			t.Fatalf("[%d] Actual expression and expected one are different", testIndex)
 		}
 	}
 }
