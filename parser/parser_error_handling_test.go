@@ -16,8 +16,7 @@ func TestParseCreateCommandErrorHandling(t *testing.T) {
 	noTableName := SyntaxError{[]string{token.IDENT}, token.LPAREN}
 	noLeftParen := SyntaxError{[]string{token.LPAREN}, token.IDENT}
 	noRightParen := SyntaxError{[]string{token.RPAREN}, token.SEMICOLON}
-	noColumDefinition := SyntaxError{[]string{token.IDENT}, token.RPAREN}
-	noColumnName := SyntaxError{[]string{token.IDENT}, token.TEXT}
+	noColumnName := SyntaxError{[]string{token.RPAREN}, token.TEXT}
 	noColumnType := SyntaxError{[]string{token.TEXT, token.INT}, token.COMMA}
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON}, ""}
 
@@ -26,7 +25,6 @@ func TestParseCreateCommandErrorHandling(t *testing.T) {
 		{"CREATE TABLE (one TEXT);", noTableName.Error()},
 		{"CREATE TABLE tbl one TEXT);", noLeftParen.Error()},
 		{"CREATE TABLE tbl (one TEXT;", noRightParen.Error()},
-		{"CREATE TABLE tbl ();", noColumDefinition.Error()},
 		{"CREATE TABLE tbl (TEXT, two INT);", noColumnName.Error()},
 		{"CREATE TABLE tbl (one , two INT);", noColumnType.Error()},
 		{"CREATE TABLE tbl (one TEXT, two INT)", noSemicolon.Error()},
@@ -78,18 +76,16 @@ func TestParseUpdateCommandErrorHandling(t *testing.T) {
 	noColumnName := SyntaxError{expecting: []string{token.IDENT}, got: token.LITERAL}
 	noToKeyword := SyntaxError{expecting: []string{token.TO}, got: token.SEMICOLON}
 	noSecondIdentOrLiteralForValue := SyntaxError{expecting: []string{token.IDENT, token.LITERAL}, got: token.SEMICOLON}
-	//noCommaBetweenValues := SyntaxInvalidCommandError{"column_name_2"}
+	noCommaBetweenValues := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.IDENT}
 	noWhereOrSemicolon := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.SELECT}
 
-	// UPDATE table SET col1 TO 'value' WHERE col2 EQUAL 10;
 	tests := []errorHandlingTestSuite{
 		{"UPDATE;", notableName.Error()},
 		{"UPDATE table;", noSetKeyword.Error()},
 		{"UPDATE table SET 2;", noColumnName.Error()},
 		{"UPDATE table SET column_name_1;", noToKeyword.Error()},
 		{"UPDATE table SET column_name_1 TO;", noSecondIdentOrLiteralForValue.Error()},
-		//TODO: ADD no comma handling or not ???
-		//{"UPDATE table SET column_name_1 TO new_value_1 column_name_2 TO new_value_2;", noCommaBetweenValues.Error()},
+		{"UPDATE table SET column_name_1 TO 2 column_name_1 TO 3;", noCommaBetweenValues.Error()},
 		{"UPDATE table SET column_name_1 TO 'new_value_1' SELECT;", noWhereOrSemicolon.Error()},
 	}
 
@@ -108,6 +104,78 @@ func TestParseSelectCommandErrorHandling(t *testing.T) {
 		{"SELECT FROM table;", noColumns.Error()},
 		{"SELECT column1, column2 FROM ;", noTableName.Error()},
 		{"SELECT column1, column2 FROM table", noSemicolon.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+}
+
+func TestParseWhereCommandErrorHandling(t *testing.T) {
+	selectCommandPrefix := "SELECT * FROM tbl "
+	noPredecessorError := NoPredecessorParserError{command: token.WHERE}
+	noColName := LogicalExpressionParsingError{}
+	notOrEqualIsMissing := SyntaxError{expecting: []string{token.EQUAL, token.NOT}, got: token.APOSTROPHE}
+	valueIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL}, got: token.SEMICOLON}
+	tokenAnd := token.AND
+	conjunctionIsMissing := SyntaxError{expecting: []string{token.SEMICOLON, token.ORDER}, got: token.IDENT}
+	nextLogicalExpressionIsMissing := LogicalExpressionParsingError{afterToken: &tokenAnd}
+	noSemicolon := SyntaxError{expecting: []string{token.SEMICOLON, token.ORDER}, got: ""}
+
+	tests := []errorHandlingTestSuite{
+		{"WHERE col1 NOT 'goodbye' OR col2 EQUAL 3;", noPredecessorError.Error()},
+		{selectCommandPrefix + "WHERE NOT 'goodbye' OR column2 EQUAL 3;", noColName.Error()},
+		{selectCommandPrefix + "WHERE one 'goodbye';", notOrEqualIsMissing.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL;", valueIsMissing.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL 5 two NOT 1;", conjunctionIsMissing.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL 5 AND;", nextLogicalExpressionIsMissing.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL 5 AND two NOT 5", noSemicolon.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+
+}
+
+func TestParseOrderByCommandErrorHandling(t *testing.T) {
+	selectCommandPrefix := "SELECT * FROM tbl "
+	noPredecessorError := NoPredecessorParserError{command: token.ORDER}
+	noAscDescError := SyntaxError{expecting: []string{token.ASC, token.DESC}, got: token.SEMICOLON}
+	noByKeywordError := SyntaxError{expecting: []string{token.BY}, got: token.IDENT}
+	noIdentKeywordError := SyntaxError{expecting: []string{token.IDENT}, got: token.ASC}
+
+	tests := []errorHandlingTestSuite{
+		{"ORDER BY column1;", noPredecessorError.Error()},
+		{selectCommandPrefix + "ORDER BY column1;", noAscDescError.Error()},
+		{selectCommandPrefix + "ORDER  column1 ASC;", noByKeywordError.Error()},
+		{selectCommandPrefix + "ORDER BY ASC;", noIdentKeywordError.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+}
+
+func TestParseLimitCommandErrorHandling(t *testing.T) {
+	selectCommandPrefix := "SELECT * FROM tbl "
+	noPredecessorError := NoPredecessorParserError{command: token.LIMIT}
+	noLiteralError := SyntaxError{expecting: []string{token.LITERAL}, got: token.SEMICOLON}
+	lessThanZeroError := ArithmeticLessThanZeroParserError{variable: "limit"}
+
+	tests := []errorHandlingTestSuite{
+		{"LIMIT 5;", noPredecessorError.Error()},
+		{selectCommandPrefix + "LIMIT;", noLiteralError.Error()},
+		{selectCommandPrefix + "LIMIT -10;", lessThanZeroError.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+}
+
+func TestParseOffsetCommandErrorHandling(t *testing.T) {
+	selectCommandPrefix := "SELECT * FROM tbl "
+	noPredecessorError := NoPredecessorParserError{command: token.OFFSET}
+	noLiteralError := SyntaxError{expecting: []string{token.LITERAL}, got: token.IDENT}
+	lessThanZeroError := ArithmeticLessThanZeroParserError{variable: "offset"}
+
+	tests := []errorHandlingTestSuite{
+		{"OFFSET 5;", noPredecessorError.Error()},
+		{selectCommandPrefix + "OFFSET hi;", noLiteralError.Error()},
+		{selectCommandPrefix + "OFFSET -10;", lessThanZeroError.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)

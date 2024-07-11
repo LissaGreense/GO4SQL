@@ -52,6 +52,10 @@ func (table *Table) ToString() string {
 	}
 	result += "\n" + bar + "\n"
 
+	if len(table.Columns) == 0 {
+		return result
+	}
+
 	rowsCount := len(table.Columns[0].Values)
 
 	for iRow := 0; iRow < rowsCount; iRow++ {

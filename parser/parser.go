@@ -94,10 +94,6 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 		return nil, err
 	}
 
-	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	if err != nil {
-		return nil, err
-	}
 	// Begin of inside Paren
 	for parser.currentToken.Type == token.IDENT {
 		err = validateToken(parser.peekToken.Type, []token.Type{token.TEXT, token.INT})
@@ -567,8 +563,7 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 	if err != nil {
 		return nil, err
 	}
-	parser.skipIfCurrentTokenIsApostrophe()
-
+	parser.skipIfCurrentTokenIsSemicolon()
 	return updateCommand, nil
 }
 
@@ -729,7 +724,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 		case token.DROP:
 			command, err = parser.parseDropCommand()
 		case token.WHERE:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.WHERE)
 			if parserError != nil {
 				return nil, parserError
 			}
@@ -756,7 +751,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				return nil, &SyntaxCommandExpectedError{command: "WHERE", neededCommands: []string{"SELECT", "DELETE", "UPDATE"}}
 			}
 		case token.ORDER:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.ORDER)
 			if parserError != nil {
 				return nil, parserError
 			}
@@ -772,7 +767,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.OrderByCommand = newCommand.(*ast.OrderByCommand)
 		case token.LIMIT:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.LIMIT)
 			if parserError != nil {
 				return nil, parserError
 			}
@@ -786,7 +781,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 			}
 			selectCommand.LimitCommand = newCommand.(*ast.LimitCommand)
 		case token.OFFSET:
-			lastCommand, parserError := parser.getLastCommand(sequence)
+			lastCommand, parserError := parser.getLastCommand(sequence, token.OFFSET)
 			if parserError != nil {
 				return nil, parserError
 			}
@@ -816,9 +811,9 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 	return sequence, nil
 }
 
-func (parser *Parser) getLastCommand(sequence *ast.Sequence) (ast.Command, error) {
+func (parser *Parser) getLastCommand(sequence *ast.Sequence, currentToken string) (ast.Command, error) {
 	if len(sequence.Commands) == 0 {
-		return nil, &NoPredecessorParserError{command: sequence.Commands[0].TokenLiteral()}
+		return nil, &NoPredecessorParserError{command: currentToken}
 	}
 	lastCommand := sequence.Commands[len(sequence.Commands)-1]
 	return lastCommand, nil
