@@ -220,6 +220,14 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	// Ignore token.SELECT
 	parser.nextToken()
 
+	// optional DISTINCT
+	if parser.currentToken.Type == token.DISTINCT {
+		selectCommand.HasDistinct = true
+
+		// Ignore token.DISTINCT
+		parser.nextToken()
+	}
+
 	err := validateToken(parser.currentToken.Type, []token.Type{token.ASTERISK, token.IDENT})
 	if err != nil {
 		return nil, err

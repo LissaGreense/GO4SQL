@@ -14,4 +14,6 @@
 		SELECT one FROM tbl WHERE TRUE ORDER BY two ASC, four DESC;
 		UPDATE tbl SET two TO 5, four TO 'P' WHERE one EQUAL 'goodbye';
 		SELECT * FROM tbl;
+		INSERT 	INTO tbl  	VALUES( 'goodbye', 	5, 	22, 'P'  );
+		SELECT DISTINCT * FROM tbl;
 		DROP TABLE tbl;

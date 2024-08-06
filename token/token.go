@@ -29,24 +29,25 @@ const (
 	RPAREN = ")"
 
 	// CREATE - Keywords
-	CREATE = "CREATE"
-	DROP   = "DROP"
-	TABLE  = "TABLE"
-	INSERT = "INSERT"
-	INTO   = "INTO"
-	VALUES = "VALUES"
-	SELECT = "SELECT"
-	FROM   = "FROM"
-	WHERE  = "WHERE"
-	DELETE = "DELETE"
-	ORDER  = "ORDER"
-	BY     = "BY"
-	ASC    = "ASC"
-	DESC   = "DESC"
-	LIMIT  = "LIMIT"
-	OFFSET = "OFFSET"
-	UPDATE = "UPDATE"
-	SET    = "SET"
+	CREATE   = "CREATE"
+	DROP     = "DROP"
+	TABLE    = "TABLE"
+	INSERT   = "INSERT"
+	INTO     = "INTO"
+	VALUES   = "VALUES"
+	SELECT   = "SELECT"
+	FROM     = "FROM"
+	WHERE    = "WHERE"
+	DELETE   = "DELETE"
+	ORDER    = "ORDER"
+	BY       = "BY"
+	ASC      = "ASC"
+	DESC     = "DESC"
+	LIMIT    = "LIMIT"
+	OFFSET   = "OFFSET"
+	UPDATE   = "UPDATE"
+	SET      = "SET"
+	DISTINCT = "DISTINCT"
 
 	TO = "TO"
 
@@ -67,33 +68,34 @@ const (
 )
 
 var keywords = map[string]Type{
-	"TEXT":   TEXT,
-	"INT":    INT,
-	"CREATE": CREATE,
-	"DROP":   DROP,
-	"TABLE":  TABLE,
-	"INSERT": INSERT,
-	"INTO":   INTO,
-	"SELECT": SELECT,
-	"FROM":   FROM,
-	"DELETE": DELETE,
-	"ORDER":  ORDER,
-	"BY":     BY,
-	"ASC":    ASC,
-	"DESC":   DESC,
-	"LIMIT":  LIMIT,
-	"OFFSET": OFFSET,
-	"UPDATE": UPDATE,
-	"SET":    SET,
-	"TO":     TO,
-	"VALUES": VALUES,
-	"WHERE":  WHERE,
-	"EQUAL":  EQUAL,
-	"NOT":    NOT,
-	"AND":    AND,
-	"OR":     OR,
-	"TRUE":   TRUE,
-	"FALSE":  FALSE,
+	"TEXT":     TEXT,
+	"INT":      INT,
+	"CREATE":   CREATE,
+	"DROP":     DROP,
+	"TABLE":    TABLE,
+	"INSERT":   INSERT,
+	"INTO":     INTO,
+	"SELECT":   SELECT,
+	"FROM":     FROM,
+	"DELETE":   DELETE,
+	"ORDER":    ORDER,
+	"BY":       BY,
+	"ASC":      ASC,
+	"DESC":     DESC,
+	"LIMIT":    LIMIT,
+	"OFFSET":   OFFSET,
+	"UPDATE":   UPDATE,
+	"SET":      SET,
+	"DISTINCT": DISTINCT,
+	"TO":       TO,
+	"VALUES":   VALUES,
+	"WHERE":    WHERE,
+	"EQUAL":    EQUAL,
+	"NOT":      NOT,
+	"AND":      AND,
+	"OR":       OR,
+	"TRUE":     TRUE,
+	"FALSE":    FALSE,
 }
 
 // LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type

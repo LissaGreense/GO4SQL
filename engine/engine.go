@@ -124,6 +124,10 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 		table.applyOffsetAndLimit(selectCommand)
 	}
 
+	if selectCommand.HasDistinct {
+		table = table.getDistinctTable()
+	}
+
 	return table, nil
 }
 

@@ -58,4 +58,11 @@ Table: 'tbl' has been updated
 |   'hello' |   1 |    11 |  'q' |
 | 'goodbye' |   5 |    22 |  'P' |
 +-----------+-----+-------+------+
+Data Inserted
++-----------+-----+-------+------+
+|       one | two | three | four |
++-----------+-----+-------+------+
+|   'hello' |   1 |    11 |  'q' |
+| 'goodbye' |   5 |    22 |  'P' |
++-----------+-----+-------+------+
 Table: 'tbl' has been dropped

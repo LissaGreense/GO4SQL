@@ -132,6 +132,14 @@ Currently, there are 3 modes to chose from:
   In this case, this command will order by ``column1`` in ascending order and skip 3 first records, 
   then return records from 4th to 8th.
 
+* ***DISTINCT***  is used to return only distinct (different) values in returned output with 
+  ``SELECT`` like this:
+  ```sql
+  SELECT DISTINCT column1, column2,
+  FROM table_name;
+  ```
+  In this case, this command will return only unique rows from ``table_name`` table.
+
 ## UNIT TESTS
 
 To run all the tests locally run this in root directory:
