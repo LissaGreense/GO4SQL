@@ -302,6 +302,24 @@ func TestLimitAndOffsetStatement(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestSelectWithDistinct(t *testing.T) {
+	input := `SELECT DISTINCT * FROM table;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.SELECT, "SELECT"},
+		{token.DISTINCT, "DISTINCT"},
+		{token.ASTERISK, "*"},
+		{token.FROM, "FROM"},
+		{token.IDENT, "table"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func runLexerTestSuite(t *testing.T, input string, tests []struct {
 	expectedType    token.Type
 	expectedLiteral string

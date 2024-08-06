@@ -127,9 +127,11 @@ func TestParseSelectCommand(t *testing.T) {
 		input             string
 		expectedTableName string
 		expectedColumns   []token.Token
+		expectedDistinct  bool
 	}{
-		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}},
-		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}},
+		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}, false},
+		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}, false},
+		{"SELECT DISTINCT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}, true},
 	}
 
 	for testIndex, tt := range tests {
@@ -144,7 +146,7 @@ func TestParseSelectCommand(t *testing.T) {
 			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
-		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns) {
+		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns, tt.expectedDistinct) {
 			return
 		}
 	}
@@ -303,7 +305,7 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
 		return
 	}
 
@@ -336,7 +338,7 @@ func TestSelectWithLimitCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
 		return
 	}
 
@@ -370,7 +372,7 @@ func TestSelectWithOffsetCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
 		return
 	}
 
@@ -406,7 +408,7 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
 		return
 	}
 
@@ -581,7 +583,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 	}
 }
 
-func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token) bool {
+func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token, expectedDistinct bool) bool {
 	if command.TokenLiteral() != "SELECT" {
 		t.Errorf("command.TokenLiteral() not 'SELECT'. got=%q", command.TokenLiteral())
 		return false
@@ -598,8 +600,13 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 		return false
 	}
 
+	if actualSelectCommand.HasDistinct != expectedDistinct {
+		t.Errorf("HasDistinct should be set to %t, got=%t", expectedDistinct, actualSelectCommand.HasDistinct)
+		return false
+	}
+
 	if !tokenArrayEquals(actualSelectCommand.Space, expectedColumnsTokens) {
-		t.Errorf("")
+		t.Errorf("actualSelectCommand has diffrent space tan expected. %v != %v", actualSelectCommand.Space, expectedColumnsTokens)
 		return false
 	}
 

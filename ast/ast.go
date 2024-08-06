@@ -161,6 +161,7 @@ type SelectCommand struct {
 	Token          token.Token
 	Name           Identifier      // ex. name of table
 	Space          []token.Token   // ex. column names
+	HasDistinct    bool            // DISTINCT keyword has been used
 	WhereCommand   *WhereCommand   // optional
 	OrderByCommand *OrderByCommand // optional
 	LimitCommand   *LimitCommand   // optional
