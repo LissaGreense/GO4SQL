@@ -116,6 +116,21 @@ func (table *Table) ToString() string {
 	return result + bar
 }
 
+func (table *Table) getTableCopyWithAddedPrefixToColumnNames(columnNamePrefix string) *Table {
+	newTable := &Table{Columns: []*Column{}}
+
+	for _, column := range table.Columns {
+		newTable.Columns = append(newTable.Columns,
+			&Column{
+				Type:   column.Type,
+				Values: column.Values,
+				Name:   columnNamePrefix + column.Name,
+			})
+	}
+	
+	return newTable
+}
+
 func getBar(columWidths []int) string {
 	bar := "+"
 

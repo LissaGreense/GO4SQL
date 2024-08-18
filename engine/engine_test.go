@@ -547,6 +547,31 @@ func TestLimitAndOffset(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestFullJoin(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE books( author_id INT, title TEXT);",
+			"CREATE TABLE authors( author_id INT, name TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO books VALUES(2, 'Fire');",
+			"INSERT INTO books VALUES(1, 'Earth');",
+			"INSERT INTO books VALUES(1, 'Air');",
+			"INSERT INTO authors VALUES( 1, 'Reynold Boyka'  );",
+			"INSERT INTO authors VALUES( 2, 'Alissa Ireneus'  );",
+		},
+		selectInput: "SELECT books.title, authors.name FROM books JOIN authors ON books.author_id EQUAL authors.author_id;",
+		expectedOutput: [][]string{
+			{"books.title", "authors.name"},
+			{"Fire", "Alissa Ireneus"},
+			{"Earth", "Reynold Boyka"},
+			{"Air", "Reynold Boyka"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineDBContentTestSuite struct {
 	inputs             []string
 	expectedTableNames []string

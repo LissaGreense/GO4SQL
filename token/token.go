@@ -48,6 +48,8 @@ const (
 	UPDATE   = "UPDATE"
 	SET      = "SET"
 	DISTINCT = "DISTINCT"
+	JOIN     = "JOIN"
+	ON       = "ON"
 
 	TO = "TO"
 
@@ -87,6 +89,8 @@ var keywords = map[string]Type{
 	"UPDATE":   UPDATE,
 	"SET":      SET,
 	"DISTINCT": DISTINCT,
+	"JOIN":     JOIN,
+	"ON":       ON,
 	"TO":       TO,
 	"VALUES":   VALUES,
 	"WHERE":    WHERE,

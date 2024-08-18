@@ -320,6 +320,32 @@ func TestSelectWithDistinct(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestFullJoin(t *testing.T) {
+	input := `	SELECT title FROM books
+    			JOIN authors ON
+        		books.author_id EQUAL authors.author_id;
+			`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.SELECT, "SELECT"},
+		{token.IDENT, "title"},
+		{token.FROM, "FROM"},
+		{token.IDENT, "books"},
+		{token.JOIN, "JOIN"},
+		{token.IDENT, "authors"},
+		{token.ON, "ON"},
+		{token.IDENT, "books.author_id"},
+		{token.EQUAL, "EQUAL"},
+		{token.IDENT, "authors.author_id"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func runLexerTestSuite(t *testing.T, input string, tests []struct {
 	expectedType    token.Type
 	expectedLiteral string
