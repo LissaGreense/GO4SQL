@@ -98,6 +98,9 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 	if selectCommand.HasJoinCommand() {
 		joinCommand := selectCommand.JoinCommand
 		table, err = engine.joinTables(joinCommand, selectCommand.Name.Token.Literal)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		var exist bool
 		table, exist = engine.Tables[selectCommand.Name.Token.Literal]
@@ -421,7 +424,6 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 }
 
 func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName string) (*Table, error) {
-	// TODO: Add error handling
 	leftTable, exist := engine.Tables[leftTableName]
 	leftTablePrefix := leftTableName + "."
 	if !exist {

@@ -31,6 +31,14 @@ Currently, there are 3 modes to chose from:
 3. `Socket Mode` - To start Socket Server use `./GO4SQL -socket`, it will be listening on port `1433` by default. To
    choose port different other than that, for example equal to `1444`, go with: `./GO4SQL -socket -port 1444`
 
+## UNIT TESTS
+
+To run all the tests locally paste this in root directory:
+
+```shell
+go clean -testcache; go test ./...
+```
+
 ### Docker
 1. Pull docker image: `docker pull kajedot/go4sql:latest`
 2. Run docker container in the interactive mode, remember to provide flag, for example: `docker run -i kajedot/go4sql -stream`
@@ -140,13 +148,17 @@ Currently, there are 3 modes to chose from:
   ```
   In this case, this command will return only unique rows from ``table_name`` table.
 
-## UNIT TESTS
-
-To run all the tests locally run this in root directory:
-
-```shell
-go clean -testcache; go test ./...
-```
+* ***FULL JOIN***  is used to return a new table, created by joining two tables as a whole. The joined table contains
+all records from both the tables and fills NULL values for missing matches on either side.
+  ```sql
+    SELECT * 
+    FROM tableOne 
+    JOIN tableTwo 
+    ON tableOne.columnY EQUAL tableTwo.columnX;
+    ```
+  In this case, this command will return all columns from ``tableOne`` and ``tableTwo`` for rows fulfilling condition 
+  ``tableOne.columnY EQUAL tableTwo.columnX`` (value of ``columnY`` in ``tableOne`` is equal the value of ``columnX`` in
+  ``tableTwo``).
 
 ## E2E TEST
 
