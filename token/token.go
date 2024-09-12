@@ -49,6 +49,10 @@ const (
 	SET      = "SET"
 	DISTINCT = "DISTINCT"
 	JOIN     = "JOIN"
+	INNER    = "INNER"
+	FULL     = "FULL"
+	LEFT     = "LEFT"
+	RIGHT    = "RIGHT"
 	ON       = "ON"
 
 	TO = "TO"
@@ -89,6 +93,10 @@ var keywords = map[string]Type{
 	"UPDATE":   UPDATE,
 	"SET":      SET,
 	"DISTINCT": DISTINCT,
+	"INNER":    INNER,
+	"FULL":     FULL,
+	"LEFT":     LEFT,
+	"RIGHT":    RIGHT,
 	"JOIN":     JOIN,
 	"ON":       ON,
 	"TO":       TO,

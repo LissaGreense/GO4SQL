@@ -40,8 +40,10 @@ go clean -testcache; go test ./...
 ```
 
 ### Docker
+
 1. Pull docker image: `docker pull kajedot/go4sql:latest`
-2. Run docker container in the interactive mode, remember to provide flag, for example: `docker run -i kajedot/go4sql -stream`
+2. Run docker container in the interactive mode, remember to provide flag, for example:
+   `docker run -i kajedot/go4sql -stream`
 3. You can test this image with `test_file` provided in this repo: `docker run -i kajedot/go4sql -stream < test_file`
 
 ## FUNCTIONALITY
@@ -59,7 +61,7 @@ go clean -testcache; go test ./...
   ```sql
   DROP TABLE table1;
   ```
-  After using this command table1 will no longer be available and all data connected to it (column 
+  After using this command table1 will no longer be available and all data connected to it (column
   definitions and inserted values) will be lost.
 
 
@@ -137,10 +139,10 @@ go clean -testcache; go test ./...
   ORDER BY column1 ASC
   LIMIT 5 OFFSET 3;
   ```
-  In this case, this command will order by ``column1`` in ascending order and skip 3 first records, 
+  In this case, this command will order by ``column1`` in ascending order and skip 3 first records,
   then return records from 4th to 8th.
 
-* ***DISTINCT***  is used to return only distinct (different) values in returned output with 
+* ***DISTINCT***  is used to return only distinct (different) values in returned output with
   ``SELECT`` like this:
   ```sql
   SELECT DISTINCT column1, column2,
@@ -148,15 +150,62 @@ go clean -testcache; go test ./...
   ```
   In this case, this command will return only unique rows from ``table_name`` table.
 
-* ***FULL JOIN***  is used to return a new table, created by joining two tables as a whole. The joined table contains
-all records from both the tables and fills NULL values for missing matches on either side.
+* ***INNER JOIN*** is used to return a new table by combining rows from both tables where there is a match on the
+  specified condition. Only the rows that satisfy the condition from both tables are included in the result.
+  Rows from either table that do not meet the condition are excluded from the result.
   ```sql
     SELECT * 
     FROM tableOne 
     JOIN tableTwo 
     ON tableOne.columnY EQUAL tableTwo.columnX;
     ```
-  In this case, this command will return all columns from ``tableOne`` and ``tableTwo`` for rows fulfilling condition 
+  or
+  ```sql
+    SELECT * 
+    FROM tableOne 
+    INNER JOIN tableTwo 
+    ON tableOne.columnY EQUAL tableTwo.columnX;
+    ```
+  In this case, this command will return all columns from tableOne and tableTwo for rows where the condition
+  ``tableOne.columnY`` = ``tableTwo.columnX`` is met (i.e., the value of ``columnY`` in ``tableOne`` is equal to the
+  value of ``columnX`` in ``tableTwo``).
+* ***LEFT JOIN***  is used to return a new table that includes all records from the left table and the matched records
+  from the right table. If there is no match, the result will contain empty values for columns from the right table.
+  ```sql
+    SELECT *
+    FROM tableOne
+    LEFT JOIN tableTwo
+    ON tableOne.columnY EQUAL tableTwo.columnX;
+  ```
+  In this case, this command will return all columns from ``tableOne`` and the matching columns from ``tableTwo``. For
+  rows in
+  ``tableOne`` that do not have a corresponding match in ``tableTwo``, the result will include empty values for columns
+  from
+  ``tableTwo``.
+* ***RIGHT JOIN***  is used to return a new table that includes all records from the right table and the matched records
+  from the left table. If there is no match, the result will contain empty values for columns from the left table.
+  ```sql
+    SELECT *
+    FROM tableOne
+    RIGHT JOIN tableTwo
+    ON tableOne.columnY EQUAL tableTwo.columnX;
+  ```
+  In this case, this command will return all columns from ``tableTwo`` and the matching columns from ``tableOne``. For
+  rows in
+  ``tableTwo`` that do not have a corresponding match in ``tableOne``, the result will include empty values for columns
+  from
+  ``tableOne``.
+
+* ***FULL JOIN***  is used to return a new table created by joining two tables as a whole. The joined table contains all
+  records from both tables and fills empty values for missing matches on either side. This join combines the results of
+  both ``LEFT JOIN`` and ``RIGHT JOIN``.
+  ```sql
+    SELECT *
+    FROM tableOne
+    FULL JOIN tableTwo
+    ON tableOne.columnY EQUAL tableTwo.columnX;
+  ```
+  In this case, this command will return all columns from ``tableOne`` and ``tableTwo`` for rows fulfilling condition
   ``tableOne.columnY EQUAL tableTwo.columnX`` (value of ``columnY`` in ``tableOne`` is equal the value of ``columnX`` in
   ``tableTwo``).
 
@@ -170,11 +219,13 @@ This is integrated into github workflows.
 
 To build your docker image run this command in root directory:
 
-```shell
+```
+shell
 docker build -t go4sql:test .
 ```
 
 ### Run docker in interactive stream mode
+
 To run this docker image in interactive stream mode use this command:
 
 ```shell
@@ -182,6 +233,7 @@ docker run -i go4sql:test -stream
 ```
 
 ### Run docker in socket mode
+
 To run this docker image in socket mode use this command:
 
 ```shell
@@ -189,6 +241,7 @@ docker run go4sql:test -socket
 ```
 
 ### Run docker in file mode
+
 **NOT RECOMMENDED**
 
 Alternatively you can run a docker image in file mode:
@@ -202,12 +255,14 @@ docker run -i go4sql:test -file <PATH_TO_FILE>
 To create a pod deployment using helm chart, there is configuration under `./helm` directory.
 
 Commands:
+
 ```shell
 cd ./helm
 helm install go4sql_pod_name GO4SQL/
 ```
 
 To check status of pod, use:
+
 ```shell
 kubectl get pods
 ```

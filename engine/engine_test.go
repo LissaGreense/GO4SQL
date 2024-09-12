@@ -547,7 +547,7 @@ func TestLimitAndOffset(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
-func TestFullJoin(t *testing.T) {
+func TestDefaultJoinToBehaveLikeInnerJoin(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE books( author_id INT, title TEXT);",
@@ -566,6 +566,123 @@ func TestFullJoin(t *testing.T) {
 			{"Fire", "Alissa Ireneus"},
 			{"Earth", "Reynold Boyka"},
 			{"Air", "Reynold Boyka"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestInnerJoinOnMultipleMatches(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE books( author_id INT, title TEXT);",
+			"CREATE TABLE authors( author_id INT, name TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO books VALUES(1, 'Book One');",
+			"INSERT INTO books VALUES(1, 'Book Two');",
+			"INSERT INTO authors VALUES(1, 'Author One');",
+			"INSERT INTO authors VALUES(1, 'Author Two');",
+		},
+		selectInput: "SELECT books.title, authors.name FROM books JOIN authors ON books.author_id EQUAL authors.author_id;",
+		expectedOutput: [][]string{
+			{"books.title", "authors.name"},
+			{"Book One", "Author One"},
+			{"Book One", "Author Two"},
+			{"Book Two", "Author One"},
+			{"Book Two", "Author Two"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestFullJoinOnIdenticalTables(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+			"CREATE TABLE table2( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT table1.value, table2.value FROM table1 FULL JOIN table2 ON table1.id EQUAL table2.id;",
+		expectedOutput: [][]string{
+			{"table1.value", "table2.value"},
+			{"Value1", ""},
+			{"Value2", "Value2"},
+			{"", "Value3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestInnerJoinWithSpecifiedKeywordOnIdenticalTables(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+			"CREATE TABLE table2( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT table1.value, table2.value FROM table1 INNER JOIN table2 ON table1.id EQUAL table2.id;",
+		expectedOutput: [][]string{
+			{"table1.value", "table2.value"},
+			{"Value2", "Value2"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestLeftJoinOnIdenticalTables(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+			"CREATE TABLE table2( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT table1.value, table2.value FROM table1 LEFT JOIN table2 ON table1.id EQUAL table2.id;",
+		expectedOutput: [][]string{
+			{"table1.value", "table2.value"},
+			{"Value1", ""},
+			{"Value2", "Value2"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestRightJoinOnIdenticalTables(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+			"CREATE TABLE table2( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(2, 'Value2');",
+			"INSERT INTO table2 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT table1.value, table2.value FROM table1 RIGHT JOIN table2 ON table1.id EQUAL table2.id;",
+		expectedOutput: [][]string{
+			{"table1.value", "table2.value"},
+			{"Value2", "Value2"},
+			{"", "Value3"},
 		},
 	}
 

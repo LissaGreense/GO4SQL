@@ -295,8 +295,18 @@ func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }
 type JoinCommand struct {
 	Token      token.Token
 	Name       Identifier // ex. name of table
+	Type       JoinType
 	Expression Expression
 }
+
+type JoinType int
+
+const (
+	Inner JoinType = iota
+	Left
+	Right
+	Full
+)
 
 func (ls JoinCommand) CommandNode()         {}
 func (ls JoinCommand) TokenLiteral() string { return ls.Token.Literal }

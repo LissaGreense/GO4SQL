@@ -97,7 +97,7 @@ func TestParseSelectCommandErrorHandling(t *testing.T) {
 	noFromKeyword := SyntaxError{[]string{token.FROM}, token.IDENT}
 	noColumns := SyntaxError{[]string{token.ASTERISK, token.IDENT}, token.FROM}
 	noTableName := SyntaxError{[]string{token.IDENT}, token.SEMICOLON}
-	noSemicolon := SyntaxError{[]string{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN}, ""}
+	noSemicolon := SyntaxError{[]string{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL}, ""}
 
 	tests := []errorHandlingTestSuite{
 		{"SELECT column1, column2 tbl;", noFromKeyword.Error()},

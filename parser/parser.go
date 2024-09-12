@@ -276,8 +276,8 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	// Ignore token.IDENT
 	parser.nextToken()
 
-	// expect SEMICOLON or WHERE
-	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN})
+	// expect SEMICOLON or other keywords expected in SELECT statement
+	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL})
 	if err != nil {
 		return nil, err
 	}
@@ -511,8 +511,31 @@ func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
 // Example of input parsable to the ast.JoinCommand:
 // JOIN table on table.one EQUAL table2.one;
 func (parser *Parser) parseJoinCommand() (ast.Command, error) {
-	// token.JOIN already at current position in parser
-	joinCommand := &ast.JoinCommand{Token: parser.currentToken}
+	// parser has either token.JOIN, token.LEFT, token.RIGHT, token.INNER or token.FULL
+	var joinCommand *ast.JoinCommand
+
+	if parser.currentToken.Type == token.JOIN {
+		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
+		joinCommand.Type = ast.Inner
+	} else {
+		joinTypeTokenType := parser.currentToken.Type
+		parser.nextToken()
+		err := validateToken(parser.currentToken.Type, []token.Type{token.JOIN})
+		if err != nil {
+			return nil, err
+		}
+		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
+		switch joinTypeTokenType {
+		case token.INNER:
+			joinCommand.Type = ast.Inner
+		case token.LEFT:
+			joinCommand.Type = ast.Left
+		case token.RIGHT:
+			joinCommand.Type = ast.Right
+		default:
+			joinCommand.Type = ast.Full
+		}
+	}
 
 	// token.JOIN no longer needed
 	parser.nextToken()
@@ -849,7 +872,7 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				return nil, err
 			}
 			selectCommand.OffsetCommand = newCommand.(*ast.OffsetCommand)
-		case token.JOIN:
+		case token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL:
 			lastCommand, parserError := parser.getLastCommand(sequence, token.JOIN)
 			if parserError != nil {
 				return nil, parserError
@@ -863,7 +886,6 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				return nil, err
 			}
 			selectCommand.JoinCommand = newCommand.(*ast.JoinCommand)
-
 		default:
 			return nil, &SyntaxInvalidCommandError{invalidCommand: parser.currentToken.Literal}
 		}
