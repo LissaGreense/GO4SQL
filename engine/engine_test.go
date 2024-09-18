@@ -612,9 +612,9 @@ func TestFullJoinOnIdenticalTables(t *testing.T) {
 		selectInput: "SELECT table1.value, table2.value FROM table1 FULL JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
-			{"Value1", ""},
+			{"Value1", "NULL"},
 			{"Value2", "Value2"},
-			{"", "Value3"},
+			{"NULL", "Value3"},
 		},
 	}
 
@@ -658,7 +658,7 @@ func TestLeftJoinOnIdenticalTables(t *testing.T) {
 		selectInput: "SELECT table1.value, table2.value FROM table1 LEFT JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
-			{"Value1", ""},
+			{"Value1", "NULL"},
 			{"Value2", "Value2"},
 		},
 	}
@@ -682,7 +682,7 @@ func TestRightJoinOnIdenticalTables(t *testing.T) {
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
 			{"Value2", "Value2"},
-			{"", "Value3"},
+			{"NULL", "Value3"},
 		},
 	}
 

@@ -516,25 +516,16 @@ func (parser *Parser) parseJoinCommand() (ast.Command, error) {
 
 	if parser.currentToken.Type == token.JOIN {
 		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
-		joinCommand.Type = ast.Inner
+		joinCommand.JoinType = token.Token{Type: token.INNER, Literal: token.INNER}
 	} else {
-		joinTypeTokenType := parser.currentToken.Type
+		joinTypeTokenType := parser.currentToken
 		parser.nextToken()
 		err := validateToken(parser.currentToken.Type, []token.Type{token.JOIN})
 		if err != nil {
 			return nil, err
 		}
 		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
-		switch joinTypeTokenType {
-		case token.INNER:
-			joinCommand.Type = ast.Inner
-		case token.LEFT:
-			joinCommand.Type = ast.Left
-		case token.RIGHT:
-			joinCommand.Type = ast.Right
-		default:
-			joinCommand.Type = ast.Full
-		}
+		joinCommand.JoinType = joinTypeTokenType
 	}
 
 	// token.JOIN no longer needed

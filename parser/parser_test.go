@@ -426,9 +426,9 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 func TestSelectWithDefaultInnerJoinCommand(t *testing.T) {
 	input := "SELECT tbl.one, tbl2.two FROM tbl JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
 	expectedJoinCommand := ast.JoinCommand{
-		Token: token.Token{Type: token.JOIN, Literal: "JOIN"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
-		Type:  ast.Inner,
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.INNER, Literal: "INNER"},
 		Expression: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
 			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
@@ -465,9 +465,9 @@ func TestSelectWithDefaultInnerJoinCommand(t *testing.T) {
 func TestSelectWithInnerJoinCommand(t *testing.T) {
 	input := "SELECT tbl.one, tbl2.two FROM tbl INNER JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
 	expectedJoinCommand := ast.JoinCommand{
-		Token: token.Token{Type: token.JOIN, Literal: "JOIN"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
-		Type:  ast.Inner,
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.INNER, Literal: "INNER"},
 		Expression: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
 			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
@@ -504,9 +504,9 @@ func TestSelectWithInnerJoinCommand(t *testing.T) {
 func TestSelectWithLeftJoinCommand(t *testing.T) {
 	input := "SELECT tbl.one, tbl2.two FROM tbl LEFT JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
 	expectedJoinCommand := ast.JoinCommand{
-		Token: token.Token{Type: token.JOIN, Literal: "JOIN"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
-		Type:  ast.Left,
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.LEFT, Literal: "LEFT"},
 		Expression: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
 			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
@@ -543,9 +543,9 @@ func TestSelectWithLeftJoinCommand(t *testing.T) {
 func TestSelectWithRightJoinCommand(t *testing.T) {
 	input := "SELECT tbl.one, tbl2.two FROM tbl RIGHT JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
 	expectedJoinCommand := ast.JoinCommand{
-		Token: token.Token{Type: token.JOIN, Literal: "JOIN"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
-		Type:  ast.Right,
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.RIGHT, Literal: "RIGHT"},
 		Expression: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
 			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
@@ -582,9 +582,9 @@ func TestSelectWithRightJoinCommand(t *testing.T) {
 func TestSelectWithFullJoinCommand(t *testing.T) {
 	input := "SELECT tbl.one, tbl2.two FROM tbl FULL JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
 	expectedJoinCommand := ast.JoinCommand{
-		Token: token.Token{Type: token.JOIN, Literal: "JOIN"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
-		Type:  ast.Full,
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.FULL, Literal: "FULL"},
 		Expression: ast.ConditionExpression{
 			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
 			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},

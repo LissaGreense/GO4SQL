@@ -100,7 +100,8 @@ func (table *Table) ToString() string {
 			result += " "
 
 			printedValue := table.Columns[iColumn].Values[iRow].ToString()
-			if table.Columns[iColumn].Type.Literal == token.TEXT {
+			if table.Columns[iColumn].Type.Literal == token.TEXT &&
+				table.Columns[iColumn].Values[iRow].GetType() != NullType {
 				printedValue = "'" + printedValue + "'"
 			}
 			for i := 0; i < columWidths[iColumn]-len(printedValue); i++ {
@@ -127,7 +128,7 @@ func (table *Table) getTableCopyWithAddedPrefixToColumnNames(columnNamePrefix st
 				Name:   columnNamePrefix + column.Name,
 			})
 	}
-	
+
 	return newTable
 }
 

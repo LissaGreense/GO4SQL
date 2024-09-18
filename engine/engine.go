@@ -444,9 +444,12 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 
 	leftTableWithAddedPrefix := leftTable.getTableCopyWithAddedPrefixToColumnNames(leftTablePrefix)
 	rightTableWithAddedPrefix := rightTable.getTableCopyWithAddedPrefixToColumnNames(rightTablePrefix)
+	var unmatchedRightRows = make(map[int]bool)
 
 	for leftRowIndex := 0; leftRowIndex < len(leftTable.Columns[0].Values); leftRowIndex++ {
 		joinedRowLeft := getRow(leftTableWithAddedPrefix, leftRowIndex)
+		leftRowMatches := false
+
 		for rightRowIndex := 0; rightRowIndex < len(rightTable.Columns[0].Values); rightRowIndex++ {
 			joinedRowRight := getRow(rightTableWithAddedPrefix, rightRowIndex)
 			maps.Copy(joinedRowRight, joinedRowLeft)
@@ -460,8 +463,26 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 				for colIndex, column := range joinedTable.Columns {
 					joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRowRight[column.Name])
 				}
+				leftRowMatches = true
+				unmatchedRightRows[rightRowIndex] = true
+			} else if leftRowIndex == len(leftTable.Columns[0].Values)-1 && (joinCommand.JoinType.Type == token.RIGHT || joinCommand.JoinType.Type == token.FULL) && !unmatchedRightRows[rightRowIndex] {
+				joinedRowRight = getRow(rightTableWithAddedPrefix, rightRowIndex)
+				joinedEmptyLeftRow := getEmptyRow(leftTableWithAddedPrefix)
+				maps.Copy(joinedRowRight, joinedEmptyLeftRow)
+				for colIndex, column := range joinedTable.Columns {
+					joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRowRight[column.Name])
+				}
 			}
 		}
+
+		if (joinCommand.JoinType.Type == token.LEFT || joinCommand.JoinType.Type == token.FULL) && !leftRowMatches {
+			joinedEmptyRightRow := getEmptyRow(rightTableWithAddedPrefix)
+			maps.Copy(joinedEmptyRightRow, joinedRowLeft)
+			for colIndex, column := range joinedTable.Columns {
+				joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedEmptyRightRow[column.Name])
+			}
+		}
+
 	}
 
 	return joinedTable, nil
