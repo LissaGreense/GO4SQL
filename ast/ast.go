@@ -301,6 +301,12 @@ type JoinCommand struct {
 
 func (ls JoinCommand) CommandNode()         {}
 func (ls JoinCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls JoinCommand) ShouldTakeLeftSide() bool {
+	return ls.JoinType.Type == token.LEFT || ls.JoinType.Type == token.FULL
+}
+func (ls JoinCommand) ShouldTakeRightSide() bool {
+	return ls.JoinType.Type == token.RIGHT || ls.JoinType.Type == token.FULL
+}
 
 // DeleteCommand - Part of Command that represent deleting row from table
 //

@@ -459,33 +459,33 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 				return nil, err
 			}
 
+			isLastLeftRow := leftRowIndex == len(leftTable.Columns[0].Values)-1
+
 			if fulfilledFilters {
 				for colIndex, column := range joinedTable.Columns {
 					joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRowRight[column.Name])
 				}
-				leftRowMatches = true
-				unmatchedRightRows[rightRowIndex] = true
-			} else if leftRowIndex == len(leftTable.Columns[0].Values)-1 && (joinCommand.JoinType.Type == token.RIGHT || joinCommand.JoinType.Type == token.FULL) && !unmatchedRightRows[rightRowIndex] {
+				leftRowMatches, unmatchedRightRows[rightRowIndex] = true, true
+			} else if isLastLeftRow && joinCommand.ShouldTakeRightSide() && !unmatchedRightRows[rightRowIndex] {
 				joinedRowRight = getRow(rightTableWithAddedPrefix, rightRowIndex)
-				joinedEmptyLeftRow := getEmptyRow(leftTableWithAddedPrefix)
-				maps.Copy(joinedRowRight, joinedEmptyLeftRow)
-				for colIndex, column := range joinedTable.Columns {
-					joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRowRight[column.Name])
-				}
+				aggregateRowIntoJoinTable(leftTableWithAddedPrefix, joinedRowRight, joinedTable)
 			}
 		}
 
-		if (joinCommand.JoinType.Type == token.LEFT || joinCommand.JoinType.Type == token.FULL) && !leftRowMatches {
-			joinedEmptyRightRow := getEmptyRow(rightTableWithAddedPrefix)
-			maps.Copy(joinedEmptyRightRow, joinedRowLeft)
-			for colIndex, column := range joinedTable.Columns {
-				joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedEmptyRightRow[column.Name])
-			}
+		if joinCommand.ShouldTakeLeftSide() && !leftRowMatches {
+			aggregateRowIntoJoinTable(rightTableWithAddedPrefix, joinedRowLeft, joinedTable)
 		}
-
 	}
 
 	return joinedTable, nil
+}
+
+func aggregateRowIntoJoinTable(tableWithAddedPrefix *Table, joinedRow map[string]ValueInterface, joinedTable *Table) {
+	joinedEmptyRow := getEmptyRow(tableWithAddedPrefix)
+	maps.Copy(joinedRow, joinedEmptyRow)
+	for colIndex, column := range joinedTable.Columns {
+		joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRow[column.Name])
+	}
 }
 
 func addColumnsWithPrefix(finalTable *Table, columnsToAdd []*Column, prefix string) {
