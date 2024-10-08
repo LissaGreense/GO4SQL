@@ -89,6 +89,20 @@ func TestEngineOrderByCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineFullJoinErrorHandling(t *testing.T) {
+	leftTableNotExist := TableDoesNotExistError{tableName: "leftTable"}
+	rightTableNotExist := TableDoesNotExistError{tableName: "rightTable"}
+	columnDoesNotExist := ColumnDoesNotExistError{tableName: "", columnName: "leftTable.two"}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE rightTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", leftTableNotExist.Error()},
+		{"CREATE TABLE leftTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", rightTableNotExist.Error()},
+		{"CREATE TABLE leftTable(one TEXT); CREATE TABLE rightTable(one TEXT); INSERT INTO leftTable VALUES('hi'); INSERT INTO rightTable VALUES('hi'); SELECT * FROM leftTable JOIN rightTable ON leftTable.two EQUAL rightTable.one;", columnDoesNotExist.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func runEngineErrorHandlingSuite(t *testing.T, suite []errorHandlingTestSuite) {
 	for i, test := range suite {
 		errorMsg := getErrorMessage(t, test.input, i)

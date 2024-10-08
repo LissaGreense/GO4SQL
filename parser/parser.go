@@ -5,6 +5,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/token"
 	"strconv"
+	"strings"
 )
 
 // Parser - Contain token that is currently analyzed by parser and the next one. Lexer is used to tokenize the client
@@ -84,6 +85,9 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 		return nil, err
 	}
 
+	if strings.Contains(parser.currentToken.Literal, ".") {
+		return nil, &IllegalPeriodInIdentParserError{name: parser.currentToken.Literal}
+	}
 	createCommand.Name = ast.Identifier{Token: parser.currentToken}
 
 	// Skip token.IDENT
@@ -99,6 +103,10 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 		err = validateToken(parser.peekToken.Type, []token.Type{token.TEXT, token.INT})
 		if err != nil {
 			return nil, err
+		}
+
+		if strings.Contains(parser.currentToken.Literal, ".") {
+			return nil, &IllegalPeriodInIdentParserError{name: parser.currentToken.Literal}
 		}
 
 		createCommand.ColumnNames = append(createCommand.ColumnNames, parser.currentToken.Literal)
@@ -268,8 +276,8 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	// Ignore token.IDENT
 	parser.nextToken()
 
-	// expect SEMICOLON or WHERE
-	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET})
+	// expect SEMICOLON or other keywords expected in SELECT statement
+	err = validateToken(parser.currentToken.Type, []token.Type{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL})
 	if err != nil {
 		return nil, err
 	}
@@ -428,9 +436,9 @@ func (parser *Parser) parseOrderByCommand() (ast.Command, error) {
 	return orderCommand, nil
 }
 
-// parseLimitCommand - Return ast.parseLimitCommand created from tokens and validate the syntax
+// parseLimitCommand - Return ast.LimitCommand created from tokens and validate the syntax
 //
-// Example of input parsable to the ast.parseLimitCommand:
+// Example of input parsable to the ast.LimitCommand:
 // LIMIT 10
 func (parser *Parser) parseLimitCommand() (ast.Command, error) {
 	// token.LIMIT already at current position in parser
@@ -464,9 +472,9 @@ func (parser *Parser) parseLimitCommand() (ast.Command, error) {
 	return limitCommand, nil
 }
 
-// parseOffsetCommand - Return ast.parseOffsetCommand created from tokens and validate the syntax
+// parseOffsetCommand - Return ast.OffsetCommand created from tokens and validate the syntax
 //
-// Example of input parsable to the ast.parseLimitCommand:
+// Example of input parsable to the ast.LimitCommand:
 // OFFSET 10
 func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
 	// token.OFFSET already at current position in parser
@@ -496,6 +504,59 @@ func (parser *Parser) parseOffsetCommand() (ast.Command, error) {
 	parser.skipIfCurrentTokenIsSemicolon()
 
 	return offsetCommand, nil
+}
+
+// parseJoinCommand - Return ast.JoinCommand created from tokens and validate the syntax
+//
+// Example of input parsable to the ast.JoinCommand:
+// JOIN table on table.one EQUAL table2.one;
+func (parser *Parser) parseJoinCommand() (ast.Command, error) {
+	// parser has either token.JOIN, token.LEFT, token.RIGHT, token.INNER or token.FULL
+	var joinCommand *ast.JoinCommand
+
+	if parser.currentToken.Type == token.JOIN {
+		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
+		joinCommand.JoinType = token.Token{Type: token.INNER, Literal: token.INNER}
+	} else {
+		joinTypeTokenType := parser.currentToken
+		parser.nextToken()
+		err := validateToken(parser.currentToken.Type, []token.Type{token.JOIN})
+		if err != nil {
+			return nil, err
+		}
+		joinCommand = &ast.JoinCommand{Token: parser.currentToken}
+		joinCommand.JoinType = joinTypeTokenType
+	}
+
+	// token.JOIN no longer needed
+	parser.nextToken()
+
+	err := validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	if err != nil {
+		return nil, err
+	}
+
+	joinCommand.Name = ast.Identifier{Token: parser.currentToken}
+	parser.nextToken()
+
+	err = validateTokenAndSkip(parser, []token.Type{token.ON})
+	if err != nil {
+		return nil, err
+	}
+
+	var expressionIsValid bool
+	expressionIsValid, joinCommand.Expression, err = parser.getExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	if !expressionIsValid {
+		return nil, &LogicalExpressionParsingError{}
+	}
+
+	parser.skipIfCurrentTokenIsSemicolon()
+
+	return joinCommand, nil
 }
 
 // parseUpdateCommand - Return ast.parseUpdateCommand created from tokens and validate the syntax
@@ -802,6 +863,20 @@ func (parser *Parser) ParseSequence() (*ast.Sequence, error) {
 				return nil, err
 			}
 			selectCommand.OffsetCommand = newCommand.(*ast.OffsetCommand)
+		case token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL:
+			lastCommand, parserError := parser.getLastCommand(sequence, token.JOIN)
+			if parserError != nil {
+				return nil, parserError
+			}
+			if lastCommand.TokenLiteral() != token.SELECT {
+				return nil, &SyntaxCommandExpectedError{command: "JOIN", neededCommands: []string{"SELECT"}}
+			}
+			selectCommand := lastCommand.(*ast.SelectCommand)
+			newCommand, err := parser.parseJoinCommand()
+			if err != nil {
+				return nil, err
+			}
+			selectCommand.JoinCommand = newCommand.(*ast.JoinCommand)
 		default:
 			return nil, &SyntaxInvalidCommandError{invalidCommand: parser.currentToken.Literal}
 		}

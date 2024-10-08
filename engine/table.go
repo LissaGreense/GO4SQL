@@ -100,7 +100,8 @@ func (table *Table) ToString() string {
 			result += " "
 
 			printedValue := table.Columns[iColumn].Values[iRow].ToString()
-			if table.Columns[iColumn].Type.Literal == token.TEXT {
+			if table.Columns[iColumn].Type.Literal == token.TEXT &&
+				table.Columns[iColumn].Values[iRow].GetType() != NullType {
 				printedValue = "'" + printedValue + "'"
 			}
 			for i := 0; i < columWidths[iColumn]-len(printedValue); i++ {
@@ -114,6 +115,21 @@ func (table *Table) ToString() string {
 	}
 
 	return result + bar
+}
+
+func (table *Table) getTableCopyWithAddedPrefixToColumnNames(columnNamePrefix string) *Table {
+	newTable := &Table{Columns: []*Column{}}
+
+	for _, column := range table.Columns {
+		newTable.Columns = append(newTable.Columns,
+			&Column{
+				Type:   column.Type,
+				Values: column.Values,
+				Name:   columnNamePrefix + column.Name,
+			})
+	}
+
+	return newTable
 }
 
 func getBar(columWidths []int) string {

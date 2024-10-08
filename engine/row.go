@@ -25,3 +25,11 @@ func getRow(table *Table, rowIndex int) map[string]ValueInterface {
 	}
 	return row
 }
+
+func getEmptyRow(table *Table) map[string]ValueInterface {
+	row := make(map[string]ValueInterface)
+	for _, column := range table.Columns {
+		row[column.Name] = NullValue{}
+	}
+	return row
+}

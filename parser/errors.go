@@ -98,3 +98,12 @@ type NoPredecessorParserError struct {
 func (m *NoPredecessorParserError) Error() string {
 	return "syntax error, {" + m.command + "} command can't be used without predecessor"
 }
+
+// IllegalPeriodInIdentParserError - error thrown when parser found period in ident when parsing create command
+type IllegalPeriodInIdentParserError struct {
+	name string
+}
+
+func (m *IllegalPeriodInIdentParserError) Error() string {
+	return "syntax error, {" + m.name + "} shouldn't contain '.'"
+}

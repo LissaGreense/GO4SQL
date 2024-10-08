@@ -423,6 +423,201 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 	testOffsetCommands(t, expectedOffsetCommand, selectCommand.OffsetCommand)
 }
 
+func TestSelectWithDefaultInnerJoinCommand(t *testing.T) {
+	input := "SELECT tbl.one, tbl2.two FROM tbl JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
+	expectedJoinCommand := ast.JoinCommand{
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.INNER, Literal: "INNER"},
+		Expression: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
+			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+	}
+	expectedTableName := "tbl"
+	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+		return
+	}
+
+	if !selectCommand.HasJoinCommand() {
+		t.Fatalf("select command should have join command")
+	}
+
+	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
+func TestSelectWithInnerJoinCommand(t *testing.T) {
+	input := "SELECT tbl.one, tbl2.two FROM tbl INNER JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
+	expectedJoinCommand := ast.JoinCommand{
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.INNER, Literal: "INNER"},
+		Expression: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
+			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+	}
+	expectedTableName := "tbl"
+	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+		return
+	}
+
+	if !selectCommand.HasJoinCommand() {
+		t.Fatalf("select command should have join command")
+	}
+
+	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
+func TestSelectWithLeftJoinCommand(t *testing.T) {
+	input := "SELECT tbl.one, tbl2.two FROM tbl LEFT JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
+	expectedJoinCommand := ast.JoinCommand{
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.LEFT, Literal: "LEFT"},
+		Expression: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
+			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+	}
+	expectedTableName := "tbl"
+	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+		return
+	}
+
+	if !selectCommand.HasJoinCommand() {
+		t.Fatalf("select command should have join command")
+	}
+
+	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
+func TestSelectWithRightJoinCommand(t *testing.T) {
+	input := "SELECT tbl.one, tbl2.two FROM tbl RIGHT JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
+	expectedJoinCommand := ast.JoinCommand{
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.RIGHT, Literal: "RIGHT"},
+		Expression: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
+			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+	}
+	expectedTableName := "tbl"
+	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+		return
+	}
+
+	if !selectCommand.HasJoinCommand() {
+		t.Fatalf("select command should have join command")
+	}
+
+	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
+func TestSelectWithFullJoinCommand(t *testing.T) {
+	input := "SELECT tbl.one, tbl2.two FROM tbl FULL JOIN tbl2 ON tbl.one EQUAL tbl2.one;"
+	expectedJoinCommand := ast.JoinCommand{
+		Token:    token.Token{Type: token.JOIN, Literal: "JOIN"},
+		Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2"}},
+		JoinType: token.Token{Type: token.FULL, Literal: "FULL"},
+		Expression: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl.one"}},
+			Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "tbl2.one"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+	}
+	expectedTableName := "tbl"
+	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+		return
+	}
+
+	if !selectCommand.HasJoinCommand() {
+		t.Fatalf("select command should have join command")
+	}
+
+	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
 func TestParseUpdateCommand(t *testing.T) {
 	tests := []struct {
 		input             string
@@ -737,6 +932,22 @@ func testOffsetCommands(t *testing.T, expectedOffsetCommand ast.OffsetCommand, a
 	}
 	if expectedOffsetCommand.Count != actualOffsetCommand.Count {
 		t.Errorf("Expecting Count to have value: %d, got: %d", expectedOffsetCommand.Count, actualOffsetCommand.Count)
+	}
+}
+
+func testJoinCommands(t *testing.T, expectedJoinCommand ast.JoinCommand, actualJoinCommand ast.JoinCommand) {
+
+	if expectedJoinCommand.Token.Type != actualJoinCommand.Token.Type {
+		t.Errorf("Expecting Token TokenType: %q, got: %q", expectedJoinCommand.Token.Type, actualJoinCommand.Token.Type)
+	}
+	if expectedJoinCommand.Token.Literal != actualJoinCommand.Token.Literal {
+		t.Errorf("Expecting Token Literal: %s, got: %s", expectedJoinCommand.Token.Literal, actualJoinCommand.Token.Literal)
+	}
+	if expectedJoinCommand.Name != actualJoinCommand.Name {
+		t.Errorf("Expecting Name to has a value: %s, got: %s", expectedJoinCommand.Name, actualJoinCommand.Name)
+	}
+	if !expressionsAreEqual(actualJoinCommand.Expression, expectedJoinCommand.Expression) {
+		t.Errorf("Actual expression is not equal to expected one.\nActual: %#v\nExpected: %#v", actualJoinCommand.Expression, expectedJoinCommand.Expression)
 	}
 }
 func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {

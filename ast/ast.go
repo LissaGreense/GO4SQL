@@ -166,6 +166,7 @@ type SelectCommand struct {
 	OrderByCommand *OrderByCommand // optional
 	LimitCommand   *LimitCommand   // optional
 	OffsetCommand  *OffsetCommand  // optional
+	JoinCommand    *JoinCommand    // optional
 }
 
 func (ls SelectCommand) CommandNode()         {}
@@ -201,7 +202,7 @@ func (ls SelectCommand) HasOrderByCommand() bool {
 	return true
 }
 
-// HasLimitCommand - returns true if optional HasLimitCommand is present in SelectCommand
+// HasLimitCommand - returns true if optional LimitCommand is present in SelectCommand
 //
 // Example:
 // SELECT * FROM table LIMIT 5;
@@ -216,7 +217,7 @@ func (ls SelectCommand) HasLimitCommand() bool {
 	return true
 }
 
-// HasOffsetCommand - returns true if optional HasOffsetCommand is present in SelectCommand
+// HasOffsetCommand - returns true if optional OffsetCommand is present in SelectCommand
 //
 // Example:
 // SELECT * FROM table OFFSET 100;
@@ -226,6 +227,21 @@ func (ls SelectCommand) HasLimitCommand() bool {
 // Returns false
 func (ls SelectCommand) HasOffsetCommand() bool {
 	if ls.OffsetCommand == nil {
+		return false
+	}
+	return true
+}
+
+// HasJoinCommand - returns true if optional JoinCommand is present in SelectCommand
+//
+// Example:
+// SELECT * FROM table JOIN table2 ON table.one EQUAL table2.two;
+// Returns true
+//
+// SELECT * FROM table;
+// Returns false
+func (ls SelectCommand) HasJoinCommand() bool {
+	if ls.JoinCommand == nil {
 		return false
 	}
 	return true
@@ -271,6 +287,26 @@ type WhereCommand struct {
 
 func (ls WhereCommand) CommandNode()         {}
 func (ls WhereCommand) TokenLiteral() string { return ls.Token.Literal }
+
+// JoinCommand - Part of Command that represent JOIN statement with expression that will merge tables
+//
+// Example:
+// JOIN tbl2 ON tbl1.id EQUAL tbl2.f_idy;
+type JoinCommand struct {
+	Token      token.Token
+	Name       Identifier // ex. name of table
+	JoinType   token.Token
+	Expression Expression
+}
+
+func (ls JoinCommand) CommandNode()         {}
+func (ls JoinCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls JoinCommand) ShouldTakeLeftSide() bool {
+	return ls.JoinType.Type == token.LEFT || ls.JoinType.Type == token.FULL
+}
+func (ls JoinCommand) ShouldTakeRightSide() bool {
+	return ls.JoinType.Type == token.RIGHT || ls.JoinType.Type == token.FULL
+}
 
 // DeleteCommand - Part of Command that represent deleting row from table
 //

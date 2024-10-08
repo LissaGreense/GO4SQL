@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -36,6 +37,8 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.LimitCommand:
 			continue
 		case *ast.OffsetCommand:
+			continue
+		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
 			err := engine.createTable(mappedCommand)
@@ -92,29 +95,43 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 	var table *Table
 	var err error
 
+	if selectCommand.HasJoinCommand() {
+		joinCommand := selectCommand.JoinCommand
+		table, err = engine.joinTables(joinCommand, selectCommand.Name.Token.Literal)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var exist bool
+		table, exist = engine.Tables[selectCommand.Name.Token.Literal]
+
+		if !exist {
+			return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
+		}
+	}
+
 	if selectCommand.HasWhereCommand() {
 		whereCommand := selectCommand.WhereCommand
 		if selectCommand.HasOrderByCommand() {
 			orderByCommand := selectCommand.OrderByCommand
-			table, err = engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand)
+			table, err = engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand, table)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			table, err = engine.selectFromTableWithWhere(selectCommand, whereCommand)
+			table, err = engine.selectFromTableWithWhere(selectCommand, whereCommand, table)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else if selectCommand.HasOrderByCommand() {
-		table, err = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand)
+		table, err = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand, table)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if table == nil {
-		table, err = engine.selectFromTable(selectCommand)
+	} else {
+		// panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+		table, err = engine.selectFromProvidedTable(selectCommand, table)
 		if err != nil {
 			return nil, err
 		}
@@ -224,17 +241,6 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 	return nil
 }
 
-// selectFromTable - Return Table containing all values requested by SelectCommand
-func (engine *DbEngine) selectFromTable(command *ast.SelectCommand) (*Table, error) {
-	table, exist := engine.Tables[command.Name.Token.Literal]
-
-	if !exist {
-		return nil, &TableDoesNotExistError{command.Name.Token.Literal}
-	}
-
-	return engine.selectFromProvidedTable(command, table)
-}
-
 func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, table *Table) (*Table, error) {
 	columns := table.Columns
 
@@ -276,13 +282,7 @@ func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
 }
 
 // selectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand
-func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand) (*Table, error) {
-	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
-
-	if !exist {
-		return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
-	}
-
+func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, table *Table) (*Table, error) {
 	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
 		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
 	}
@@ -298,13 +298,7 @@ func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectComman
 
 // selectFromTableWithWhereAndOrderBy - Return Table containing all values requested by SelectCommand,
 // filtered by WhereCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand) (*Table, error) {
-	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
-
-	if !exist {
-		return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
-	}
-
+func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
 	filteredTable, err := engine.getFilteredTable(table, whereCommand, false, selectCommand.Name.GetToken().Literal)
 
 	if err != nil {
@@ -323,13 +317,7 @@ func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.Se
 }
 
 // selectFromTableWithOrderBy - Return Table containing all values requested by SelectCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand) (*Table, error) {
-	table, exist := engine.Tables[selectCommand.Name.Token.Literal]
-
-	if !exist {
-		return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
-	}
-
+func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
 	emptyTable := getCopyOfTableWithoutRows(table)
 
 	sortedTable, err := engine.getSortedTable(orderByCommand, table, emptyTable, selectCommand.Name.GetToken().Literal)
@@ -433,6 +421,82 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 		}
 	}
 	return filteredTable, nil
+}
+
+func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName string) (*Table, error) {
+	leftTable, exist := engine.Tables[leftTableName]
+	leftTablePrefix := leftTableName + "."
+	if !exist {
+		return nil, &TableDoesNotExistError{leftTableName}
+	}
+
+	rightTableName := joinCommand.Name.Token.Literal
+	rightTablePrefix := rightTableName + "."
+	rightTable, exist := engine.Tables[rightTableName]
+	if !exist {
+		return nil, &TableDoesNotExistError{rightTableName}
+	}
+
+	joinedTable := &Table{Columns: []*Column{}}
+
+	addColumnsWithPrefix(joinedTable, leftTable.Columns, leftTablePrefix)
+	addColumnsWithPrefix(joinedTable, rightTable.Columns, rightTablePrefix)
+
+	leftTableWithAddedPrefix := leftTable.getTableCopyWithAddedPrefixToColumnNames(leftTablePrefix)
+	rightTableWithAddedPrefix := rightTable.getTableCopyWithAddedPrefixToColumnNames(rightTablePrefix)
+	var unmatchedRightRows = make(map[int]bool)
+
+	for leftRowIndex := 0; leftRowIndex < len(leftTable.Columns[0].Values); leftRowIndex++ {
+		joinedRowLeft := getRow(leftTableWithAddedPrefix, leftRowIndex)
+		leftRowMatches := false
+
+		for rightRowIndex := 0; rightRowIndex < len(rightTable.Columns[0].Values); rightRowIndex++ {
+			joinedRowRight := getRow(rightTableWithAddedPrefix, rightRowIndex)
+			maps.Copy(joinedRowRight, joinedRowLeft)
+
+			fulfilledFilters, err := isFulfillingFilters(joinedRowRight, joinCommand.Expression, joinCommand.Token.Literal)
+			if err != nil {
+				return nil, err
+			}
+
+			isLastLeftRow := leftRowIndex == len(leftTable.Columns[0].Values)-1
+
+			if fulfilledFilters {
+				for colIndex, column := range joinedTable.Columns {
+					joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRowRight[column.Name])
+				}
+				leftRowMatches, unmatchedRightRows[rightRowIndex] = true, true
+			} else if isLastLeftRow && joinCommand.ShouldTakeRightSide() && !unmatchedRightRows[rightRowIndex] {
+				joinedRowRight = getRow(rightTableWithAddedPrefix, rightRowIndex)
+				aggregateRowIntoJoinTable(leftTableWithAddedPrefix, joinedRowRight, joinedTable)
+			}
+		}
+
+		if joinCommand.ShouldTakeLeftSide() && !leftRowMatches {
+			aggregateRowIntoJoinTable(rightTableWithAddedPrefix, joinedRowLeft, joinedTable)
+		}
+	}
+
+	return joinedTable, nil
+}
+
+func aggregateRowIntoJoinTable(tableWithAddedPrefix *Table, joinedRow map[string]ValueInterface, joinedTable *Table) {
+	joinedEmptyRow := getEmptyRow(tableWithAddedPrefix)
+	maps.Copy(joinedRow, joinedEmptyRow)
+	for colIndex, column := range joinedTable.Columns {
+		joinedTable.Columns[colIndex].Values = append(joinedTable.Columns[colIndex].Values, joinedRow[column.Name])
+	}
+}
+
+func addColumnsWithPrefix(finalTable *Table, columnsToAdd []*Column, prefix string) {
+	for _, column := range columnsToAdd {
+		finalTable.Columns = append(finalTable.Columns,
+			&Column{
+				Type:   column.Type,
+				Values: make([]ValueInterface, 0),
+				Name:   prefix + column.Name,
+			})
+	}
 }
 
 func (table *Table) applyOffsetAndLimit(command *ast.SelectCommand) {

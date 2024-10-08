@@ -97,7 +97,7 @@ func TestParseSelectCommandErrorHandling(t *testing.T) {
 	noFromKeyword := SyntaxError{[]string{token.FROM}, token.IDENT}
 	noColumns := SyntaxError{[]string{token.ASTERISK, token.IDENT}, token.FROM}
 	noTableName := SyntaxError{[]string{token.IDENT}, token.SEMICOLON}
-	noSemicolon := SyntaxError{[]string{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET}, ""}
+	noSemicolon := SyntaxError{[]string{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL}, ""}
 
 	tests := []errorHandlingTestSuite{
 		{"SELECT column1, column2 tbl;", noFromKeyword.Error()},
@@ -190,6 +190,18 @@ func TestParseDeleteCommandErrorHandling(t *testing.T) {
 		{"DELETE table WHERE TRUE", noFromKeyword.Error()},
 		{"DELETE FROM WHERE TRUE;", noTableName.Error()},
 		{"DELETE FROM table;", noWhereCommand.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+}
+
+func TestPeriodInIdentWhileCreatingTableErrorHandling(t *testing.T) {
+	illegalPeriodInTableName := IllegalPeriodInIdentParserError{"tab.le"}
+	illegalPeriodInColumnName := IllegalPeriodInIdentParserError{"col.umn"}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tab.le( one TEXT , two INT);", illegalPeriodInTableName.Error()},
+		{"CREATE TABLE table1( col.umn TEXT , two INT);", illegalPeriodInColumnName.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)

@@ -66,3 +66,33 @@ Data Inserted
 | 'goodbye' |   5 |    22 |  'P' |
 +-----------+-----+-------+------+
 Table: 'tbl' has been dropped
+Table 'table1' has been created
+Table 'table2' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value1' |         NULL |
+|     'Value2' |     'Value2' |
+|         NULL |     'Value3' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value2' |     'Value2' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value1' |         NULL |
+|     'Value2' |     'Value2' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value2' |     'Value2' |
+|         NULL |     'Value3' |
++--------------+--------------+
