@@ -209,6 +209,42 @@ go clean -testcache; go test ./...
   ``tableOne.columnY EQUAL tableTwo.columnX`` (value of ``columnY`` in ``tableOne`` is equal the value of ``columnX`` in
   ``tableTwo``).
 
+* ***MIN()*** is used to return the smallest value in a specified column.
+  ```sql
+    SELECT MIN(columnName)
+    FROM tableName;
+  ```
+  In this case, this command will return the smallest value found in the column ``columnName`` of ``tableName``.
+
+* ***MAX()*** is used to return the largest value in a specified column.
+  ```sql
+  SELECT MAX(columnName)
+  FROM tableName;
+  ```
+  This command will return the largest value found in the column ``columnName`` of ``tableName``.
+
+* ***COUNT()*** is used to return the number of rows that match a given condition or the total number of rows in a
+  specified column.
+  ```sql
+  SELECT COUNT(columnName)
+  FROM tableName;
+  ```
+  This command will return the number of rows in the ``columnName`` of ``tableName``.
+
+* ***SUM()*** is used to return the total sum of the values in a specified numerical column.
+  ```sql
+  SELECT SUM(columnName)
+  FROM tableName;
+  ```
+  This command will return the total sum of all values in the numerical column ``columnName`` of ``tableName``.
+
+* ***AVG()*** is used to return the average of values in a specified numerical column.
+   ```sql
+  SELECT AVG(columnName)
+  FROM tableName;
+   ```
+  This command will return the average of all values in the numerical column ``columnName`` of ``tableName``.
+
 ## E2E TEST
 
 In root directory there is **test_file** containing input commands for E2E tests. File

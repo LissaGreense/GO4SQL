@@ -245,14 +245,14 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	columns := table.Columns
 
 	wantedColumnNames := make([]string, 0)
-	if command.Space[0].Type == token.ASTERISK {
+	if command.Space[0].ColumnName.Type == token.ASTERISK {
 		for i := 0; i < len(columns); i++ {
 			wantedColumnNames = append(wantedColumnNames, columns[i].Name)
 		}
 		return extractColumnContent(columns, &wantedColumnNames, command.Name.GetToken().Literal)
 	} else {
 		for i := 0; i < len(command.Space); i++ {
-			wantedColumnNames = append(wantedColumnNames, command.Space[i].Literal)
+			wantedColumnNames = append(wantedColumnNames, command.Space[i].ColumnName.Literal)
 		}
 		return extractColumnContent(columns, unique(wantedColumnNames), command.Name.GetToken().Literal)
 	}

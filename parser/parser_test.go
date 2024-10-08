@@ -126,12 +126,12 @@ func TestParseSelectCommand(t *testing.T) {
 	tests := []struct {
 		input             string
 		expectedTableName string
-		expectedColumns   []token.Token
+		expectedSpaces    []ast.Space
 		expectedDistinct  bool
 	}{
-		{"SELECT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}, false},
-		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []token.Token{{Type: token.IDENT, Literal: "ONE"}, {Type: token.IDENT, Literal: "TWO"}, {Type: token.IDENT, Literal: "THREE"}}, false},
-		{"SELECT DISTINCT * FROM TBL;", "TBL", []token.Token{{Type: token.ASTERISK, Literal: "*"}}, true},
+		{"SELECT * FROM TBL;", "TBL", []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}, false},
+		{"SELECT ONE, TWO, THREE FROM TBL;", "TBL", []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "ONE"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "TWO"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "THREE"}}}, false},
+		{"SELECT DISTINCT * FROM TBL;", "TBL", []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}, true},
 	}
 
 	for testIndex, tt := range tests {
@@ -146,7 +146,7 @@ func TestParseSelectCommand(t *testing.T) {
 			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
-		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns, tt.expectedDistinct) {
+		if !testSelectStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedSpaces, tt.expectedDistinct) {
 			return
 		}
 	}
@@ -290,7 +290,7 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 		SortPatterns: []ast.SortPattern{expectedSortPattern},
 	}
 	expectedTableName := "tableName"
-	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -305,7 +305,7 @@ func TestSelectWithOrderByCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -323,7 +323,7 @@ func TestSelectWithLimitCommand(t *testing.T) {
 		Count: 5,
 	}
 	expectedTableName := "tableName"
-	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -338,7 +338,7 @@ func TestSelectWithLimitCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -357,7 +357,7 @@ func TestSelectWithOffsetCommand(t *testing.T) {
 	}
 
 	expectedTableName := "tableName"
-	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -372,7 +372,7 @@ func TestSelectWithOffsetCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -393,7 +393,7 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 		Count: 13,
 	}
 	expectedTableName := "tableName"
-	expectedColumnName := []token.Token{{Type: token.ASTERISK, Literal: "*"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.ASTERISK, Literal: "*"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -408,7 +408,7 @@ func TestSelectWithLimitAndOffsetCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -436,7 +436,7 @@ func TestSelectWithDefaultInnerJoinCommand(t *testing.T) {
 		},
 	}
 	expectedTableName := "tbl"
-	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+	expectedSpace := []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "tbl.one"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "tbl2.two"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -451,7 +451,7 @@ func TestSelectWithDefaultInnerJoinCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpace, false) {
 		return
 	}
 
@@ -475,7 +475,7 @@ func TestSelectWithInnerJoinCommand(t *testing.T) {
 		},
 	}
 	expectedTableName := "tbl"
-	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+	expectedSpace := []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "tbl.one"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "tbl2.two"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -490,7 +490,7 @@ func TestSelectWithInnerJoinCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpace, false) {
 		return
 	}
 
@@ -514,7 +514,7 @@ func TestSelectWithLeftJoinCommand(t *testing.T) {
 		},
 	}
 	expectedTableName := "tbl"
-	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "tbl.one"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "tbl2.two"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -529,7 +529,7 @@ func TestSelectWithLeftJoinCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -553,7 +553,7 @@ func TestSelectWithRightJoinCommand(t *testing.T) {
 		},
 	}
 	expectedTableName := "tbl"
-	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "tbl.one"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "tbl2.two"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -568,7 +568,7 @@ func TestSelectWithRightJoinCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -592,7 +592,7 @@ func TestSelectWithFullJoinCommand(t *testing.T) {
 		},
 	}
 	expectedTableName := "tbl"
-	expectedColumnName := []token.Token{{Type: token.IDENT, Literal: "tbl.one"}, {Type: token.IDENT, Literal: "tbl2.two"}}
+	expectedSpaces := []ast.Space{{ColumnName: token.Token{Type: token.IDENT, Literal: "tbl.one"}}, {ColumnName: token.Token{Type: token.IDENT, Literal: "tbl2.two"}}}
 
 	lexer := lexer.RunLexer(input)
 	parserInstance := New(lexer)
@@ -607,7 +607,7 @@ func TestSelectWithFullJoinCommand(t *testing.T) {
 
 	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
 
-	if !testSelectStatement(t, selectCommand, expectedTableName, expectedColumnName, false) {
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
 		return
 	}
 
@@ -616,6 +616,51 @@ func TestSelectWithFullJoinCommand(t *testing.T) {
 	}
 
 	testJoinCommands(t, expectedJoinCommand, *selectCommand.JoinCommand)
+}
+
+func TestSelectWithAggregateFunctions(t *testing.T) {
+	input := "SELECT MIN(colOne), MAX(*), COUNT(colOne), SUM(colOne), AVG(colOne) FROM tbl;"
+
+	expectedTableName := "tbl"
+	expectedSpaces := []ast.Space{
+		{
+			ColumnName:    token.Token{Type: token.IDENT, Literal: "colOne"},
+			AggregateFunc: &token.Token{Type: token.MIN, Literal: "MIN"},
+		},
+		{
+			ColumnName:    token.Token{Type: token.ASTERISK, Literal: "*"},
+			AggregateFunc: &token.Token{Type: token.MAX, Literal: "MAX"},
+		},
+		{
+			ColumnName:    token.Token{Type: token.IDENT, Literal: "colOne"},
+			AggregateFunc: &token.Token{Type: token.COUNT, Literal: "COUNT"},
+		},
+		{
+			ColumnName:    token.Token{Type: token.IDENT, Literal: "colOne"},
+			AggregateFunc: &token.Token{Type: token.SUM, Literal: "SUM"},
+		},
+		{
+			ColumnName:    token.Token{Type: token.IDENT, Literal: "colOne"},
+			AggregateFunc: &token.Token{Type: token.AVG, Literal: "AVG"},
+		},
+	}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	if len(sequences.Commands) != 1 {
+		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+
+	if !testSelectStatement(t, selectCommand, expectedTableName, expectedSpaces, false) {
+		return
+	}
 }
 
 func TestParseUpdateCommand(t *testing.T) {
@@ -778,7 +823,7 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 	}
 }
 
-func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnsTokens []token.Token, expectedDistinct bool) bool {
+func testSelectStatement(t *testing.T, command ast.Command, expectedTableName string, expectedSpaces []ast.Space, expectedDistinct bool) bool {
 	if command.TokenLiteral() != "SELECT" {
 		t.Errorf("command.TokenLiteral() not 'SELECT'. got=%q", command.TokenLiteral())
 		return false
@@ -800,8 +845,8 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 		return false
 	}
 
-	if !tokenArrayEquals(actualSelectCommand.Space, expectedColumnsTokens) {
-		t.Errorf("actualSelectCommand has diffrent space tan expected. %v != %v", actualSelectCommand.Space, expectedColumnsTokens)
+	if !spaceArrayEquals(actualSelectCommand.Space, expectedSpaces) {
+		t.Errorf("actualSelectCommand has diffrent space than expected. %+v != %+v", actualSelectCommand.Space, expectedSpaces)
 		return false
 	}
 
@@ -869,6 +914,24 @@ func tokenArrayEquals(a []token.Token, b []token.Token) bool {
 	}
 	for i, v := range a {
 		if v.Literal != b[i].Literal {
+			return false
+		}
+	}
+	return true
+}
+
+func spaceArrayEquals(a []ast.Space, b []ast.Space) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v.ColumnName.Literal != b[i].ColumnName.Literal {
+			return false
+		}
+		if v.ContainsAggregateFunc() != b[i].ContainsAggregateFunc() {
+			return false
+		}
+		if v.ContainsAggregateFunc() && b[i].ContainsAggregateFunc() && v.AggregateFunc.Literal != b[i].AggregateFunc.Literal {
 			return false
 		}
 	}

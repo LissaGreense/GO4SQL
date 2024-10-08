@@ -95,15 +95,21 @@ func TestParseUpdateCommandErrorHandling(t *testing.T) {
 
 func TestParseSelectCommandErrorHandling(t *testing.T) {
 	noFromKeyword := SyntaxError{[]string{token.FROM}, token.IDENT}
-	noColumns := SyntaxError{[]string{token.ASTERISK, token.IDENT}, token.FROM}
+	noColumns := SyntaxError{[]string{token.ASTERISK, token.IDENT, token.MAX, token.MIN, token.SUM, token.AVG, token.COUNT}, token.FROM}
 	noTableName := SyntaxError{[]string{token.IDENT}, token.SEMICOLON}
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON, token.WHERE, token.ORDER, token.LIMIT, token.OFFSET, token.JOIN, token.LEFT, token.RIGHT, token.INNER, token.FULL}, ""}
+	noAggregateFunctionParenClosure := SyntaxError{[]string{token.RPAREN}, ","}
+	noAggregateFunctionLeftParen := SyntaxError{[]string{token.LPAREN}, token.IDENT}
+	noFromAfterAsterisk := SyntaxError{[]string{token.FROM}, ","}
 
 	tests := []errorHandlingTestSuite{
 		{"SELECT column1, column2 tbl;", noFromKeyword.Error()},
 		{"SELECT FROM table;", noColumns.Error()},
 		{"SELECT column1, column2 FROM ;", noTableName.Error()},
 		{"SELECT column1, column2 FROM table", noSemicolon.Error()},
+		{"SELECT SUM(column1, column2 FROM table", noAggregateFunctionParenClosure.Error()},
+		{"SELECT SUM column1 FROM table", noAggregateFunctionLeftParen.Error()},
+		{"SELECT *, colName FROM table", noFromAfterAsterisk.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)

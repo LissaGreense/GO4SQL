@@ -302,6 +302,46 @@ func TestLimitAndOffsetStatement(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestAggregateFunctions(t *testing.T) {
+	input := `SELECT MIN(colOne), MAX(colOne), COUNT(colOne), SUM(colOne), AVG(colOne) FROM tbl;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.SELECT, "SELECT"},
+		{token.MIN, "MIN"},
+		{token.LPAREN, "("},
+		{token.IDENT, "colOne"},
+		{token.RPAREN, ")"},
+		{token.COMMA, ","},
+		{token.MAX, "MAX"},
+		{token.LPAREN, "("},
+		{token.IDENT, "colOne"},
+		{token.RPAREN, ")"},
+		{token.COMMA, ","},
+		{token.COUNT, "COUNT"},
+		{token.LPAREN, "("},
+		{token.IDENT, "colOne"},
+		{token.RPAREN, ")"},
+		{token.COMMA, ","},
+		{token.SUM, "SUM"},
+		{token.LPAREN, "("},
+		{token.IDENT, "colOne"},
+		{token.RPAREN, ")"},
+		{token.COMMA, ","},
+		{token.AVG, "AVG"},
+		{token.LPAREN, "("},
+		{token.IDENT, "colOne"},
+		{token.RPAREN, ")"},
+		{token.FROM, "FROM"},
+		{token.IDENT, "tbl"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func TestSelectWithDistinct(t *testing.T) {
 	input := `SELECT DISTINCT * FROM table;`
 	tests := []struct {
