@@ -253,8 +253,11 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 				if err != nil {
 					return nil, err
 				}
-				// Get column name
-				err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.ASTERISK})
+				if aggregateFunction.Type == token.COUNT {
+					err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.ASTERISK})
+				} else {
+					err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+				}
 				if err != nil {
 					return nil, err
 				}

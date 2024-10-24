@@ -689,6 +689,143 @@ func TestRightJoinOnIdenticalTables(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionMax(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+		},
+		selectInput: "SELECT MAX(id), MAX(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"MAX(id)", "MAX(value)"},
+			{"2", "Value2"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionMin(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+		},
+		selectInput: "SELECT MAX(value), MAX(id) FROM table1;",
+		expectedOutput: [][]string{
+			{"MIN(value)", "MIN(id)"},
+			{"Value1", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionCount(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT COUNT(*), COUNT(id), COUNT(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"COUNT(*)", "COUNT(id)", "COUNT(value)"},
+			{"3", "3", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionSum(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT SUM(id), SUM(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(id)", "SUM(value)"},
+			{"6", "0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionAvg(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT AVG(id), AVG(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"AVG(id)", "AVG(value)"},
+			{"2", "0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+func TestAggregateFunctionWithColumnSelection(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT MAX(id), id FROM table1;",
+		expectedOutput: [][]string{
+			{"AVG(id)", "id"},
+			{"2", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionWithColumnSelectionAndOrderBy(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, 'Value3');",
+		},
+		selectInput: "SELECT MAX(id), id FROM table1 ORDER BY id DESC;",
+		expectedOutput: [][]string{
+			{"AVG(id)", "id"},
+			{"2", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineDBContentTestSuite struct {
 	inputs             []string
 	expectedTableNames []string

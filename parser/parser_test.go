@@ -619,7 +619,7 @@ func TestSelectWithFullJoinCommand(t *testing.T) {
 }
 
 func TestSelectWithAggregateFunctions(t *testing.T) {
-	input := "SELECT MIN(colOne), MAX(*), COUNT(colOne), SUM(colOne), AVG(colOne) FROM tbl;"
+	input := "SELECT MIN(colOne), MAX(colOne), COUNT(*), COUNT(colOne), SUM(colOne), AVG(colOne) FROM tbl;"
 
 	expectedTableName := "tbl"
 	expectedSpaces := []ast.Space{
@@ -628,8 +628,12 @@ func TestSelectWithAggregateFunctions(t *testing.T) {
 			AggregateFunc: &token.Token{Type: token.MIN, Literal: "MIN"},
 		},
 		{
-			ColumnName:    token.Token{Type: token.ASTERISK, Literal: "*"},
+			ColumnName:    token.Token{Type: token.ASTERISK, Literal: "colOne"},
 			AggregateFunc: &token.Token{Type: token.MAX, Literal: "MAX"},
+		},
+		{
+			ColumnName:    token.Token{Type: token.IDENT, Literal: "*"},
+			AggregateFunc: &token.Token{Type: token.COUNT, Literal: "COUNT"},
 		},
 		{
 			ColumnName:    token.Token{Type: token.IDENT, Literal: "colOne"},

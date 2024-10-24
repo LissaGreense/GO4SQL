@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"sort"
+	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -245,7 +246,43 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	columns := table.Columns
 
 	wantedColumnNames := make([]string, 0)
-	if command.Space[0].ColumnName.Type == token.ASTERISK {
+	if command.AggregateFunctionAppears() {
+		selectedTable := &Table{Columns: make([]*Column, len(command.Space))}
+
+		for i := 0; i < len(command.Space); i++ {
+			var columnType token.Token
+			var columnName string
+			value := make([]ValueInterface, 0)
+
+			// TODO: ASTERISK for COUNT is taken as column name and not found in table. Handle that.
+			columnValues, err := getValuesOfColumn(command.Space[i].ColumnName.Literal, columns)
+			if err != nil {
+				return nil, err
+			}
+
+			if command.Space[i].ContainsAggregateFunc() {
+				columnName = fmt.Sprintf("%s(%s)", command.Space[i].AggregateFunc.Literal,
+					command.Space[i].ColumnName.Literal)
+				columnType = evaluateColumnTypeOfAggregateFunc(command.Space[i])
+				aggregatedValue, aggregateErr := aggregateColumnContent(command.Space[i], columnValues)
+				if aggregateErr != nil {
+					return nil, aggregateErr
+				}
+				value = append(value, aggregatedValue)
+			} else {
+				columnName = command.Space[i].ColumnName.Literal
+				columnType = command.Space[i].ColumnName
+				value = append(value, columnValues[0])
+			}
+
+			selectedTable.Columns = append(selectedTable.Columns, &Column{
+				Name:   columnName,
+				Type:   columnType,
+				Values: value,
+			})
+		}
+		return selectedTable, nil
+	} else if command.Space[0].ColumnName.Type == token.ASTERISK {
 		for i := 0; i < len(columns); i++ {
 			wantedColumnNames = append(wantedColumnNames, columns[i].Name)
 		}
@@ -255,6 +292,76 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 			wantedColumnNames = append(wantedColumnNames, command.Space[i].ColumnName.Literal)
 		}
 		return extractColumnContent(columns, unique(wantedColumnNames), command.Name.GetToken().Literal)
+	}
+}
+
+func getValuesOfColumn(columnName string, columns []*Column) ([]ValueInterface, error) {
+	wantedColumnName := []string{columnName}
+	columnContent, err := extractColumnContent(columns, &wantedColumnName, "")
+	if err != nil {
+		return nil, err
+	}
+	return columnContent.Columns[0].Values, nil
+}
+
+func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
+	if space.AggregateFunc.Type == token.MIN ||
+		space.AggregateFunc.Type == token.MAX {
+		return space.ColumnName
+	}
+	return token.Token{Type: token.INT, Literal: "INT"}
+}
+
+func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
+	if space.AggregateFunc.Type == token.COUNT {
+		return IntegerValue{Value: len(columnValues)}, nil
+	}
+	if len(columnValues) == 0 {
+		return NullValue{}, nil
+	}
+	switch space.AggregateFunc.Type {
+	case token.MAX:
+		_, err := getMax(columnValues)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: cast it to either integer value or string value interface
+		return IntegerValue{Value: 0}, nil
+	case token.MIN:
+		_, err := getMin(columnValues)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: cast it to either integer value or string value interface
+		return IntegerValue{Value: 0}, nil
+	case token.SUM:
+		if columnValues[0].GetType() == StringType {
+			return IntegerValue{Value: 0}, nil
+		} else {
+			sum := 0
+			for _, value := range columnValues {
+				num, err := strconv.Atoi(value.ToString())
+				if err != nil {
+					return nil, err
+				}
+				sum += num
+			}
+			return IntegerValue{Value: sum}, nil
+		}
+	default:
+		if columnValues[0].GetType() == StringType {
+			return IntegerValue{Value: 0}, nil
+		} else {
+			sum := 0
+			for _, value := range columnValues {
+				num, err := strconv.Atoi(value.ToString())
+				if err != nil {
+					return nil, err
+				}
+				sum += num
+			}
+			return IntegerValue{Value: sum / len(columnValues)}, nil
+		}
 	}
 }
 

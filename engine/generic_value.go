@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"log"
 	"strconv"
 )
@@ -120,4 +121,33 @@ func (value NullValue) isGreaterThan(secondValue ValueInterface) bool {
 
 func areEqual(first ValueInterface, second ValueInterface) bool {
 	return first.GetType() == second.GetType() && first.ToString() == second.ToString()
+}
+
+func getMin(values []ValueInterface) (ValueInterface, error) {
+	if len(values) == 0 {
+		return nil, errors.New("can't extract min from empty array")
+	}
+	minValue := values[0]
+
+	for _, value := range values[1:] {
+		if value.isSmallerThan(minValue) {
+			minValue = value
+		}
+	}
+	return minValue, nil
+}
+
+func getMax(values []ValueInterface) (ValueInterface, error) {
+	if len(values) == 0 {
+		return nil, errors.New("can't extract max from empty array")
+	}
+
+	maxValue := values[0]
+	for _, value := range values[1:] {
+		if value.isGreaterThan(maxValue) {
+			maxValue = value
+		}
+	}
+
+	return maxValue, nil
 }

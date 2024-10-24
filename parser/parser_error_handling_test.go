@@ -101,6 +101,7 @@ func TestParseSelectCommandErrorHandling(t *testing.T) {
 	noAggregateFunctionParenClosure := SyntaxError{[]string{token.RPAREN}, ","}
 	noAggregateFunctionLeftParen := SyntaxError{[]string{token.LPAREN}, token.IDENT}
 	noFromAfterAsterisk := SyntaxError{[]string{token.FROM}, ","}
+	noAsteriskInsideMaxArgument := SyntaxError{[]string{token.IDENT}, "*"}
 
 	tests := []errorHandlingTestSuite{
 		{"SELECT column1, column2 tbl;", noFromKeyword.Error()},
@@ -110,6 +111,7 @@ func TestParseSelectCommandErrorHandling(t *testing.T) {
 		{"SELECT SUM(column1, column2 FROM table", noAggregateFunctionParenClosure.Error()},
 		{"SELECT SUM column1 FROM table", noAggregateFunctionLeftParen.Error()},
 		{"SELECT *, colName FROM table", noFromAfterAsterisk.Error()},
+		{"SELECT MAX(*) FROM table", noAsteriskInsideMaxArgument.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)

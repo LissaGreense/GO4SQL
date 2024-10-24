@@ -191,6 +191,14 @@ type SelectCommand struct {
 
 func (ls SelectCommand) CommandNode()         {}
 func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls *SelectCommand) AggregateFunctionAppears() bool {
+	for _, space := range ls.Space {
+		if space.ContainsAggregateFunc() {
+			return true
+		}
+	}
+	return false
+}
 
 // HasWhereCommand - returns true if optional HasWhereCommand is present in SelectCommand
 //
