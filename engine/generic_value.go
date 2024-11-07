@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"strconv"
 )
@@ -34,6 +36,20 @@ type StringValue struct {
 
 // NullValue - Implementation of ValueInterface that is containing null
 type NullValue struct {
+}
+
+// HandleValue - Function to take an instance of ValueInterface and cast to a specific implementation
+func CastValueInterface(v ValueInterface) {
+	switch value := v.(type) {
+	case IntegerValue:
+		fmt.Printf("IntegerValue with Value: %d\n", value.Value)
+	case StringValue:
+		fmt.Printf("StringValue with Value: %s\n", value.Value)
+	case NullValue:
+		fmt.Println("NullValue (no value)")
+	default:
+		fmt.Println("Unknown type")
+	}
 }
 
 // ToString implementations
@@ -120,4 +136,33 @@ func (value NullValue) isGreaterThan(secondValue ValueInterface) bool {
 
 func areEqual(first ValueInterface, second ValueInterface) bool {
 	return first.GetType() == second.GetType() && first.ToString() == second.ToString()
+}
+
+func getMin(values []ValueInterface) (ValueInterface, error) {
+	if len(values) == 0 {
+		return nil, errors.New("can't extract min from empty array")
+	}
+	minValue := values[0]
+
+	for _, value := range values[1:] {
+		if value.isSmallerThan(minValue) {
+			minValue = value
+		}
+	}
+	return minValue, nil
+}
+
+func getMax(values []ValueInterface) (ValueInterface, error) {
+	if len(values) == 0 {
+		return nil, errors.New("can't extract max from empty array")
+	}
+
+	maxValue := values[0]
+	for _, value := range values[1:] {
+		if value.isGreaterThan(maxValue) {
+			maxValue = value
+		}
+	}
+
+	return maxValue, nil
 }

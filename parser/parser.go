@@ -236,23 +236,47 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 		parser.nextToken()
 	}
 
-	err := validateToken(parser.currentToken.Type, []token.Type{token.ASTERISK, token.IDENT})
+	err := validateToken(parser.currentToken.Type, []token.Type{token.ASTERISK, token.IDENT, token.MAX, token.MIN, token.SUM, token.AVG, token.COUNT})
 	if err != nil {
 		return nil, err
 	}
-	if parser.currentToken.Type == token.ASTERISK {
-		selectCommand.Space = append(selectCommand.Space, parser.currentToken)
-		parser.nextToken()
 
+	if parser.currentToken.Type == token.ASTERISK {
+		selectCommand.Space = append(selectCommand.Space, ast.Space{ColumnName: parser.currentToken})
+		parser.nextToken()
 	} else {
-		for parser.currentToken.Type == token.IDENT {
-			// Get column name
-			err := validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-			if err != nil {
-				return nil, err
+		for parser.currentToken.Type == token.IDENT || isAggregateFunction(parser.currentToken.Type) {
+			if parser.currentToken.Type != token.IDENT {
+				aggregateFunction := parser.currentToken
+				parser.nextToken()
+				err := validateTokenAndSkip(parser, []token.Type{token.LPAREN})
+				if err != nil {
+					return nil, err
+				}
+				if aggregateFunction.Type == token.COUNT {
+					err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.ASTERISK})
+				} else {
+					err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+				}
+				if err != nil {
+					return nil, err
+				}
+				selectCommand.Space = append(selectCommand.Space, ast.Space{ColumnName: parser.currentToken, AggregateFunc: &aggregateFunction})
+				parser.nextToken()
+
+				err = validateTokenAndSkip(parser, []token.Type{token.RPAREN})
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				// Get column name
+				err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+				if err != nil {
+					return nil, err
+				}
+				selectCommand.Space = append(selectCommand.Space, ast.Space{ColumnName: parser.currentToken})
+				parser.nextToken()
 			}
-			selectCommand.Space = append(selectCommand.Space, parser.currentToken)
-			parser.nextToken()
 
 			if parser.currentToken.Type != token.COMMA {
 				break
@@ -287,6 +311,21 @@ func (parser *Parser) parseSelectCommand() (ast.Command, error) {
 	}
 
 	return selectCommand, nil
+}
+
+func (parser *Parser) getColumnName(err error, selectCommand *ast.SelectCommand, aggregateFunction token.Token) error {
+	// Get column name
+	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.ASTERISK})
+	if err != nil {
+		return err
+	}
+	selectCommand.Space = append(selectCommand.Space, ast.Space{ColumnName: parser.currentToken, AggregateFunc: &aggregateFunction})
+	parser.nextToken()
+	return nil
+}
+
+func isAggregateFunction(t token.Type) bool {
+	return t == token.MIN || t == token.MAX || t == token.COUNT || t == token.SUM || t == token.AVG
 }
 
 // parseWhereCommand - Return ast.WhereCommand created from tokens and validate the syntax

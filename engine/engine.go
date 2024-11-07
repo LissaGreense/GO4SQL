@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"sort"
+	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -245,16 +246,138 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	columns := table.Columns
 
 	wantedColumnNames := make([]string, 0)
-	if command.Space[0].Type == token.ASTERISK {
+	if command.AggregateFunctionAppears() {
+		selectedTable := &Table{Columns: make([]*Column, 0)}
+
+		for i := 0; i < len(command.Space); i++ {
+			var columnType token.Token
+			var columnName string
+			var columnValues []ValueInterface
+			var err error
+			value := make([]ValueInterface, 0)
+			currentSpace := command.Space[i]
+
+			if currentSpace.ColumnName.Type == token.ASTERISK && currentSpace.AggregateFunc.Type == token.COUNT {
+				if len(columns) > 0 {
+					columnValues = columns[0].Values
+				}
+			} else {
+				columnValues, err = getValuesOfColumn(currentSpace.ColumnName.Literal, columns)
+			}
+
+			if err != nil {
+				return nil, err
+			}
+
+			if currentSpace.ContainsAggregateFunc() {
+				columnName = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
+					currentSpace.ColumnName.Literal)
+				columnType = evaluateColumnTypeOfAggregateFunc(currentSpace)
+				aggregatedValue, aggregateErr := aggregateColumnContent(currentSpace, columnValues)
+				if aggregateErr != nil {
+					return nil, aggregateErr
+				}
+				value = append(value, aggregatedValue)
+			} else {
+				columnName = currentSpace.ColumnName.Literal
+				columnType = currentSpace.ColumnName
+				value = append(value, columnValues[0])
+			}
+
+			selectedTable.Columns = append(selectedTable.Columns, &Column{
+				Name:   columnName,
+				Type:   columnType,
+				Values: value,
+			})
+		}
+		return selectedTable, nil
+	} else if command.Space[0].ColumnName.Type == token.ASTERISK {
 		for i := 0; i < len(columns); i++ {
 			wantedColumnNames = append(wantedColumnNames, columns[i].Name)
 		}
 		return extractColumnContent(columns, &wantedColumnNames, command.Name.GetToken().Literal)
 	} else {
 		for i := 0; i < len(command.Space); i++ {
-			wantedColumnNames = append(wantedColumnNames, command.Space[i].Literal)
+			wantedColumnNames = append(wantedColumnNames, command.Space[i].ColumnName.Literal)
 		}
 		return extractColumnContent(columns, unique(wantedColumnNames), command.Name.GetToken().Literal)
+	}
+}
+
+func getValuesOfColumn(columnName string, columns []*Column) ([]ValueInterface, error) {
+	wantedColumnName := []string{columnName}
+	columnContent, err := extractColumnContent(columns, &wantedColumnName, "")
+	if err != nil {
+		return nil, err
+	}
+	return columnContent.Columns[0].Values, nil
+}
+
+func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
+	if space.AggregateFunc.Type == token.MIN ||
+		space.AggregateFunc.Type == token.MAX {
+		return space.ColumnName
+	}
+	return token.Token{Type: token.INT, Literal: "INT"}
+}
+
+func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
+	if space.AggregateFunc.Type == token.COUNT {
+		if space.ColumnName.Type == token.ASTERISK {
+			return IntegerValue{Value: len(columnValues)}, nil
+		}
+		count := 0
+		for _, value := range columnValues {
+			if value.GetType() != NullType {
+				count++
+			}
+		}
+		return IntegerValue{Value: count}, nil
+	}
+	if len(columnValues) == 0 {
+		return NullValue{}, nil
+	}
+	switch space.AggregateFunc.Type {
+	case token.MAX:
+		maxValue, err := getMax(columnValues)
+		if err != nil {
+			return nil, err
+		}
+		return maxValue, nil
+	case token.MIN:
+		minValue, err := getMin(columnValues)
+		if err != nil {
+			return nil, err
+		}
+		return minValue, nil
+	case token.SUM:
+		if columnValues[0].GetType() == StringType {
+			return IntegerValue{Value: 0}, nil
+		} else {
+			sum := 0
+			for _, value := range columnValues {
+				num, err := strconv.Atoi(value.ToString())
+				if err != nil {
+					return nil, err
+				}
+				sum += num
+			}
+			return IntegerValue{Value: sum}, nil
+		}
+	default:
+		if columnValues[0].GetType() == StringType {
+			return IntegerValue{Value: 0}, nil
+		} else {
+			sum := 0
+			for _, value := range columnValues {
+				num, err := strconv.Atoi(value.ToString())
+				if err != nil {
+					return nil, err
+				}
+				sum += num
+			}
+			return IntegerValue{Value: sum / len(columnValues)}, nil
+		}
 	}
 }
 

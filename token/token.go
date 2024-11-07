@@ -54,6 +54,11 @@ const (
 	LEFT     = "LEFT"
 	RIGHT    = "RIGHT"
 	ON       = "ON"
+	MIN      = "MIN"
+	MAX      = "MAX"
+	COUNT    = "COUNT"
+	SUM      = "SUM"
+	AVG      = "AVG"
 
 	TO = "TO"
 
@@ -99,6 +104,11 @@ var keywords = map[string]Type{
 	"RIGHT":    RIGHT,
 	"JOIN":     JOIN,
 	"ON":       ON,
+	"MIN":      MIN,
+	"MAX":      MAX,
+	"COUNT":    COUNT,
+	"SUM":      SUM,
+	"AVG":      AVG,
 	"TO":       TO,
 	"VALUES":   VALUES,
 	"WHERE":    WHERE,

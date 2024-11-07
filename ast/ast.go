@@ -153,6 +153,26 @@ type InsertCommand struct {
 func (ls InsertCommand) CommandNode()         {}
 func (ls InsertCommand) TokenLiteral() string { return ls.Token.Literal }
 
+// Space - part of SelectCommand which is containing either * or a column name with an optional function aggregating it
+type Space struct {
+	ColumnName    token.Token
+	AggregateFunc *token.Token
+}
+
+func (space Space) String() string {
+	columnName := "ColumnName={Type: " + string(space.ColumnName.Type) + ", Literal: " + space.ColumnName.Literal + "}"
+	if space.ContainsAggregateFunc() {
+		aggFunc := "AggregateFunc={Type: " + string(space.AggregateFunc.Type) + ", Literal: " + space.AggregateFunc.Literal + "}"
+		return columnName + ", " + aggFunc
+	}
+	return columnName
+}
+
+// ContainsAggregateFunc - return true if space contains AggregateFunc that aggregate columnName or *
+func (space Space) ContainsAggregateFunc() bool {
+	return space.AggregateFunc != nil
+}
+
 // SelectCommand - Part of Command that represent selecting values from tables
 //
 // Example:
@@ -160,7 +180,7 @@ func (ls InsertCommand) TokenLiteral() string { return ls.Token.Literal }
 type SelectCommand struct {
 	Token          token.Token
 	Name           Identifier      // ex. name of table
-	Space          []token.Token   // ex. column names
+	Space          []Space         // ex. column names
 	HasDistinct    bool            // DISTINCT keyword has been used
 	WhereCommand   *WhereCommand   // optional
 	OrderByCommand *OrderByCommand // optional
@@ -171,6 +191,14 @@ type SelectCommand struct {
 
 func (ls SelectCommand) CommandNode()         {}
 func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
+func (ls *SelectCommand) AggregateFunctionAppears() bool {
+	for _, space := range ls.Space {
+		if space.ContainsAggregateFunc() {
+			return true
+		}
+	}
+	return false
+}
 
 // HasWhereCommand - returns true if optional HasWhereCommand is present in SelectCommand
 //
