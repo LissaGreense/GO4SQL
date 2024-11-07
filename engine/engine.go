@@ -247,31 +247,40 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 
 	wantedColumnNames := make([]string, 0)
 	if command.AggregateFunctionAppears() {
-		selectedTable := &Table{Columns: make([]*Column, len(command.Space))}
+		selectedTable := &Table{Columns: make([]*Column, 0)}
 
 		for i := 0; i < len(command.Space); i++ {
 			var columnType token.Token
 			var columnName string
+			var columnValues []ValueInterface
+			var err error
 			value := make([]ValueInterface, 0)
+			currentSpace := command.Space[i]
 
-			// TODO: ASTERISK for COUNT is taken as column name and not found in table. Handle that.
-			columnValues, err := getValuesOfColumn(command.Space[i].ColumnName.Literal, columns)
+			if currentSpace.ColumnName.Type == token.ASTERISK && currentSpace.AggregateFunc.Type == token.COUNT {
+				if len(columns) > 0 {
+					columnValues = columns[0].Values
+				}
+			} else {
+				columnValues, err = getValuesOfColumn(currentSpace.ColumnName.Literal, columns)
+			}
+
 			if err != nil {
 				return nil, err
 			}
 
-			if command.Space[i].ContainsAggregateFunc() {
-				columnName = fmt.Sprintf("%s(%s)", command.Space[i].AggregateFunc.Literal,
-					command.Space[i].ColumnName.Literal)
-				columnType = evaluateColumnTypeOfAggregateFunc(command.Space[i])
-				aggregatedValue, aggregateErr := aggregateColumnContent(command.Space[i], columnValues)
+			if currentSpace.ContainsAggregateFunc() {
+				columnName = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
+					currentSpace.ColumnName.Literal)
+				columnType = evaluateColumnTypeOfAggregateFunc(currentSpace)
+				aggregatedValue, aggregateErr := aggregateColumnContent(currentSpace, columnValues)
 				if aggregateErr != nil {
 					return nil, aggregateErr
 				}
 				value = append(value, aggregatedValue)
 			} else {
-				columnName = command.Space[i].ColumnName.Literal
-				columnType = command.Space[i].ColumnName
+				columnName = currentSpace.ColumnName.Literal
+				columnType = currentSpace.ColumnName
 				value = append(value, columnValues[0])
 			}
 
@@ -314,26 +323,33 @@ func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
 
 func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
 	if space.AggregateFunc.Type == token.COUNT {
-		return IntegerValue{Value: len(columnValues)}, nil
+		if space.ColumnName.Type == token.ASTERISK {
+			return IntegerValue{Value: len(columnValues)}, nil
+		}
+		count := 0
+		for _, value := range columnValues {
+			if value.GetType() != NullType {
+				count++
+			}
+		}
+		return IntegerValue{Value: count}, nil
 	}
 	if len(columnValues) == 0 {
 		return NullValue{}, nil
 	}
 	switch space.AggregateFunc.Type {
 	case token.MAX:
-		_, err := getMax(columnValues)
+		maxValue, err := getMax(columnValues)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: cast it to either integer value or string value interface
-		return IntegerValue{Value: 0}, nil
+		return maxValue, nil
 	case token.MIN:
-		_, err := getMin(columnValues)
+		minValue, err := getMin(columnValues)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: cast it to either integer value or string value interface
-		return IntegerValue{Value: 0}, nil
+		return minValue, nil
 	case token.SUM:
 		if columnValues[0].GetType() == StringType {
 			return IntegerValue{Value: 0}, nil

@@ -717,7 +717,7 @@ func TestAggregateFunctionMin(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 		},
-		selectInput: "SELECT MAX(value), MAX(id) FROM table1;",
+		selectInput: "SELECT MIN(value), MIN(id) FROM table1;",
 		expectedOutput: [][]string{
 			{"MIN(value)", "MIN(id)"},
 			{"Value1", "1"},
@@ -736,6 +736,9 @@ func TestAggregateFunctionCount(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
+			// TODO: Add test case mentioned in comment below once inserting
+			// null values will be added
+			//"INSERT INTO table1 VALUES(NULL, NULL);",
 		},
 		selectInput: "SELECT COUNT(*), COUNT(id), COUNT(value) FROM table1;",
 		expectedOutput: [][]string{
@@ -786,6 +789,7 @@ func TestAggregateFunctionAvg(t *testing.T) {
 
 	engineTestSuite.runTestSuite(t)
 }
+
 func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
@@ -796,7 +800,7 @@ func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
 		},
-		selectInput: "SELECT MAX(id), id FROM table1;",
+		selectInput: "SELECT AVG(id), id FROM table1;",
 		expectedOutput: [][]string{
 			{"AVG(id)", "id"},
 			{"2", "1"},
@@ -818,8 +822,8 @@ func TestAggregateFunctionWithColumnSelectionAndOrderBy(t *testing.T) {
 		},
 		selectInput: "SELECT MAX(id), id FROM table1 ORDER BY id DESC;",
 		expectedOutput: [][]string{
-			{"AVG(id)", "id"},
-			{"2", "1"},
+			{"MAX(id)", "id"},
+			{"3", "3"},
 		},
 	}
 
