@@ -681,6 +681,7 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 // - ast.OperationExpression
 // - ast.BooleanExpression
 // - ast.ConditionExpression
+// - ast.ContainExpression
 func (parser *Parser) getExpression() (bool, ast.Expression, error) {
 	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
@@ -689,7 +690,12 @@ func (parser *Parser) getExpression() (bool, ast.Expression, error) {
 		return false, nil, err
 	}
 
-	operationExpressionExists, operationExpression, err := parser.getOperationExpression(booleanExpressionExists, conditionalExpressionExists, booleanExpression, conditionalExpression)
+	containExpressionExists, containExpression, err := parser.getContainExpression()
+	if err != nil {
+		return false, nil, err
+	}
+
+	operationExpressionExists, operationExpression, err := parser.getOperationExpression(booleanExpressionExists, conditionalExpressionExists, containExpressionExists, booleanExpression, conditionalExpression, containExpression)
 	if err != nil {
 		return false, nil, err
 	}
@@ -702,6 +708,10 @@ func (parser *Parser) getExpression() (bool, ast.Expression, error) {
 		return true, conditionalExpression, err
 	}
 
+	if containExpressionExists {
+		return true, containExpression, err
+	}
+
 	if booleanExpressionExists {
 		return true, booleanExpression, err
 	}
@@ -710,16 +720,20 @@ func (parser *Parser) getExpression() (bool, ast.Expression, error) {
 }
 
 // getOperationExpression - Return ast.OperationExpression created from tokens and validate the syntax
-func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, booleanExpression *ast.BooleanExpression, conditionalExpression *ast.ConditionExpression) (bool, *ast.OperationExpression, error) {
+func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, containExpressionExists bool, booleanExpression *ast.BooleanExpression, conditionalExpression *ast.ConditionExpression, containExpression *ast.ContainExpression) (bool, *ast.OperationExpression, error) {
 	operationExpression := &ast.OperationExpression{}
 
-	if (booleanExpressionExists || conditionalExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
+	if (booleanExpressionExists || conditionalExpressionExists || containExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
 		if booleanExpressionExists {
 			operationExpression.Left = booleanExpression
 		}
 
 		if conditionalExpressionExists {
 			operationExpression.Left = conditionalExpression
+		}
+
+		if containExpressionExists {
+			operationExpression.Left = containExpression
 		}
 
 		operationExpression.Operation = parser.currentToken
@@ -760,6 +774,12 @@ func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
 func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression, error) {
 	conditionalExpression := &ast.ConditionExpression{}
 
+	err := validateToken(parser.peekToken.Type, []token.Type{token.EQUAL, token.NOT})
+	if err != nil {
+		return false, nil, nil
+	}
+	conditionalExpression.Condition = parser.peekToken
+
 	switch parser.currentToken.Type {
 	case token.IDENT:
 		conditionalExpression.Left = ast.Identifier{Token: parser.currentToken}
@@ -779,11 +799,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		return false, conditionalExpression, nil
 	}
 
-	err := validateToken(parser.currentToken.Type, []token.Type{token.EQUAL, token.NOT})
-	if err != nil {
-		return false, nil, err
-	}
-	conditionalExpression.Condition = parser.currentToken
+	// skip EQUAL or NOT
 	parser.nextToken()
 
 	switch parser.currentToken.Type {
@@ -806,6 +822,65 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 	}
 
 	return true, conditionalExpression, nil
+}
+
+// getContainExpression - Return ast.ContainExpression created from tokens and validate the syntax
+func (parser *Parser) getContainExpression() (bool, *ast.ContainExpression, error) {
+	containExpression := &ast.ContainExpression{}
+
+	err := validateToken(parser.peekToken.Type, []token.Type{token.IN, token.NOTIN})
+	if err != nil {
+		return false, nil, nil
+	}
+	if parser.peekToken.Type == token.IN {
+		containExpression.Contains = true
+	} else {
+		containExpression.Contains = false
+	}
+
+	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
+	if err != nil {
+		return false, nil, nil
+	}
+	containExpression.Left = ast.Identifier{Token: parser.currentToken}
+
+	parser.nextToken()
+
+	// skip IN or NOTIN
+	parser.nextToken()
+
+	err = validateTokenAndSkip(parser, []token.Type{token.LPAREN})
+	if err != nil {
+		return false, nil, err
+	}
+
+	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
+		parser.skipIfCurrentTokenIsApostrophe()
+
+		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+		if err != nil {
+			return false, nil, err
+		}
+		containExpression.Right = append(containExpression.Right, ast.Anonymitifier{Token: parser.currentToken})
+		// Ignore token.IDENT or token.LITERAL
+		parser.nextToken()
+
+		parser.skipIfCurrentTokenIsApostrophe()
+
+		if parser.currentToken.Type != token.COMMA {
+			break
+		}
+
+		// Ignore token.COMMA
+		parser.nextToken()
+	}
+
+	err = validateTokenAndSkip(parser, []token.Type{token.RPAREN})
+	if err != nil {
+		return false, nil, err
+	}
+
+	return true, containExpression, err
 }
 
 // ParseSequence - Return ast.Sequence (sequence of commands) created from client input after tokenization

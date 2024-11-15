@@ -107,6 +107,20 @@ func (ls ConditionExpression) GetIdentifiers() []Identifier {
 	return identifiers
 }
 
+// ContainExpression - TokenType of Expression that represents structure for IN operator
+//
+// Example:
+// colName IN ('value1', 'value2', 'value3')
+type ContainExpression struct {
+	Left     Identifier      // name of column
+	Right    []Anonymitifier // name of column
+	Contains bool            // IN or NOTIN
+}
+
+func (ls ContainExpression) GetIdentifiers() []Identifier {
+	return []Identifier{ls.Left}
+}
+
 // OperationExpression - TokenType of Expression that represent 2 other Expressions and conditional operation
 //
 // Example:

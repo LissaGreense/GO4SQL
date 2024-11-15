@@ -226,6 +226,44 @@ func TestLogicalStatements(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestInStatement(t *testing.T) {
+	input :=
+		`
+			WHERE two IN (1, 2) AND
+			WHERE three NOTIN ('one', 'two');
+			`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.WHERE, "WHERE"},
+		{token.IDENT, "two"},
+		{token.IN, "IN"},
+		{token.LPAREN, "("},
+		{token.LITERAL, "1"},
+		{token.COMMA, ","},
+		{token.LITERAL, "2"},
+		{token.RPAREN, ")"},
+		{token.AND, "AND"},
+		{token.WHERE, "WHERE"},
+		{token.IDENT, "three"},
+		{token.NOTIN, "NOTIN"},
+		{token.LPAREN, "("},
+		{token.APOSTROPHE, "'"},
+		{token.IDENT, "one"},
+		{token.APOSTROPHE, "'"},
+		{token.COMMA, ","},
+		{token.APOSTROPHE, "'"},
+		{token.IDENT, "two"},
+		{token.APOSTROPHE, "'"},
+		{token.RPAREN, ")"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func TestDeleteStatement(t *testing.T) {
 	input := `DELETE FROM table WHERE two NOT 11 OR TRUE;`
 	tests := []struct {

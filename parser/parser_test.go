@@ -165,6 +165,24 @@ func TestParseWhereCommand(t *testing.T) {
 		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
 	}
 
+	thirdExpression := ast.ContainExpression{
+		Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName3"}},
+		Right: []ast.Anonymitifier{
+			{Token: token.Token{Type: token.LITERAL, Literal: "1"}},
+			{Token: token.Token{Type: token.LITERAL, Literal: "2"}},
+		},
+		Contains: true,
+	}
+
+	fourthExpression := ast.ContainExpression{
+		Left: ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "colName4"}},
+		Right: []ast.Anonymitifier{
+			{Token: token.Token{Type: token.IDENT, Literal: "one"}},
+			{Token: token.Token{Type: token.IDENT, Literal: "two"}},
+		},
+		Contains: false,
+	}
+
 	tests := []struct {
 		input              string
 		expectedExpression ast.Expression
@@ -176,6 +194,14 @@ func TestParseWhereCommand(t *testing.T) {
 		{
 			input:              "SELECT * FROM TBL WHERE colName2 EQUAL 6462389;",
 			expectedExpression: secondExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE colName3 IN (1, 2);",
+			expectedExpression: thirdExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE colName4 NOTIN ('one', 'two');",
+			expectedExpression: fourthExpression,
 		},
 	}
 
@@ -1034,6 +1060,11 @@ func expressionsAreEqual(first ast.Expression, second ast.Expression) bool {
 		return validateOperationExpression(second, operationExpression)
 	}
 
+	containExpression, containExpressionIsValid := first.(*ast.ContainExpression)
+	if containExpressionIsValid {
+		return validateContainExpression(second, containExpression)
+	}
+
 	return false
 }
 
@@ -1049,6 +1080,35 @@ func validateOperationExpression(second ast.Expression, operationExpression *ast
 	}
 
 	return expressionsAreEqual(operationExpression.Left, secondOperationExpression.Left) && expressionsAreEqual(operationExpression.Right, secondOperationExpression.Right)
+}
+
+func validateContainExpression(expression ast.Expression, exptectedContainExpression *ast.ContainExpression) bool {
+	actualContainExpression, actualContainExpressionIsValid := expression.(ast.ContainExpression)
+
+	if !actualContainExpressionIsValid {
+		return false
+	}
+
+	if exptectedContainExpression.Contains != actualContainExpression.Contains {
+		return false
+	}
+
+	if actualContainExpression.Left.GetToken().Literal != exptectedContainExpression.Left.GetToken().Literal &&
+		actualContainExpression.Left.IsIdentifier() == exptectedContainExpression.Left.IsIdentifier() {
+		return false
+	}
+
+	if len(exptectedContainExpression.Right) != len(actualContainExpression.Right) {
+		return false
+	}
+
+	for i := 0; i < len(exptectedContainExpression.Right); i++ {
+		if exptectedContainExpression.Right[i] != actualContainExpression.Right[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func validateConditionExpression(second ast.Expression, conditionExpression *ast.ConditionExpression) bool {

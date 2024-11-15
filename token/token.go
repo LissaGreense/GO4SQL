@@ -59,6 +59,8 @@ const (
 	COUNT    = "COUNT"
 	SUM      = "SUM"
 	AVG      = "AVG"
+	IN       = "IN"
+	NOTIN    = "NOTIN"
 
 	TO = "TO"
 
@@ -109,6 +111,8 @@ var keywords = map[string]Type{
 	"COUNT":    COUNT,
 	"SUM":      SUM,
 	"AVG":      AVG,
+	"IN":       IN,
+	"NOTIN":    NOTIN,
 	"TO":       TO,
 	"VALUES":   VALUES,
 	"WHERE":    WHERE,
