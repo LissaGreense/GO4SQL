@@ -131,7 +131,6 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 			return nil, err
 		}
 	} else {
-		// panic: runtime error: invalid memory address or nil pointer dereference [recovered]
 		table, err = engine.selectFromProvidedTable(selectCommand, table)
 		if err != nil {
 			return nil, err
@@ -676,6 +675,9 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 		return processBooleanExpression(mappedExpression)
 	case *ast.ConditionExpression:
 		return processConditionExpression(row, mappedExpression, commandName)
+	case *ast.ContainExpression:
+		return processContainExpression(row, mappedExpression)
+
 	default:
 		return false, &UnsupportedExpressionTypeError{commandName: commandName, variable: fmt.Sprintf("%s", mappedExpression)}
 	}
@@ -700,6 +702,34 @@ func processConditionExpression(row map[string]ValueInterface, conditionExpressi
 	default:
 		return false, &UnsupportedConditionalTokenError{variable: conditionExpression.Condition.Literal, commandName: commandName}
 	}
+}
+
+func processContainExpression(row map[string]ValueInterface, containExpression *ast.ContainExpression) (bool, error) {
+	valueLeft, err := getTifierValue(containExpression.Left, row)
+	if err != nil {
+		return false, err
+	}
+
+	result, err := ifValueInterfaceInArray(containExpression.Right, valueLeft)
+
+	if containExpression.Contains {
+		return result, err
+	}
+
+	return !result, err
+}
+
+func ifValueInterfaceInArray(array []ast.Anonymitifier, valueLeft ValueInterface) (bool, error) {
+	for _, expectedValue := range array {
+		value, err := getInterfaceValue(expectedValue.Token)
+		if err != nil {
+			return false, err
+		}
+		if value.IsEqual(valueLeft) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func processOperationExpression(row map[string]ValueInterface, operationExpression *ast.OperationExpression, commandName string) (bool, error) {

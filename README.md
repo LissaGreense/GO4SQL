@@ -101,6 +101,25 @@ go clean -testcache; go test ./...
   ```
   Supported logical operations are: ``EQUAL``, ``NOT``, ``OR``, ``AND``, ```FALSE```, ```TRUE```.
 
+* ***IN*** - is used to check if a value from a column exists in a specified list of values.
+  It can be used with ``WHERE`` like this:
+  ```sql
+  SELECT column1, column2
+  FROM table_name
+  WHERE column1 IN ('value1', 'value2');
+  ```
+  ``table_name`` is the name of the table, and ``WHERE`` returns rows that value is either equal to
+  ``value1`` or ``value2``
+
+* ***NOTIN*** - is used to check if a value from a column doesn't exist in a specified list of
+  values. It can be used with ``WHERE`` like this:
+  ```sql
+  SELECT column1, column2
+  FROM table_name
+  WHERE column1 NOTIN ('value1', 'value2');
+  ```
+  ``table_name`` is the name of the table, and ``WHERE`` returns rows which values are not equal to
+  ``value1`` and not equal to ``value2``
 
 * ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
   ```sql

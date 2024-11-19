@@ -5,6 +5,8 @@
 		SELECT * FROM tbl WHERE one EQUAL 'byebye';
 		SELECT one, three FROM tbl WHERE two NOT 3;
 		SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL 3;
+		SELECT * FROM tbl WHERE one IN ('goodbye', 'byebye');
+		SELECT * FROM tbl WHERE one NOTIN ('goodbye', 'byebye');
 		SELECT * FROM tbl WHERE FALSE;
 		SELECT * FROM tbl LIMIT 1;
 		SELECT * FROM tbl OFFSET 1;

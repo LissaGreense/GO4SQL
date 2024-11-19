@@ -868,6 +868,9 @@ func (parser *Parser) getContainExpression() (bool, *ast.ContainExpression, erro
 		parser.skipIfCurrentTokenIsApostrophe()
 
 		if parser.currentToken.Type != token.COMMA {
+			if parser.currentToken.Type != token.RPAREN {
+				return false, nil, &SyntaxError{expecting: []string{token.COMMA, token.RPAREN}, got: string(parser.currentToken.Type)}
+			}
 			break
 		}
 

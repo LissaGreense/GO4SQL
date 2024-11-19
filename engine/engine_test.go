@@ -126,6 +126,88 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestSelectWithWhereContains(t *testing.T) {
+
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three IN (11, 22, 67);",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereNotContains(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one NOTIN ('hello', 'byebye', 'youAreTheBest');",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereContainsButResponseIsEmpty(t *testing.T) {
+
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one IN ('I', 'dont', 'exist', 'anymore');",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereNotContainsButResponseIsEmpty(t *testing.T) {
+
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE two NOTIN (1, 2, 3, 4);",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 
 	engineTestSuite := engineTableContentTestSuite{
@@ -180,7 +262,7 @@ func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
 		},
-		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two EQUAL 3 AND four EQUAL 'e';",
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two IN (3) AND four EQUAL 'e';",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
