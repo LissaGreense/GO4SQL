@@ -121,21 +121,29 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	selectCommandPrefix := "SELECT * FROM tbl "
 	noPredecessorError := NoPredecessorParserError{command: token.WHERE}
 	noColName := LogicalExpressionParsingError{}
-	notOrEqualIsMissing := SyntaxError{expecting: []string{token.EQUAL, token.NOT}, got: token.APOSTROPHE}
+	noOperatorInsideWhereStatementException := LogicalExpressionParsingError{}
 	valueIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL}, got: token.SEMICOLON}
 	tokenAnd := token.AND
 	conjunctionIsMissing := SyntaxError{expecting: []string{token.SEMICOLON, token.ORDER}, got: token.IDENT}
 	nextLogicalExpressionIsMissing := LogicalExpressionParsingError{afterToken: &tokenAnd}
 	noSemicolon := SyntaxError{expecting: []string{token.SEMICOLON, token.ORDER}, got: ""}
+	noLeftParGotSemicolon := SyntaxError{expecting: []string{token.LPAREN}, got: ";"}
+	noLeftParGotNumber := SyntaxError{expecting: []string{token.LPAREN}, got: token.LITERAL}
+	noComma := SyntaxError{expecting: []string{token.COMMA, token.RPAREN}, got: token.LITERAL}
+	noInKeywordException := LogicalExpressionParsingError{}
 
 	tests := []errorHandlingTestSuite{
 		{"WHERE col1 NOT 'goodbye' OR col2 EQUAL 3;", noPredecessorError.Error()},
 		{selectCommandPrefix + "WHERE NOT 'goodbye' OR column2 EQUAL 3;", noColName.Error()},
-		{selectCommandPrefix + "WHERE one 'goodbye';", notOrEqualIsMissing.Error()},
+		{selectCommandPrefix + "WHERE one 'goodbye';", noOperatorInsideWhereStatementException.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL;", valueIsMissing.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL 5 two NOT 1;", conjunctionIsMissing.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL 5 AND;", nextLogicalExpressionIsMissing.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL 5 AND two NOT 5", noSemicolon.Error()},
+		{selectCommandPrefix + "WHERE one IN ;", noLeftParGotSemicolon.Error()},
+		{selectCommandPrefix + "WHERE one IN 5;", noLeftParGotNumber.Error()},
+		{selectCommandPrefix + "WHERE one IN (5 6);", noComma.Error()},
+		{selectCommandPrefix + "WHERE one (5, 6);", noInKeywordException.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
