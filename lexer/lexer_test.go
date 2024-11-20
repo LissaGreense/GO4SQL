@@ -532,6 +532,29 @@ func TestFullJoin(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestHandlingNullValues(t *testing.T) {
+	input := `INSERT INTO tbl VALUES( 'NULL',	 NULL );`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.INSERT, "INSERT"},
+		{token.INTO, "INTO"},
+		{token.IDENT, "tbl"},
+		{token.VALUES, "VALUES"},
+		{token.LPAREN, "("},
+		{token.APOSTROPHE, "'"},
+		{token.IDENT, "NULL"},
+		{token.APOSTROPHE, "'"},
+		{token.COMMA, ","},
+		{token.NULL, "NULL"},
+		{token.RPAREN, ")"},
+		{token.SEMICOLON, ";"},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func runLexerTestSuite(t *testing.T, input string, tests []struct {
 	expectedType    token.Type
 	expectedLiteral string

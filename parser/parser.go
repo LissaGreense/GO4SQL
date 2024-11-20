@@ -183,15 +183,15 @@ func (parser *Parser) parseInsertCommand() (ast.Command, error) {
 		return nil, err
 	}
 
-	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
+	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
 		parser.skipIfCurrentTokenIsApostrophe()
 
-		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return nil, err
 		}
 		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
-		// Ignore token.IDENT or token.LITERAL
+		// Ignore token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
 
 		parser.skipIfCurrentTokenIsApostrophe()
@@ -649,13 +649,13 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 		parser.nextToken()
 
 		parser.skipIfCurrentTokenIsApostrophe()
-		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return nil, err
 		}
 		updateCommand.Changes[colKey] = ast.Anonymitifier{Token: parser.currentToken}
 
-		// skip token.IDENT or token.LITERAL
+		// skip token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
 		parser.skipIfCurrentTokenIsApostrophe()
 
@@ -792,6 +792,9 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		if err != nil {
 			return false, nil, err
 		}
+	case token.NULL:
+		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
+		parser.nextToken()
 	case token.LITERAL:
 		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
@@ -814,11 +817,14 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		if err != nil {
 			return false, nil, err
 		}
+	case token.NULL:
+		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
+		parser.nextToken()
 	case token.LITERAL:
 		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
 		parser.nextToken()
 	default:
-		return false, nil, &SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL}, got: parser.currentToken.Literal}
+		return false, nil, &SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: parser.currentToken.Literal}
 	}
 
 	return true, conditionalExpression, nil
@@ -854,15 +860,15 @@ func (parser *Parser) getContainExpression() (bool, *ast.ContainExpression, erro
 		return false, nil, err
 	}
 
-	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.APOSTROPHE {
+	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
 		parser.skipIfCurrentTokenIsApostrophe()
 
-		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL})
+		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return false, nil, err
 		}
 		containExpression.Right = append(containExpression.Right, ast.Anonymitifier{Token: parser.currentToken})
-		// Ignore token.IDENT or token.LITERAL
+		// Ignore token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
 
 		parser.skipIfCurrentTokenIsApostrophe()

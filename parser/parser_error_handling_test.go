@@ -53,7 +53,7 @@ func TestParseInsertCommandErrorHandling(t *testing.T) {
 	noIntoKeyword := SyntaxError{[]string{token.INTO}, token.IDENT}
 	noTableName := SyntaxError{[]string{token.IDENT}, token.VALUES}
 	noLeftParen := SyntaxError{[]string{token.LPAREN}, token.APOSTROPHE}
-	noValue := SyntaxError{[]string{token.IDENT, token.LITERAL}, token.APOSTROPHE}
+	noValue := SyntaxError{[]string{token.IDENT, token.LITERAL, token.NULL}, token.APOSTROPHE}
 	noRightParen := SyntaxError{[]string{token.RPAREN}, token.SEMICOLON}
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON}, ""}
 
@@ -75,7 +75,7 @@ func TestParseUpdateCommandErrorHandling(t *testing.T) {
 	noSetKeyword := SyntaxError{expecting: []string{token.SET}, got: token.SEMICOLON}
 	noColumnName := SyntaxError{expecting: []string{token.IDENT}, got: token.LITERAL}
 	noToKeyword := SyntaxError{expecting: []string{token.TO}, got: token.SEMICOLON}
-	noSecondIdentOrLiteralForValue := SyntaxError{expecting: []string{token.IDENT, token.LITERAL}, got: token.SEMICOLON}
+	noSecondIdentOrLiteralForValue := SyntaxError{expecting: []string{token.IDENT, token.LITERAL, token.NULL}, got: token.SEMICOLON}
 	noCommaBetweenValues := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.IDENT}
 	noWhereOrSemicolon := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.SELECT}
 
@@ -122,7 +122,7 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	noPredecessorError := NoPredecessorParserError{command: token.WHERE}
 	noColName := LogicalExpressionParsingError{}
 	noOperatorInsideWhereStatementException := LogicalExpressionParsingError{}
-	valueIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL}, got: token.SEMICOLON}
+	valueIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: token.SEMICOLON}
 	tokenAnd := token.AND
 	conjunctionIsMissing := SyntaxError{expecting: []string{token.SEMICOLON, token.ORDER}, got: token.IDENT}
 	nextLogicalExpressionIsMissing := LogicalExpressionParsingError{afterToken: &tokenAnd}

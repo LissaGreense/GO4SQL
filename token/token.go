@@ -61,6 +61,7 @@ const (
 	AVG      = "AVG"
 	IN       = "IN"
 	NOTIN    = "NOTIN"
+	NULL     = "NULL"
 
 	TO = "TO"
 
@@ -122,6 +123,7 @@ var keywords = map[string]Type{
 	"OR":       OR,
 	"TRUE":     TRUE,
 	"FALSE":    FALSE,
+	"NULL":     NULL,
 }
 
 // LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type

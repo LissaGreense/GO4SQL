@@ -22,14 +22,18 @@ You can compile the project with ``go build``, this will create ``GO4SQL`` binar
 
 Currently, there are 3 modes to chose from:
 
-1. `File Mode` - You can specify file path with ``./GO4SQL -file file_path``, that will read the input
+1. `File Mode` - You can specify file path with ``./GO4SQL -file file_path``, that will read the
+   input
    data directly into the program and print the result.
 
-2. `Stream Mode` - With ``./GO4SQL -stream`` you can run the program in stream mode, then you provide SQL commands
+2. `Stream Mode` - With ``./GO4SQL -stream`` you can run the program in stream mode, then you
+   provide SQL commands
    in your console (from standard input).
 
-3. `Socket Mode` - To start Socket Server use `./GO4SQL -socket`, it will be listening on port `1433` by default. To
-   choose port different other than that, for example equal to `1444`, go with: `./GO4SQL -socket -port 1444`
+3. `Socket Mode` - To start Socket Server use `./GO4SQL -socket`, it will be listening on port
+   `1433` by default. To
+   choose port different other than that, for example equal to `1444`, go with:
+   `./GO4SQL -socket -port 1444`
 
 ## UNIT TESTS
 
@@ -44,7 +48,19 @@ go clean -testcache; go test ./...
 1. Pull docker image: `docker pull kajedot/go4sql:latest`
 2. Run docker container in the interactive mode, remember to provide flag, for example:
    `docker run -i kajedot/go4sql -stream`
-3. You can test this image with `test_file` provided in this repo: `docker run -i kajedot/go4sql -stream < test_file`
+3. You can test this image with `test_file` provided in this repo:
+   `docker run -i kajedot/go4sql -stream < test_file`
+
+## SUPPORTED TYPES
+
++ **TEXT Type** - represents string values. Number or NULL can be converted to this type by wrapping
+  with apostrophes. Columns can store this type with **TEXT** keyword while using **CREATE**
+  command.
++ **NUMERIC Type** - represents integer values, columns can store this type with **INT** keyword
+  while using **CREATE** command. In general every digit-only value is interpreted as this type.
++ **NULL Type** - columns can't be assigned that type, but it can be used with **INSERT INTO**,
+  **UPDATE**, and inside **WHERE** statements, also it can be a product of **JOIN** commands
+  (besides **FULL JOIN**).
 
 ## FUNCTIONALITY
 
@@ -147,7 +163,8 @@ go clean -testcache; go test ./...
   ORDER BY column1 ASC
   LIMIT 5;
   ```
-  In this case, this command will order by ``column1`` in ascending order and return 5 first records.
+  In this case, this command will order by ``column1`` in ascending order and return 5 first
+  records.
 
 
 * ***OFFSET***  is used to reduce number of rows printed out by not skipping specified numbers of
@@ -169,8 +186,10 @@ go clean -testcache; go test ./...
   ```
   In this case, this command will return only unique rows from ``table_name`` table.
 
-* ***INNER JOIN*** is used to return a new table by combining rows from both tables where there is a match on the
-  specified condition. Only the rows that satisfy the condition from both tables are included in the result.
+* ***INNER JOIN*** is used to return a new table by combining rows from both tables where there is a
+  match on the
+  specified condition. Only the rows that satisfy the condition from both tables are included in the
+  result.
   Rows from either table that do not meet the condition are excluded from the result.
   ```sql
     SELECT * 
@@ -185,38 +204,50 @@ go clean -testcache; go test ./...
     INNER JOIN tableTwo 
     ON tableOne.columnY EQUAL tableTwo.columnX;
     ```
-  In this case, this command will return all columns from tableOne and tableTwo for rows where the condition
-  ``tableOne.columnY`` = ``tableTwo.columnX`` is met (i.e., the value of ``columnY`` in ``tableOne`` is equal to the
+  In this case, this command will return all columns from tableOne and tableTwo for rows where the
+  condition
+  ``tableOne.columnY`` = ``tableTwo.columnX`` is met (i.e., the value of ``columnY`` in ``tableOne``
+  is equal to the
   value of ``columnX`` in ``tableTwo``).
-* ***LEFT JOIN***  is used to return a new table that includes all records from the left table and the matched records
-  from the right table. If there is no match, the result will contain empty values for columns from the right table.
+* ***LEFT JOIN***  is used to return a new table that includes all records from the left table and
+  the matched records
+  from the right table. If there is no match, the result will contain empty values for columns from
+  the right table.
   ```sql
     SELECT *
     FROM tableOne
     LEFT JOIN tableTwo
     ON tableOne.columnY EQUAL tableTwo.columnX;
   ```
-  In this case, this command will return all columns from ``tableOne`` and the matching columns from ``tableTwo``. For
+  In this case, this command will return all columns from ``tableOne`` and the matching columns from
+  ``tableTwo``. For
   rows in
-  ``tableOne`` that do not have a corresponding match in ``tableTwo``, the result will include empty values for columns
+  ``tableOne`` that do not have a corresponding match in ``tableTwo``, the result will include empty
+  values for columns
   from
   ``tableTwo``.
-* ***RIGHT JOIN***  is used to return a new table that includes all records from the right table and the matched records
-  from the left table. If there is no match, the result will contain empty values for columns from the left table.
+* ***RIGHT JOIN***  is used to return a new table that includes all records from the right table and
+  the matched records
+  from the left table. If there is no match, the result will contain empty values for columns from
+  the left table.
   ```sql
     SELECT *
     FROM tableOne
     RIGHT JOIN tableTwo
     ON tableOne.columnY EQUAL tableTwo.columnX;
   ```
-  In this case, this command will return all columns from ``tableTwo`` and the matching columns from ``tableOne``. For
+  In this case, this command will return all columns from ``tableTwo`` and the matching columns from
+  ``tableOne``. For
   rows in
-  ``tableTwo`` that do not have a corresponding match in ``tableOne``, the result will include empty values for columns
+  ``tableTwo`` that do not have a corresponding match in ``tableOne``, the result will include empty
+  values for columns
   from
   ``tableOne``.
 
-* ***FULL JOIN***  is used to return a new table created by joining two tables as a whole. The joined table contains all
-  records from both tables and fills empty values for missing matches on either side. This join combines the results of
+* ***FULL JOIN***  is used to return a new table created by joining two tables as a whole. The
+  joined table contains all
+  records from both tables and fills empty values for missing matches on either side. This join
+  combines the results of
   both ``LEFT JOIN`` and ``RIGHT JOIN``.
   ```sql
     SELECT *
@@ -224,8 +255,10 @@ go clean -testcache; go test ./...
     FULL JOIN tableTwo
     ON tableOne.columnY EQUAL tableTwo.columnX;
   ```
-  In this case, this command will return all columns from ``tableOne`` and ``tableTwo`` for rows fulfilling condition
-  ``tableOne.columnY EQUAL tableTwo.columnX`` (value of ``columnY`` in ``tableOne`` is equal the value of ``columnX`` in
+  In this case, this command will return all columns from ``tableOne`` and ``tableTwo`` for rows
+  fulfilling condition
+  ``tableOne.columnY EQUAL tableTwo.columnX`` (value of ``columnY`` in ``tableOne`` is equal the
+  value of ``columnX`` in
   ``tableTwo``).
 
 * ***MIN()*** is used to return the smallest value in a specified column.
@@ -233,7 +266,8 @@ go clean -testcache; go test ./...
     SELECT MIN(columnName)
     FROM tableName;
   ```
-  In this case, this command will return the smallest value found in the column ``columnName`` of ``tableName``.
+  In this case, this command will return the smallest value found in the column ``columnName`` of
+  ``tableName``.
 
 * ***MAX()*** is used to return the largest value in a specified column.
   ```sql
@@ -242,7 +276,8 @@ go clean -testcache; go test ./...
   ```
   This command will return the largest value found in the column ``columnName`` of ``tableName``.
 
-* ***COUNT()*** is used to return the number of rows that match a given condition or the total number of rows in a
+* ***COUNT()*** is used to return the number of rows that match a given condition or the total
+  number of rows in a
   specified column.
   ```sql
   SELECT COUNT(columnName)
@@ -255,14 +290,16 @@ go clean -testcache; go test ./...
   SELECT SUM(columnName)
   FROM tableName;
   ```
-  This command will return the total sum of all values in the numerical column ``columnName`` of ``tableName``.
+  This command will return the total sum of all values in the numerical column ``columnName`` of
+  ``tableName``.
 
 * ***AVG()*** is used to return the average of values in a specified numerical column.
    ```sql
   SELECT AVG(columnName)
   FROM tableName;
    ```
-  This command will return the average of all values in the numerical column ``columnName`` of ``tableName``.
+  This command will return the average of all values in the numerical column ``columnName`` of
+  ``tableName``.
 
 ## E2E TEST
 
