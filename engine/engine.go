@@ -229,7 +229,7 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
-		if expectedToken != command.Values[i].Type {
+		if (expectedToken != command.Values[i].Type) && (command.Values[i].Type != token.NULL) {
 			return &InvalidValueTypeError{expectedType: string(expectedToken), actualType: string(command.Values[i].Type), commandName: command.Token.Literal}
 		}
 		interfaceValue, err := getInterfaceValue(command.Values[i])
@@ -355,11 +355,13 @@ func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (Val
 		} else {
 			sum := 0
 			for _, value := range columnValues {
-				num, err := strconv.Atoi(value.ToString())
-				if err != nil {
-					return nil, err
+				if value.GetType() != NullType {
+					num, err := strconv.Atoi(value.ToString())
+					if err != nil {
+						return nil, err
+					}
+					sum += num
 				}
-				sum += num
 			}
 			return IntegerValue{Value: sum}, nil
 		}

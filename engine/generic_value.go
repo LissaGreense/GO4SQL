@@ -75,8 +75,12 @@ func (value NullValue) IsEqual(valueInterface ValueInterface) bool {
 
 // isSmallerThan implementations
 func (value IntegerValue) isSmallerThan(secondValue ValueInterface) bool {
-	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
+	nullValue, isNull := secondValue.(NullValue)
+	if isNull {
+		return nullValue.isGreaterThan(value)
+	}
 
+	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
 	if !isInteger {
 		log.Fatal("Can't compare Integer with other type")
 	}
@@ -85,8 +89,12 @@ func (value IntegerValue) isSmallerThan(secondValue ValueInterface) bool {
 }
 
 func (value StringValue) isSmallerThan(secondValue ValueInterface) bool {
-	secondValueAsString, isString := secondValue.(StringValue)
+	nullValue, isNull := secondValue.(NullValue)
+	if isNull {
+		return nullValue.isGreaterThan(value)
+	}
 
+	secondValueAsString, isString := secondValue.(StringValue)
 	if !isString {
 		log.Fatal("Can't compare String with other type")
 	}
@@ -97,8 +105,8 @@ func (value StringValue) isSmallerThan(secondValue ValueInterface) bool {
 func (value NullValue) isSmallerThan(secondValue ValueInterface) bool {
 	_, isNull := secondValue.(NullValue)
 
-	if !isNull {
-		log.Fatal("Can't compare Null with other type")
+	if isNull {
+		return false
 	}
 
 	return true
@@ -106,8 +114,12 @@ func (value NullValue) isSmallerThan(secondValue ValueInterface) bool {
 
 // isGreaterThan implementations
 func (value IntegerValue) isGreaterThan(secondValue ValueInterface) bool {
-	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
+	nullValue, isNull := secondValue.(NullValue)
+	if isNull {
+		return nullValue.isSmallerThan(value)
+	}
 
+	secondValueAsInteger, isInteger := secondValue.(IntegerValue)
 	if !isInteger {
 		log.Fatal("Can't compare Integer with other type")
 	}
@@ -115,8 +127,12 @@ func (value IntegerValue) isGreaterThan(secondValue ValueInterface) bool {
 	return value.Value > secondValueAsInteger.Value
 }
 func (value StringValue) isGreaterThan(secondValue ValueInterface) bool {
-	secondValueAsString, isString := secondValue.(StringValue)
+	nullValue, isNull := secondValue.(NullValue)
+	if isNull {
+		return nullValue.isSmallerThan(value)
+	}
 
+	secondValueAsString, isString := secondValue.(StringValue)
 	if !isString {
 		log.Fatal("Can't compare String with other type")
 	}
@@ -124,14 +140,8 @@ func (value StringValue) isGreaterThan(secondValue ValueInterface) bool {
 	return value.Value > secondValueAsString.Value
 }
 
-func (value NullValue) isGreaterThan(secondValue ValueInterface) bool {
-	_, isNull := secondValue.(NullValue)
-
-	if !isNull {
-		log.Fatal("Can't compare Null with other type")
-	}
-
-	return true
+func (value NullValue) isGreaterThan(_ ValueInterface) bool {
+	return false
 }
 
 func areEqual(first ValueInterface, second ValueInterface) bool {

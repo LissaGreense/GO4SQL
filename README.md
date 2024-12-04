@@ -60,7 +60,8 @@ go clean -testcache; go test ./...
   while using **CREATE** command. In general every digit-only value is interpreted as this type.
 + **NULL Type** - columns can't be assigned that type, but it can be used with **INSERT INTO**,
   **UPDATE**, and inside **WHERE** statements, also it can be a product of **JOIN** commands
-  (besides **FULL JOIN**).
+  (besides **FULL JOIN**). In GO4SQL NULL is the smallest possible value, what means it can be
+  compared with other types with **EQUAL** and **NOT** statements.
 
 ## FUNCTIONALITY
 
