@@ -47,15 +47,15 @@ func TestSelectCommand(t *testing.T) {
 		},
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
-			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, NULL  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	NULL, 	33,	'e'  );",
 		},
 		selectInput: "SELECT * FROM tb1;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
-			{"goodbye", "2", "22", "w"},
-			{"byebye", "3", "33", "e"},
+			{"goodbye", "2", "22", "NULL"},
+			{"byebye", "NULL", "33", "e"},
 		},
 	}
 
@@ -112,10 +112,10 @@ func TestSelectWithWhereNotEqual(t *testing.T) {
 		},
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	NULL, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
 		},
-		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three NOT 22;",
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three NOT NULL;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
@@ -134,14 +134,14 @@ func TestSelectWithWhereContains(t *testing.T) {
 		},
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	NULL, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
 		},
-		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three IN (11, 22, 67);",
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE three IN (11, NULL, 67);",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
-			{"goodbye", "2", "22", "w"},
+			{"goodbye", "2", "NULL", "w"},
 		},
 	}
 
@@ -216,10 +216,10 @@ func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 		},
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', NULL, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
 		},
-		selectInput: "SELECT * FROM tb1 WHERE one EQUAL 'goodbye' AND two NOT 2;",
+		selectInput: "SELECT * FROM tb1 WHERE one EQUAL 'goodbye' AND two NOT NULL;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"goodbye", "3", "33", "e"},
@@ -260,13 +260,13 @@ func TestSelectWithWhereLogicalOperationOROperationAND(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 3, 	33,	NULL  );",
 		},
-		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two IN (3) AND four EQUAL 'e';",
+		selectInput: "SELECT * FROM tb1 WHERE one NOT 'goodbye' OR two IN (3) AND four EQUAL NULL;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
-			{"goodbye", "3", "33", "e"},
+			{"goodbye", "3", "33", "NULL"},
 		},
 	}
 
@@ -323,14 +323,15 @@ func TestDistinctSelect(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
-			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', NULL, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', NULL, 	22, 'w'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 		},
 		selectInput: "SELECT DISTINCT * FROM tb1;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
+			{"goodbye", "NULL", "22", "w"},
 			{"goodbye", "2", "22", "w"},
 		},
 	}
@@ -369,14 +370,14 @@ func TestUpdateWithWhere(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
 			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
-			"UPDATE tb1 SET one TO 'hi hello', three TO 5 WHERE two EQUAL 3;",
+			"UPDATE tb1 SET one TO 'hi hello', three TO NULL WHERE two EQUAL 3;",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 		},
 		selectInput: "SELECT one, two, three, four FROM tb1;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
 			{"hello", "1", "11", "q"},
-			{"hi hello", "3", "5", "e"},
+			{"hi hello", "3", "NULL", "e"},
 			{"goodbye", "2", "22", "w"},
 		},
 	}
@@ -414,13 +415,13 @@ func TestOrderBy(t *testing.T) {
 		},
 		insertAndDeleteInputs: []string{
 			"INSERT INTO tb1 VALUES( 'hello',	3, 	11, 'q'  );",
-			"INSERT INTO tb1 VALUES( 'byebye', 	1, 	33,	'e'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	NULL, 	33,	'e'  );",
 			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
 		},
 		selectInput: "SELECT one, two, three, four FROM tb1 ORDER BY two ASC;",
 		expectedOutput: [][]string{
 			{"one", "two", "three", "four"},
-			{"byebye", "1", "33", "e"},
+			{"byebye", "NULL", "33", "e"},
 			{"goodbye", "2", "22", "w"},
 			{"hello", "3", "11", "q"},
 		},
@@ -639,8 +640,10 @@ func TestDefaultJoinToBehaveLikeInnerJoin(t *testing.T) {
 			"INSERT INTO books VALUES(2, 'Fire');",
 			"INSERT INTO books VALUES(1, 'Earth');",
 			"INSERT INTO books VALUES(1, 'Air');",
+			"INSERT INTO books VALUES(3, 'Smoke');",
 			"INSERT INTO authors VALUES( 1, 'Reynold Boyka'  );",
 			"INSERT INTO authors VALUES( 2, 'Alissa Ireneus'  );",
+			"INSERT INTO authors VALUES( 3, NULL  );",
 		},
 		selectInput: "SELECT books.title, authors.name FROM books JOIN authors ON books.author_id EQUAL authors.author_id;",
 		expectedOutput: [][]string{
@@ -648,6 +651,7 @@ func TestDefaultJoinToBehaveLikeInnerJoin(t *testing.T) {
 			{"Fire", "Alissa Ireneus"},
 			{"Earth", "Reynold Boyka"},
 			{"Air", "Reynold Boyka"},
+			{"Smoke", "NULL"},
 		},
 	}
 
@@ -689,14 +693,14 @@ func TestFullJoinOnIdenticalTables(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table2 VALUES(2, 'Value2');",
-			"INSERT INTO table2 VALUES(3, 'Value3');",
+			"INSERT INTO table2 VALUES(3, NULL);",
 		},
 		selectInput: "SELECT table1.value, table2.value FROM table1 FULL JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
 			{"Value1", "NULL"},
 			{"Value2", "Value2"},
-			{"NULL", "Value3"},
+			{"NULL", "NULL"},
 		},
 	}
 
@@ -712,13 +716,16 @@ func TestInnerJoinWithSpecifiedKeywordOnIdenticalTables(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(NULL, NULL);",
 			"INSERT INTO table2 VALUES(2, 'Value2');",
 			"INSERT INTO table2 VALUES(3, 'Value3');",
+			"INSERT INTO table2 VALUES(NULL, 'Value4');",
 		},
 		selectInput: "SELECT table1.value, table2.value FROM table1 INNER JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
 			{"Value2", "Value2"},
+			{"NULL", "Value4"},
 		},
 	}
 
@@ -734,14 +741,17 @@ func TestLeftJoinOnIdenticalTables(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(NULL, 'Value4');",
 			"INSERT INTO table2 VALUES(2, 'Value2');",
 			"INSERT INTO table2 VALUES(3, 'Value3');",
+			"INSERT INTO table2 VALUES(NULL, NULL);",
 		},
 		selectInput: "SELECT table1.value, table2.value FROM table1 LEFT JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
 			{"Value1", "NULL"},
 			{"Value2", "Value2"},
+			{"Value4", "NULL"},
 		},
 	}
 
@@ -757,14 +767,17 @@ func TestRightJoinOnIdenticalTables(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(NULL, NULL);",
 			"INSERT INTO table2 VALUES(2, 'Value2');",
 			"INSERT INTO table2 VALUES(3, 'Value3');",
+			"INSERT INTO table2 VALUES(NULL, 'Value4');",
 		},
 		selectInput: "SELECT table1.value, table2.value FROM table1 RIGHT JOIN table2 ON table1.id EQUAL table2.id;",
 		expectedOutput: [][]string{
 			{"table1.value", "table2.value"},
 			{"Value2", "Value2"},
 			{"NULL", "Value3"},
+			{"NULL", "Value4"},
 		},
 	}
 
@@ -798,11 +811,32 @@ func TestAggregateFunctionMin(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, NULL);",
+		},
+		selectInput: "SELECT MIN(value), MIN(id) FROM table1 WHERE value NOT NULL;",
+		expectedOutput: [][]string{
+			{"MIN(value)", "MIN(id)"},
+			{"Value1", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionMinWithNull(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"INSERT INTO table1 VALUES(3, NULL);",
 		},
 		selectInput: "SELECT MIN(value), MIN(id) FROM table1;",
 		expectedOutput: [][]string{
 			{"MIN(value)", "MIN(id)"},
-			{"Value1", "1"},
+			{"NULL", "1"},
 		},
 	}
 
@@ -818,14 +852,12 @@ func TestAggregateFunctionCount(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
-			// TODO: Add test case mentioned in comment below once inserting
-			// null values will be added
-			//"INSERT INTO table1 VALUES(NULL, NULL);",
+			"INSERT INTO table1 VALUES(NULL, NULL);",
 		},
 		selectInput: "SELECT COUNT(*), COUNT(id), COUNT(value) FROM table1;",
 		expectedOutput: [][]string{
 			{"COUNT(*)", "COUNT(id)", "COUNT(value)"},
-			{"3", "3", "3"},
+			{"4", "3", "3"},
 		},
 	}
 
@@ -841,6 +873,7 @@ func TestAggregateFunctionSum(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
+			"INSERT INTO table1 VALUES(NULL, 'Value4');",
 		},
 		selectInput: "SELECT SUM(id), SUM(value) FROM table1;",
 		expectedOutput: [][]string{
@@ -861,11 +894,12 @@ func TestAggregateFunctionAvg(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
+			"INSERT INTO table1 VALUES(10, NULL);",
 		},
 		selectInput: "SELECT AVG(id), AVG(value) FROM table1;",
 		expectedOutput: [][]string{
 			{"AVG(id)", "AVG(value)"},
-			{"2", "0"},
+			{"4", "0"},
 		},
 	}
 
@@ -880,12 +914,13 @@ func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 		insertAndDeleteInputs: []string{
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
-			"INSERT INTO table1 VALUES(3, 'Value3');",
+			"INSERT INTO table1 VALUES(3, NULL);",
+			"INSERT INTO table1 VALUES(6, 'Value3');",
 		},
 		selectInput: "SELECT AVG(id), id FROM table1;",
 		expectedOutput: [][]string{
 			{"AVG(id)", "id"},
-			{"2", "1"},
+			{"3", "1"},
 		},
 	}
 
@@ -901,11 +936,12 @@ func TestAggregateFunctionWithColumnSelectionAndOrderBy(t *testing.T) {
 			"INSERT INTO table1 VALUES(1, 'Value1');",
 			"INSERT INTO table1 VALUES(2, 'Value2');",
 			"INSERT INTO table1 VALUES(3, 'Value3');",
+			"INSERT INTO table1 VALUES(4, NULL);",
 		},
 		selectInput: "SELECT MAX(id), id FROM table1 ORDER BY id DESC;",
 		expectedOutput: [][]string{
 			{"MAX(id)", "id"},
-			{"3", "3"},
+			{"4", "4"},
 		},
 	}
 

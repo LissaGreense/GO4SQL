@@ -8,6 +8,8 @@ import (
 
 func getInterfaceValue(t token.Token) (ValueInterface, error) {
 	switch t.Type {
+	case token.NULL:
+		return NullValue{}, nil
 	case token.LITERAL:
 		castedInteger, err := strconv.Atoi(t.Literal)
 		if err != nil {
