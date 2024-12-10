@@ -56,6 +56,8 @@ func TestParseInsertCommandErrorHandling(t *testing.T) {
 	noValue := SyntaxError{[]string{token.IDENT, token.LITERAL, token.NULL}, token.APOSTROPHE}
 	noRightParen := SyntaxError{[]string{token.RPAREN}, token.SEMICOLON}
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON}, ""}
+	noLeftApostrophe := NoApostropheOnLeftParserError{ident: "hello"}
+	noRightApostrophe := NoApostropheOnRightParserError{ident: "hello, 10)"}
 
 	tests := []errorHandlingTestSuite{
 		{"INSERT tbl VALUES( 'hello', 10);", noIntoKeyword.Error()},
@@ -64,6 +66,8 @@ func TestParseInsertCommandErrorHandling(t *testing.T) {
 		{"INSERT INTO tl VALUES ('', 10);", noValue.Error()},
 		{"INSERT INTO tl VALUES ('hello', 10;", noRightParen.Error()},
 		{"INSERT INTO tl VALUES ('hello', 10)", noSemicolon.Error()},
+		{"INSERT INTO tl VALUES (hello', 10)", noLeftApostrophe.Error()},
+		{"INSERT INTO tl VALUES ('hello, 10)", noRightApostrophe.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
@@ -78,6 +82,8 @@ func TestParseUpdateCommandErrorHandling(t *testing.T) {
 	noSecondIdentOrLiteralForValue := SyntaxError{expecting: []string{token.IDENT, token.LITERAL, token.NULL}, got: token.SEMICOLON}
 	noCommaBetweenValues := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.IDENT}
 	noWhereOrSemicolon := SyntaxError{expecting: []string{token.SEMICOLON, token.WHERE}, got: token.SELECT}
+	noLeftApostrophe := NoApostropheOnLeftParserError{ident: "new_value_1"}
+	noRightApostrophe := NoApostropheOnRightParserError{ident: "new_value_1"}
 
 	tests := []errorHandlingTestSuite{
 		{"UPDATE;", notableName.Error()},
@@ -87,6 +93,8 @@ func TestParseUpdateCommandErrorHandling(t *testing.T) {
 		{"UPDATE table SET column_name_1 TO;", noSecondIdentOrLiteralForValue.Error()},
 		{"UPDATE table SET column_name_1 TO 2 column_name_1 TO 3;", noCommaBetweenValues.Error()},
 		{"UPDATE table SET column_name_1 TO 'new_value_1' SELECT;", noWhereOrSemicolon.Error()},
+		{"UPDATE table SET column_name_1 TO new_value_1'", noLeftApostrophe.Error()},
+		{"UPDATE table SET column_name_1 TO 'new_value_1", noRightApostrophe.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
@@ -131,6 +139,10 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	noLeftParGotNumber := SyntaxError{expecting: []string{token.LPAREN}, got: token.LITERAL}
 	noComma := SyntaxError{expecting: []string{token.COMMA, token.RPAREN}, got: token.LITERAL}
 	noInKeywordException := LogicalExpressionParsingError{}
+	noLeftApostropheGoodbye := NoApostropheOnLeftParserError{ident: "goodbye"}
+	noLeftApostropheFive := NoApostropheOnLeftParserError{ident: "5"}
+	noRightApostropheGoodbye := NoApostropheOnRightParserError{ident: "goodbye"}
+	noRightApostropheFive := NoApostropheOnRightParserError{ident: "5"}
 
 	tests := []errorHandlingTestSuite{
 		{"WHERE col1 NOT 'goodbye' OR col2 EQUAL 3;", noPredecessorError.Error()},
@@ -143,11 +155,17 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 		{selectCommandPrefix + "WHERE one IN ;", noLeftParGotSemicolon.Error()},
 		{selectCommandPrefix + "WHERE one IN 5;", noLeftParGotNumber.Error()},
 		{selectCommandPrefix + "WHERE one IN (5 6);", noComma.Error()},
+		{selectCommandPrefix + "WHERE one IN ('5", noRightApostropheFive.Error()},
+		{selectCommandPrefix + "WHERE one IN (5');", noLeftApostropheFive.Error()},
 		{selectCommandPrefix + "WHERE one (5, 6);", noInKeywordException.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL goodbye';", noLeftApostropheGoodbye.Error()},
+		{selectCommandPrefix + "WHERE one EQUAL 'goodbye", noRightApostropheGoodbye.Error()},
+		// TODO: Add after fix apostrophe on left side of condition
+		//{selectCommandPrefix + "WHERE 'goodbye EQUAL two", noRightApostropheGoodbye.Error()},
+		//{selectCommandPrefix + "WHERE goodbye' EQUAL two", noLeftApostropheGoodbye.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
-
 }
 
 func TestParseOrderByCommandErrorHandling(t *testing.T) {

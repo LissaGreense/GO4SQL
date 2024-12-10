@@ -138,10 +138,12 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 	return createCommand, nil
 }
 
-func (parser *Parser) skipIfCurrentTokenIsApostrophe() {
+func (parser *Parser) skipIfCurrentTokenIsApostrophe() bool {
 	if parser.currentToken.Type == token.APOSTROPHE {
 		parser.nextToken()
+		return true
 	}
+	return false
 }
 
 func (parser *Parser) skipIfCurrentTokenIsSemicolon() {
@@ -184,17 +186,24 @@ func (parser *Parser) parseInsertCommand() (ast.Command, error) {
 	}
 
 	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
-		parser.skipIfCurrentTokenIsApostrophe()
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
 
 		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return nil, err
 		}
-		insertCommand.Values = append(insertCommand.Values, parser.currentToken)
+		value := parser.currentToken
+		insertCommand.Values = append(insertCommand.Values, value)
 		// Ignore token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
 
-		parser.skipIfCurrentTokenIsApostrophe()
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		err = validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, value)
+
+		if err != nil {
+			return nil, err
+		}
 
 		if parser.currentToken.Type != token.COMMA {
 			break
@@ -215,6 +224,15 @@ func (parser *Parser) parseInsertCommand() (ast.Command, error) {
 	}
 
 	return insertCommand, nil
+}
+
+func validateApostropheWrapping(startedWithApostrophe bool, finishedWithApostrophe bool, value token.Token) error {
+	if startedWithApostrophe && !finishedWithApostrophe {
+		return &NoApostropheOnRightParserError{ident: value.Literal}
+	} else if !startedWithApostrophe && finishedWithApostrophe {
+		return &NoApostropheOnLeftParserError{ident: value.Literal}
+	}
+	return nil
 }
 
 // parseSelectCommand - Return ast.SelectCommand created from tokens and validate the syntax
@@ -648,7 +666,7 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 		// skip token.TO
 		parser.nextToken()
 
-		parser.skipIfCurrentTokenIsApostrophe()
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
 		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return nil, err
@@ -657,7 +675,13 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 
 		// skip token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
-		parser.skipIfCurrentTokenIsApostrophe()
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		err = validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, updateCommand.Changes[colKey].GetToken())
+
+		if err != nil {
+			return nil, err
+		}
 
 		if parser.currentToken.Type != token.COMMA {
 			break
@@ -780,51 +804,45 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 	}
 	conditionalExpression.Condition = parser.peekToken
 
-	switch parser.currentToken.Type {
-	case token.IDENT:
-		conditionalExpression.Left = ast.Identifier{Token: parser.currentToken}
+	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		if !startedWithApostrophe && parser.currentToken.Type == token.IDENT {
+			conditionalExpression.Left = ast.Identifier{Token: parser.currentToken}
+		} else {
+			conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
+		}
 		parser.nextToken()
-	case token.APOSTROPHE:
-		parser.skipIfCurrentTokenIsApostrophe()
-		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-		err := validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
+
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+		err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, conditionalExpression.Left.GetToken())
 		if err != nil {
 			return false, nil, err
 		}
-	case token.NULL:
-		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-	case token.LITERAL:
-		conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-	default:
+	} else {
 		return false, conditionalExpression, nil
 	}
 
 	// skip EQUAL or NOT
 	parser.nextToken()
 
-	switch parser.currentToken.Type {
-	case token.IDENT:
-		conditionalExpression.Right = ast.Identifier{Token: parser.currentToken}
+	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		if !startedWithApostrophe && parser.currentToken.Type == token.IDENT {
+			conditionalExpression.Right = ast.Identifier{Token: parser.currentToken}
+		} else {
+			conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
+		}
 		parser.nextToken()
-	case token.APOSTROPHE:
-		parser.skipIfCurrentTokenIsApostrophe()
-		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-		err := validateTokenAndSkip(parser, []token.Type{token.APOSTROPHE})
+
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+		err = validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, conditionalExpression.Right.GetToken())
 		if err != nil {
 			return false, nil, err
 		}
-	case token.NULL:
-		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-	case token.LITERAL:
-		conditionalExpression.Right = ast.Anonymitifier{Token: parser.currentToken}
-		parser.nextToken()
-	default:
-		return false, nil, &SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: parser.currentToken.Literal}
+	} else {
+		return false, conditionalExpression, &SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: parser.currentToken.Literal}
 	}
 
 	return true, conditionalExpression, nil
@@ -861,17 +879,23 @@ func (parser *Parser) getContainExpression() (bool, *ast.ContainExpression, erro
 	}
 
 	for parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
-		parser.skipIfCurrentTokenIsApostrophe()
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
 
 		err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT, token.LITERAL, token.NULL})
 		if err != nil {
 			return false, nil, err
 		}
-		containExpression.Right = append(containExpression.Right, ast.Anonymitifier{Token: parser.currentToken})
+		currentAnonymitifier := ast.Anonymitifier{Token: parser.currentToken}
+		containExpression.Right = append(containExpression.Right, currentAnonymitifier)
 		// Ignore token.IDENT, token.LITERAL or token.NULL
 		parser.nextToken()
 
-		parser.skipIfCurrentTokenIsApostrophe()
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		err = validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, currentAnonymitifier.GetToken())
+		if err != nil {
+			return false, nil, err
+		}
 
 		if parser.currentToken.Type != token.COMMA {
 			if parser.currentToken.Type != token.RPAREN {
