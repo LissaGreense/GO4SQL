@@ -107,3 +107,21 @@ type IllegalPeriodInIdentParserError struct {
 func (m *IllegalPeriodInIdentParserError) Error() string {
 	return "syntax error, {" + m.name + "} shouldn't contain '.'"
 }
+
+// NoApostropheOnRightParserError - error thrown when parser found no apostrophe on right of ident
+type NoApostropheOnRightParserError struct {
+	ident string
+}
+
+func (m *NoApostropheOnRightParserError) Error() string {
+	return "syntax error, Identifier: {" + m.ident + "} has no apostrophe on right"
+}
+
+// NoApostropheOnLeftParserError - error thrown when parser found no apostrophe on left of ident
+type NoApostropheOnLeftParserError struct {
+	ident string
+}
+
+func (m *NoApostropheOnLeftParserError) Error() string {
+	return "syntax error, Identifier: {" + m.ident + "} has no apostrophe on left"
+}
