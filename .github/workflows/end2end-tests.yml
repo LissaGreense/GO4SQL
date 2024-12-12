@@ -27,20 +27,28 @@ jobs:
 
       - name: Run Tests
         run: |
+          e2e_failed=false
+          
           for test_file in e2e/test_files/*_test; do
-
-            # Generate the output file path by replacing '_test' with '_output'
-            output_file="${test_file/_test/_output}"
-
-            # Run the test and redirect output
+            output_file="./e2e/$(basename "${test_file/_test/_output}")"
+          
             ./GO4SQL -file "$test_file" > "$output_file"
-
-            # Generate the expected output file path
-            expected_output="e2e/expected_outputs/$(basename "$output_file")"
-
-            # Perform the diff check
+          
+            expected_output="e2e/expected_outputs/$(basename "${test_file/_test/_expected_output}")"
+          
             diff "$output_file" "$expected_output"
-
-            # Clean up the generated output file
-            rm "$output_file"
+          
+            if [ $? -ne 0 ]; then
+              echo "E2E test for: {$test_file} failed"
+              e2e_failed=true
+            fi
+          
+            rm "./$output_file"
           done
+          
+          if [ "$e2e_failed" = true ]; then
+            echo "E2E tests failed."
+            exit 1
+          else
+            echo "All E2E tests passed."
+          fi

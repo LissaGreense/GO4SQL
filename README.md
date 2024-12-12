@@ -23,9 +23,10 @@ You can compile the project with ``go build``, this will create ``GO4SQL`` binar
 Currently, there are 3 modes to chose from:
 
 1. `File Mode` - You can specify file path with ``./GO4SQL -file file_path``, that will read the
-   input
-   data directly into the program and print the result.
-
+   input data directly into the program and print the result. In order to run one of e2e test files you can use:
+    ```shell
+      go build; ./GO4SQL -file e2e/test_files/1_select_with_where_test
+    ```
 2. `Stream Mode` - With ``./GO4SQL -stream`` you can run the program in stream mode, then you
    provide SQL commands
    in your console (from standard input).
@@ -43,7 +44,42 @@ To run all the tests locally paste this in root directory:
 go clean -testcache; go test ./...
 ```
 
-### Docker
+## E2E TESTS
+
+There are integrated with Github actions e2e tests that can be found in: `.github/workflows/end2end-tests.yml` file.
+Tests run files inside `e2e/test_files` directory through `GO4SQL`, save stdout into files, and finally compare
+then with expected outputs inside `e2e/expected_outputs` directory.
+
+To run e2e test locally just put this into console:
+```shell
+e2e_failed=false
+
+for test_file in e2e/test_files/*_test; do
+  output_file="./e2e/$(basename "${test_file/_test/_output}")"
+
+  ./GO4SQL -file "$test_file" > "$output_file"
+
+  expected_output="e2e/expected_outputs/$(basename "${test_file/_test/_expected_output}")"
+
+  diff "$output_file" "$expected_output"
+
+  if [ $? -ne 0 ]; then
+    echo "E2E test for: {$test_file} failed"
+    e2e_failed=true
+  fi
+
+  rm "./$output_file"
+done
+
+if [ "$e2e_failed" = true ]; then
+  echo "E2E tests failed."
+  exit 1
+else
+  echo "All E2E tests passed."
+fi
+```
+
+## Docker
 
 1. Pull docker image: `docker pull kajedot/go4sql:latest`
 2. Run docker container in the interactive mode, remember to provide flag, for example:
@@ -301,12 +337,6 @@ go clean -testcache; go test ./...
    ```
   This command will return the average of all values in the numerical column ``columnName`` of
   ``tableName``.
-
-## E2E TEST
-
-In root directory there is **test_file** containing input commands for E2E tests. File
-**.github/expected_results/end2end.txt** has expected results for it.
-This is integrated into github workflows.
 
 ## DOCKER
 
