@@ -1,0 +1,12 @@
+CREATE TABLE tbl( one TEXT , two INT, three INT, four TEXT );
+
+INSERT INTO tbl VALUES( 'hello',1, 11, 'q' );
+INSERT INTO tbl VALUES( 'goodbye', 1, 22, 'w' );
+INSERT INTO tbl VALUES( 'byebye', NULL, 33,'e' );
+
+SELECT * FROM tbl WHERE one EQUAL 'byebye';
+SELECT one, three FROM tbl WHERE two NOT NULL;
+SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL NULL;
+SELECT * FROM tbl WHERE one IN ('goodbye', 'byebye');
+SELECT * FROM tbl WHERE one NOTIN ('goodbye', 'byebye');
+SELECT * FROM tbl WHERE FALSE;
