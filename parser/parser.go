@@ -707,126 +707,118 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 // - ast.ConditionExpression
 // - ast.ContainExpression
 func (parser *Parser) getExpression() (bool, ast.Expression, error) {
-	booleanExpressionExists, booleanExpression := parser.getBooleanExpression()
 
-	conditionalExpressionExists, conditionalExpression, err := parser.getConditionalExpression()
-	if err != nil {
-		return false, nil, err
+	if parser.currentToken.Type == token.IDENT ||
+		parser.currentToken.Type == token.LITERAL ||
+		parser.currentToken.Type == token.NULL ||
+		parser.currentToken.Type == token.APOSTROPHE ||
+		parser.currentToken.Type == token.TRUE ||
+		parser.currentToken.Type == token.FALSE {
+
+		leftSide, isAnonymitifier, err := parser.getExpressionLeftSideValue()
+		if err != nil {
+			return false, nil, err
+		}
+
+		isValidExpression := false
+		var expression ast.Expression
+
+		if parser.currentToken.Type == token.EQUAL || parser.currentToken.Type == token.NOT {
+			isValidExpression, expression, err = parser.getConditionalExpression(leftSide, isAnonymitifier)
+		} else if parser.currentToken.Type == token.IN || parser.currentToken.Type == token.NOTIN {
+			isValidExpression, expression, err = parser.getContainExpression(leftSide, isAnonymitifier)
+		} else if leftSide.Type == token.TRUE || leftSide.Type == token.FALSE {
+			expression = &ast.BooleanExpression{Boolean: leftSide}
+			isValidExpression = true
+			err = nil
+		}
+
+		if err != nil {
+			return false, nil, err
+		}
+
+		if (parser.currentToken.Type == token.AND || parser.currentToken.Type == token.OR) && isValidExpression {
+			isValidExpression, expression, err = parser.getOperationExpression(expression)
+		}
+
+		if err != nil {
+			return false, nil, err
+		}
+
+		if isValidExpression {
+			return true, expression, nil
+		}
 	}
+	return false, nil, nil
+}
 
-	containExpressionExists, containExpression, err := parser.getContainExpression()
-	if err != nil {
-		return false, nil, err
+func (parser *Parser) getExpressionLeftSideValue() (token.Token, bool, error) {
+	var leftSide token.Token
+	isAnonymitifier := false
+	startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+	if startedWithApostrophe {
+		isAnonymitifier = true
+		value := ""
+		for parser.currentToken.Type != token.EOF && parser.currentToken.Type != token.APOSTROPHE {
+			value += parser.currentToken.Literal
+			parser.nextToken()
+		}
+
+		leftSide = token.Token{Type: token.IDENT, Literal: value}
+
+		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+
+		err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, leftSide)
+
+		if err != nil {
+			return token.Token{}, isAnonymitifier, err
+		}
+	} else {
+		leftSide = parser.currentToken
+		parser.nextToken()
 	}
-
-	operationExpressionExists, operationExpression, err := parser.getOperationExpression(booleanExpressionExists, conditionalExpressionExists, containExpressionExists, booleanExpression, conditionalExpression, containExpression)
-	if err != nil {
-		return false, nil, err
-	}
-
-	if operationExpressionExists {
-		return true, operationExpression, err
-	}
-
-	if conditionalExpressionExists {
-		return true, conditionalExpression, err
-	}
-
-	if containExpressionExists {
-		return true, containExpression, err
-	}
-
-	if booleanExpressionExists {
-		return true, booleanExpression, err
-	}
-
-	return false, nil, err
+	return leftSide, isAnonymitifier, nil
 }
 
 // getOperationExpression - Return ast.OperationExpression created from tokens and validate the syntax
-func (parser *Parser) getOperationExpression(booleanExpressionExists bool, conditionalExpressionExists bool, containExpressionExists bool, booleanExpression *ast.BooleanExpression, conditionalExpression *ast.ConditionExpression, containExpression *ast.ContainExpression) (bool, *ast.OperationExpression, error) {
+func (parser *Parser) getOperationExpression(expression ast.Expression) (bool, *ast.OperationExpression, error) {
 	operationExpression := &ast.OperationExpression{}
+	operationExpression.Left = expression
 
-	if (booleanExpressionExists || conditionalExpressionExists || containExpressionExists) && (parser.currentToken.Type == token.OR || parser.currentToken.Type == token.AND) {
-		if booleanExpressionExists {
-			operationExpression.Left = booleanExpression
-		}
+	operationExpression.Operation = parser.currentToken
+	parser.nextToken()
 
-		if conditionalExpressionExists {
-			operationExpression.Left = conditionalExpression
-		}
+	expressionIsValid, expression, err := parser.getExpression()
 
-		if containExpressionExists {
-			operationExpression.Left = containExpression
-		}
-
-		operationExpression.Operation = parser.currentToken
-		parser.nextToken()
-
-		expressionIsValid, expression, err := parser.getExpression()
-
-		if err != nil {
-			return false, nil, err
-		}
-		if !expressionIsValid {
-			return false, nil, &LogicalExpressionParsingError{afterToken: &operationExpression.Operation.Literal}
-		}
-
-		operationExpression.Right = expression
-
-		return true, operationExpression, nil
+	if err != nil {
+		return false, nil, err
 	}
 
-	return false, operationExpression, nil
-}
-
-// getBooleanExpression - Return ast.BooleanExpression created from tokens and validate the syntax
-func (parser *Parser) getBooleanExpression() (bool, *ast.BooleanExpression) {
-	booleanExpression := &ast.BooleanExpression{}
-	isValid := false
-
-	if parser.currentToken.Type == token.TRUE || parser.currentToken.Type == token.FALSE {
-		booleanExpression.Boolean = parser.currentToken
-		parser.nextToken()
-		isValid = true
+	if !expressionIsValid {
+		return false, nil, &LogicalExpressionParsingError{afterToken: &operationExpression.Operation.Literal}
 	}
 
-	return isValid, booleanExpression
+	operationExpression.Right = expression
+
+	return true, operationExpression, nil
 }
 
 // getConditionalExpression - Return ast.ConditionExpression created from tokens and validate the syntax
-func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression, error) {
-	conditionalExpression := &ast.ConditionExpression{}
+func (parser *Parser) getConditionalExpression(leftSide token.Token, isAnonymitifier bool) (bool, *ast.ConditionExpression, error) {
+	conditionalExpression := &ast.ConditionExpression{Condition: parser.currentToken}
 
-	err := validateToken(parser.peekToken.Type, []token.Type{token.EQUAL, token.NOT})
-	if err != nil {
-		return false, nil, nil
-	}
-	conditionalExpression.Condition = parser.peekToken
-
-	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
-		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
-
-		if !startedWithApostrophe && parser.currentToken.Type == token.IDENT {
-			conditionalExpression.Left = ast.Identifier{Token: parser.currentToken}
-		} else {
-			conditionalExpression.Left = ast.Anonymitifier{Token: parser.currentToken}
-		}
-		parser.nextToken()
-
-		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
-		err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, conditionalExpression.Left.GetToken())
-		if err != nil {
-			return false, nil, err
-		}
+	if isAnonymitifier {
+		conditionalExpression.Left = ast.Anonymitifier{Token: leftSide}
 	} else {
-		return false, conditionalExpression, nil
+		conditionalExpression.Left = ast.Identifier{Token: leftSide}
 	}
 
 	// skip EQUAL or NOT
 	parser.nextToken()
 
-	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL || parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
+	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL ||
+		parser.currentToken.Type == token.NULL || parser.currentToken.Type == token.APOSTROPHE {
 		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
 
 		if !startedWithApostrophe && parser.currentToken.Type == token.IDENT {
@@ -837,7 +829,7 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 		parser.nextToken()
 
 		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
-		err = validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, conditionalExpression.Right.GetToken())
+		err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, conditionalExpression.Right.GetToken())
 		if err != nil {
 			return false, nil, err
 		}
@@ -849,31 +841,25 @@ func (parser *Parser) getConditionalExpression() (bool, *ast.ConditionExpression
 }
 
 // getContainExpression - Return ast.ContainExpression created from tokens and validate the syntax
-func (parser *Parser) getContainExpression() (bool, *ast.ContainExpression, error) {
+func (parser *Parser) getContainExpression(leftSide token.Token, isAnonymitifier bool) (bool, *ast.ContainExpression, error) {
 	containExpression := &ast.ContainExpression{}
 
-	err := validateToken(parser.peekToken.Type, []token.Type{token.IN, token.NOTIN})
-	if err != nil {
-		return false, nil, nil
+	if isAnonymitifier {
+		return false, nil, &SyntaxError{expecting: []string{token.IDENT}, got: "'" + leftSide.Literal + "'"}
 	}
-	if parser.peekToken.Type == token.IN {
+
+	containExpression.Left = ast.Identifier{Token: leftSide}
+
+	if parser.currentToken.Type == token.IN {
 		containExpression.Contains = true
 	} else {
 		containExpression.Contains = false
 	}
 
-	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
-	if err != nil {
-		return false, nil, nil
-	}
-	containExpression.Left = ast.Identifier{Token: parser.currentToken}
-
-	parser.nextToken()
-
 	// skip IN or NOTIN
 	parser.nextToken()
 
-	err = validateTokenAndSkip(parser, []token.Type{token.LPAREN})
+	err := validateTokenAndSkip(parser, []token.Type{token.LPAREN})
 	if err != nil {
 		return false, nil, err
 	}

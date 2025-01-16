@@ -716,20 +716,20 @@ func TestParseUpdateCommand(t *testing.T) {
 	}{
 		{
 			input: "UPDATE tbl SET colName TO 5;", expectedTableName: "tbl", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
-		},
+				{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+			},
 		},
 		{
 			input: "UPDATE tbl1 SET colName1 TO 'hi hello', colName2 TO 5;", expectedTableName: "tbl1", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.IDENT, Literal: "hi hello"}},
-			{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
-		},
+				{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.IDENT, Literal: "hi hello"}},
+				{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+			},
 		},
 		{
 			input: "UPDATE tbl1 SET colName1 TO NULL, colName2 TO 'NULL';", expectedTableName: "tbl1", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.NULL, Literal: "NULL"}},
-			{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "NULL"}},
-		},
+				{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.NULL, Literal: "NULL"}},
+				{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "NULL"}},
+			},
 		},
 	}
 
@@ -834,6 +834,11 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		Boolean: token.Token{Type: token.TRUE, Literal: "TRUE"},
 	}
 
+	fourthExpression := ast.ConditionExpression{
+		Left:      ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "colName1 EQUAL;"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "colName1 EQUAL;"}},
+		Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"}}
+
 	tests := []struct {
 		input              string
 		expectedExpression ast.Expression
@@ -849,6 +854,10 @@ func TestParseLogicOperatorsInCommand(t *testing.T) {
 		{
 			input:              "SELECT * FROM TBL WHERE TRUE;",
 			expectedExpression: thirdExpression,
+		},
+		{
+			input:              "SELECT * FROM TBL WHERE 'colName1 EQUAL;' EQUAL 'colName1 EQUAL;';",
+			expectedExpression: fourthExpression,
 		},
 	}
 

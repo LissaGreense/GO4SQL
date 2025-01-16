@@ -129,6 +129,7 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	selectCommandPrefix := "SELECT * FROM tbl "
 	noPredecessorError := NoPredecessorParserError{command: token.WHERE}
 	noColName := LogicalExpressionParsingError{}
+	noLeftAphostrophe := LogicalExpressionParsingError{}
 	noOperatorInsideWhereStatementException := LogicalExpressionParsingError{}
 	valueIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: token.SEMICOLON}
 	tokenAnd := token.AND
@@ -138,10 +139,12 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	noLeftParGotSemicolon := SyntaxError{expecting: []string{token.LPAREN}, got: ";"}
 	noLeftParGotNumber := SyntaxError{expecting: []string{token.LPAREN}, got: token.LITERAL}
 	noComma := SyntaxError{expecting: []string{token.COMMA, token.RPAREN}, got: token.LITERAL}
+	anonymitifierInContains := SyntaxError{expecting: []string{token.IDENT}, got: "'one'"}
 	noInKeywordException := LogicalExpressionParsingError{}
 	noLeftApostropheGoodbye := NoApostropheOnLeftParserError{ident: "goodbye"}
 	noLeftApostropheFive := NoApostropheOnLeftParserError{ident: "5"}
 	noRightApostropheGoodbye := NoApostropheOnRightParserError{ident: "goodbye"}
+	noRightApostropheGoodbyeBigger := NoApostropheOnRightParserError{ident: "goodbye EQUAL two"}
 	noRightApostropheFive := NoApostropheOnRightParserError{ident: "5"}
 
 	tests := []errorHandlingTestSuite{
@@ -157,12 +160,12 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 		{selectCommandPrefix + "WHERE one IN (5 6);", noComma.Error()},
 		{selectCommandPrefix + "WHERE one IN ('5", noRightApostropheFive.Error()},
 		{selectCommandPrefix + "WHERE one IN (5');", noLeftApostropheFive.Error()},
+		{selectCommandPrefix + "WHERE 'one' IN (5);", anonymitifierInContains.Error()},
 		{selectCommandPrefix + "WHERE one (5, 6);", noInKeywordException.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL goodbye';", noLeftApostropheGoodbye.Error()},
 		{selectCommandPrefix + "WHERE one EQUAL 'goodbye", noRightApostropheGoodbye.Error()},
-		// TODO: Add after fix apostrophe on left side of condition
-		//{selectCommandPrefix + "WHERE 'goodbye EQUAL two", noRightApostropheGoodbye.Error()},
-		//{selectCommandPrefix + "WHERE goodbye' EQUAL two", noLeftApostropheGoodbye.Error()},
+		{selectCommandPrefix + "WHERE 'goodbye EQUAL two", noRightApostropheGoodbyeBigger.Error()},
+		{selectCommandPrefix + "WHERE goodbye' EQUAL two", noLeftAphostrophe.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
