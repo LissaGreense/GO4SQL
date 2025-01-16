@@ -10,3 +10,4 @@ SELECT * FROM tbl WHERE one NOT 'goodbye' AND two EQUAL NULL;
 SELECT * FROM tbl WHERE one IN ('goodbye', 'byebye');
 SELECT * FROM tbl WHERE one NOTIN ('goodbye', 'byebye');
 SELECT * FROM tbl WHERE FALSE;
+SELECT * FROM tbl WHERE 'colName1 EQUAL;' EQUAL 'colName1 EQUAL;';
