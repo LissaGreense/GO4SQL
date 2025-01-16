@@ -1,3 +1,7 @@
+<p align="center">
+   <img alt="gopher_GO4SQL" src="https://github.com/user-attachments/assets/682b5366-56e4-4c20-82da-557c8253ca72"/>
+</p>
+
 # GO4SQL
 
 <p align="center">
