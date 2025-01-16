@@ -50,34 +50,7 @@ There are integrated with Github actions e2e tests that can be found in: `.githu
 Tests run files inside `e2e/test_files` directory through `GO4SQL`, save stdout into files, and finally compare
 then with expected outputs inside `e2e/expected_outputs` directory.
 
-To run e2e test locally just put this into console:
-```shell
-e2e_failed=false
-
-for test_file in e2e/test_files/*_test; do
-  output_file="./e2e/$(basename "${test_file/_test/_output}")"
-
-  ./GO4SQL -file "$test_file" > "$output_file"
-
-  expected_output="e2e/expected_outputs/$(basename "${test_file/_test/_expected_output}")"
-
-  diff "$output_file" "$expected_output"
-
-  if [ $? -ne 0 ]; then
-    echo "E2E test for: {$test_file} failed"
-    e2e_failed=true
-  fi
-
-  rm "./$output_file"
-done
-
-if [ "$e2e_failed" = true ]; then
-  echo "E2E tests failed."
-  exit 1
-else
-  echo "All E2E tests passed."
-fi
-```
+To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the root directory.
 
 ## Docker
 
@@ -342,8 +315,7 @@ fi
 
 To build your docker image run this command in root directory:
 
-```
-shell
+```shell
 docker build -t go4sql:test .
 ```
 
