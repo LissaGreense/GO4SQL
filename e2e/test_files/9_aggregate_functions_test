@@ -1,0 +1,14 @@
+CREATE TABLE table1( id INT, value TEXT);
+CREATE TABLE table2( id INT, value TEXT);
+
+INSERT INTO table1 VALUES(1, 'Value1');
+INSERT INTO table1 VALUES(2, NULL);
+INSERT INTO table2 VALUES(2, 'Value2');
+INSERT INTO table2 VALUES(3, 'Value3');
+
+SELECT MAX(id), MAX(value) FROM table1;
+SELECT MIN(value), MIN(id) FROM table1;
+SELECT COUNT(*), COUNT(id), COUNT(value) FROM table1;
+SELECT SUM(id), SUM(value) FROM table1;
+SELECT AVG(id), AVG(value) FROM table1;
+SELECT AVG(id), id FROM table1;

@@ -1,0 +1,11 @@
+Table 'tbl' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Data from 'tbl' has been deleted
++-----------+-----+-------+------+
+|       one | two | three | four |
++-----------+-----+-------+------+
+|   'hello' |   1 |    11 |  'q' |
+| 'goodbye' |   1 |    22 |  'w' |
++-----------+-----+-------+------+

@@ -1,0 +1,12 @@
+Table 'tbl' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Table: 'tbl' has been updated
++-----------+------+-------+------+
+|       one |  two | three | four |
++-----------+------+-------+------+
+|   'hello' |    1 |    11 |  'q' |
+| 'goodbye' | NULL |    22 |  'P' |
+|  'byebye' | NULL |    33 |  'e' |
++-----------+------+-------+------+

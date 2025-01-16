@@ -1,0 +1,3 @@
+CREATE TABLE tbl( one TEXT , two INT, three INT, four TEXT );
+
+DROP TABLE tbl;
