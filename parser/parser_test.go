@@ -716,20 +716,20 @@ func TestParseUpdateCommand(t *testing.T) {
 	}{
 		{
 			input: "UPDATE tbl SET colName TO 5;", expectedTableName: "tbl", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
-		},
+				{Type: token.IDENT, Literal: "colName"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+			},
 		},
 		{
 			input: "UPDATE tbl1 SET colName1 TO 'hi hello', colName2 TO 5;", expectedTableName: "tbl1", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.IDENT, Literal: "hi hello"}},
-			{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
-		},
+				{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.IDENT, Literal: "hi hello"}},
+				{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "5"}},
+			},
 		},
 		{
 			input: "UPDATE tbl1 SET colName1 TO NULL, colName2 TO 'NULL';", expectedTableName: "tbl1", expectedChanges: map[token.Token]ast.Anonymitifier{
-			{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.NULL, Literal: "NULL"}},
-			{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "NULL"}},
-		},
+				{Type: token.IDENT, Literal: "colName1"}: {Token: token.Token{Type: token.NULL, Literal: "NULL"}},
+				{Type: token.IDENT, Literal: "colName2"}: {Token: token.Token{Type: token.LITERAL, Literal: "NULL"}},
+			},
 		},
 	}
 
