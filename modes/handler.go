@@ -7,7 +7,6 @@ import (
 	"github.com/LissaGreense/GO4SQL/engine"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -15,36 +14,49 @@ import (
 )
 
 // HandleFileMode - Handle GO4SQL use case where client sends input via text file
-func HandleFileMode(filePath string, engine *engine.DbEngine, evaluate func(sequences *ast.Sequence, engineSQL *engine.DbEngine) string) {
-	content, err := ioutil.ReadFile(filePath)
+func HandleFileMode(filePath string, engine *engine.DbEngine) error {
+	content, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	sequences := bytesToSequences(content)
-	fmt.Print(evaluate(sequences, engine))
+	sequences, err := bytesToSequences(content)
+	if err != nil {
+		return err
+	}
+	evaluate, err := engine.Evaluate(sequences)
+	if err != nil {
+		return err
+	}
+	fmt.Print(evaluate)
+	return nil
 }
 
 // HandleStreamMode - Handle GO4SQL use case where client sends input via stdin
-func HandleStreamMode(engine *engine.DbEngine, evaluate func(sequences *ast.Sequence, engineSQL *engine.DbEngine) string) {
+func HandleStreamMode(engine *engine.DbEngine) error {
 	reader := bufio.NewScanner(os.Stdin)
 	for reader.Scan() {
-		sequences := bytesToSequences(reader.Bytes())
-		fmt.Print(evaluate(sequences, engine))
+		sequences, err := bytesToSequences(reader.Bytes())
+		if err != nil {
+			fmt.Print(err)
+		} else {
+			evaluate, err := engine.Evaluate(sequences)
+			if err != nil {
+				fmt.Print(err)
+			} else {
+				fmt.Print(evaluate)
+			}
+		}
 	}
-	err := reader.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
+	return reader.Err()
 }
 
 // HandleSocketMode - Handle GO4SQL use case where client sends input via socket protocol
-func HandleSocketMode(port int, engine *engine.DbEngine, evaluate func(sequences *ast.Sequence, engineSQL *engine.DbEngine) string) {
+func HandleSocketMode(port int, engine *engine.DbEngine) {
 	listener, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
 	log.Printf("Starting Socket Server on %d port\n", port)
 
 	if err != nil {
-		log.Fatal("Error:", err)
+		log.Fatal(err.Error())
 	}
 
 	defer func(listener net.Listener) {
@@ -61,19 +73,18 @@ func HandleSocketMode(port int, engine *engine.DbEngine, evaluate func(sequences
 			continue
 		}
 
-		go handleSocketClient(conn, engine, evaluate)
+		go handleSocketClient(conn, engine)
 	}
 }
 
-func bytesToSequences(content []byte) *ast.Sequence {
+func bytesToSequences(content []byte) (*ast.Sequence, error) {
 	lex := lexer.RunLexer(string(content))
 	parserInstance := parser.New(lex)
-	sequences := parserInstance.ParseSequence()
-
-	return sequences
+	sequences, err := parserInstance.ParseSequence()
+	return sequences, err
 }
 
-func handleSocketClient(conn net.Conn, engine *engine.DbEngine, evaluate func(sequences *ast.Sequence, engineSQL *engine.DbEngine) string) {
+func handleSocketClient(conn net.Conn, engine *engine.DbEngine) {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
@@ -86,19 +97,26 @@ func handleSocketClient(conn net.Conn, engine *engine.DbEngine, evaluate func(se
 	for {
 		n, err := conn.Read(buffer)
 		if err != nil && err.Error() != "EOF" {
-			log.Fatal("Error:", err)
+			log.Fatal(err.Error())
 		}
-		sequences := bytesToSequences(buffer)
-		commandResult := evaluate(sequences, engine)
+		sequences, err := bytesToSequences(buffer)
 
-		if len(commandResult) > 0 {
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+
+		commandResult, err := engine.Evaluate(sequences)
+
+		if err != nil {
+			_, err = conn.Write([]byte(err.Error()))
+		} else if len(commandResult) > 0 {
 			_, err = conn.Write([]byte(commandResult))
 		}
 
 		if err != nil {
-			log.Fatal("Error:", err)
+			log.Fatal(err.Error())
 		}
 
-		fmt.Printf("Received: %s\n", buffer[:n])
+		log.Printf("Received: %s\n", buffer[:n])
 	}
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/LissaGreense/GO4SQL/ast"
+	"fmt"
 	"github.com/LissaGreense/GO4SQL/engine"
 	"github.com/LissaGreense/GO4SQL/modes"
 	"log"
@@ -16,100 +16,19 @@ func main() {
 
 	flag.Parse()
 	engineSQL := engine.New()
+	var err error
 
 	if len(*filePath) > 0 {
-		modes.HandleFileMode(*filePath, engineSQL, evaluateInEngine)
+		err = modes.HandleFileMode(*filePath, engineSQL)
 	} else if *streamMode {
-		modes.HandleStreamMode(engineSQL, evaluateInEngine)
+		err = modes.HandleStreamMode(engineSQL)
 	} else if *socketMode {
-		modes.HandleSocketMode(*port, engineSQL, evaluateInEngine)
+		modes.HandleSocketMode(*port, engineSQL)
 	} else {
-		log.Println("No mode has been providing. Exiting.")
-	}
-}
-
-func evaluateInEngine(sequences *ast.Sequence, engineSQL *engine.DbEngine) string {
-	commands := sequences.Commands
-
-	result := ""
-	for commandIndex, command := range commands {
-
-		// TODO: Check if those statements are necessary
-		_, whereCommandIsValid := command.(*ast.WhereCommand)
-		if whereCommandIsValid {
-			continue
-		}
-
-		_, orderByCommandIsValid := command.(*ast.OrderByCommand)
-		if orderByCommandIsValid {
-			continue
-		}
-
-		createCommand, createCommandIsValid := command.(*ast.CreateCommand)
-		if createCommandIsValid {
-			engineSQL.CreateTable(createCommand)
-			result += "Table '" + createCommand.Name.GetToken().Literal + "' has been created\n"
-			continue
-		}
-
-		insertCommand, insertCommandIsValid := command.(*ast.InsertCommand)
-		if insertCommandIsValid {
-			engineSQL.InsertIntoTable(insertCommand)
-			result += "Data Inserted\n"
-			continue
-		}
-
-		selectCommand, selectCommandIsValid := command.(*ast.SelectCommand)
-		if selectCommandIsValid {
-			result += getSelectResponse(commandIndex, commands, engineSQL, selectCommand) + "\n"
-			continue
-		}
-
-		deleteCommand, deleteCommandIsValid := command.(*ast.DeleteCommand)
-		if deleteCommandIsValid {
-			nextCommandIndex := commandIndex + 1
-
-			if nextCommandIndex != len(commands) {
-				whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
-
-				if whereCommandIsValid {
-					engineSQL.DeleteFromTable(deleteCommand, whereCommand)
-				}
-			}
-			result += "Data from '" + deleteCommand.Name.GetToken().Literal + "' has been deleted\n"
-			continue
-		}
-
+		err = fmt.Errorf("no mode has been providing, exiting")
 	}
 
-	return result
-}
-
-func getSelectResponse(commandIndex int, commands []ast.Command, engineSQL *engine.DbEngine, selectCommand *ast.SelectCommand) string {
-	nextCommandIndex := commandIndex + 1
-
-	if nextCommandIndex != len(commands) {
-		whereCommand, whereCommandIsValid := commands[nextCommandIndex].(*ast.WhereCommand)
-
-		// TODO: It cannot be like that. Have to be refactored to tree structure.
-		if whereCommandIsValid {
-			if nextCommandIndex+1 < len(commands) {
-				orderByCommand, orderByCommandIsValid := commands[nextCommandIndex+1].(*ast.OrderByCommand)
-
-				if orderByCommandIsValid {
-					return engineSQL.SelectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand).ToString()
-				}
-			}
-
-			return engineSQL.SelectFromTableWithWhere(selectCommand, whereCommand).ToString()
-		}
-
-		orderByCommand, orderByCommandIsValid := commands[nextCommandIndex].(*ast.OrderByCommand)
-
-		if orderByCommandIsValid {
-			return engineSQL.SelectFromTableWithOrderBy(selectCommand, orderByCommand).ToString()
-		}
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	return engineSQL.SelectFromTable(selectCommand).ToString()
 }

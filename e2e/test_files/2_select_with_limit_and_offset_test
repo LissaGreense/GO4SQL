@@ -1,0 +1,9 @@
+CREATE TABLE tbl( one TEXT , two INT, three INT, four TEXT );
+
+INSERT INTO tbl VALUES( 'hello',1, 11, 'q' );
+INSERT INTO tbl VALUES( 'goodbye', 1, 22, 'w' );
+INSERT INTO tbl VALUES( 'byebye', NULL, 33,'e' );
+
+SELECT * FROM tbl LIMIT 1;
+SELECT * FROM tbl OFFSET 1;
+SELECT * FROM tbl LIMIT 1 OFFSET 1;

@@ -1,0 +1,30 @@
+Table 'table1' has been created
+Table 'table2' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value1' |         NULL |
+|         NULL |     'Value2' |
+|         NULL |     'Value3' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|         NULL |     'Value2' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|     'Value1' |         NULL |
+|         NULL |     'Value2' |
++--------------+--------------+
++--------------+--------------+
+| table1.value | table2.value |
++--------------+--------------+
+|         NULL |     'Value2' |
+|         NULL |     'Value3' |
++--------------+--------------+
