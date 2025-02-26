@@ -118,7 +118,7 @@ func getErrorMessage(t *testing.T, input string, testIndex int) string {
 	parserInstance := parser.New(lexerInstance)
 	sequences, parserError := parserInstance.ParseSequence()
 	if parserError != nil {
-		t.Fatalf("[%d] Error has occured in parser not in engine, error: %s", testIndex, parserError.Error())
+		t.Fatalf("[%d] Error has occurred in parser not in engine, error: %s", testIndex, parserError.Error())
 	}
 
 	engine := New()

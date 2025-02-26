@@ -28,8 +28,11 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 	commands := sequences.Commands
 
 	result := ""
+	var err error
 	for _, command := range commands {
-
+		if err != nil {
+			return "", err
+		}
 		switch mappedCommand := command.(type) {
 		case *ast.WhereCommand:
 			continue
@@ -42,33 +45,22 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
-			err := engine.createTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.createTable(mappedCommand)
 			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
 			continue
 		case *ast.InsertCommand:
-			err := engine.insertIntoTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.insertIntoTable(mappedCommand)
 			result += "Data Inserted\n"
 			continue
 		case *ast.SelectCommand:
-			selectOutput, err := engine.getSelectResponse(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			var selectOutput *Table
+			selectOutput, err = engine.getSelectResponse(mappedCommand)
 			result += selectOutput.ToString() + "\n"
 			continue
 		case *ast.DeleteCommand:
 			deleteCommand := command.(*ast.DeleteCommand)
 			if deleteCommand.HasWhereCommand() {
-				err := engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
-				if err != nil {
-					return "", err
-				}
+				err = engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
 			}
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
@@ -77,18 +69,14 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
-			err := engine.updateTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.updateTable(mappedCommand)
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
 			continue
 		default:
 			return "", &UnsupportedCommandTypeFromParserError{variable: fmt.Sprintf("%s", command)}
 		}
 	}
-
-	return result, nil
+	return result, err
 }
 
 // getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
@@ -322,63 +310,67 @@ func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
 
 func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
 	if space.AggregateFunc.Type == token.COUNT {
-		if space.ColumnName.Type == token.ASTERISK {
-			return IntegerValue{Value: len(columnValues)}, nil
-		}
-		count := 0
-		for _, value := range columnValues {
-			if value.GetType() != NullType {
-				count++
-			}
-		}
-		return IntegerValue{Value: count}, nil
+		return getCount(space, columnValues)
 	}
 	if len(columnValues) == 0 {
 		return NullValue{}, nil
 	}
 	switch space.AggregateFunc.Type {
 	case token.MAX:
-		maxValue, err := getMax(columnValues)
-		if err != nil {
-			return nil, err
-		}
-		return maxValue, nil
+		return getMax(columnValues)
 	case token.MIN:
-		minValue, err := getMin(columnValues)
-		if err != nil {
-			return nil, err
-		}
-		return minValue, nil
+		return getMin(columnValues)
 	case token.SUM:
-		if columnValues[0].GetType() == StringType {
-			return IntegerValue{Value: 0}, nil
-		} else {
-			sum := 0
-			for _, value := range columnValues {
-				if value.GetType() != NullType {
-					num, err := strconv.Atoi(value.ToString())
-					if err != nil {
-						return nil, err
-					}
-					sum += num
-				}
-			}
-			return IntegerValue{Value: sum}, nil
-		}
+		return getSum(columnValues)
 	default:
-		if columnValues[0].GetType() == StringType {
-			return IntegerValue{Value: 0}, nil
-		} else {
-			sum := 0
-			for _, value := range columnValues {
+		return getAvg(columnValues)
+	}
+}
+
+func getCount(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
+	if space.ColumnName.Type == token.ASTERISK {
+		return IntegerValue{Value: len(columnValues)}, nil
+	}
+	count := 0
+	for _, value := range columnValues {
+		if value.GetType() != NullType {
+			count++
+		}
+	}
+	return IntegerValue{Value: count}, nil
+}
+
+func getAvg(columnValues []ValueInterface) (ValueInterface, error) {
+	if columnValues[0].GetType() == StringType {
+		return IntegerValue{Value: 0}, nil
+	} else {
+		sum := 0
+		for _, value := range columnValues {
+			num, err := strconv.Atoi(value.ToString())
+			if err != nil {
+				return nil, err
+			}
+			sum += num
+		}
+		return IntegerValue{Value: sum / len(columnValues)}, nil
+	}
+}
+
+func getSum(columnValues []ValueInterface) (ValueInterface, error) {
+	if columnValues[0].GetType() == StringType {
+		return IntegerValue{Value: 0}, nil
+	} else {
+		sum := 0
+		for _, value := range columnValues {
+			if value.GetType() != NullType {
 				num, err := strconv.Atoi(value.ToString())
 				if err != nil {
 					return nil, err
 				}
 				sum += num
 			}
-			return IntegerValue{Value: sum / len(columnValues)}, nil
 		}
+		return IntegerValue{Value: sum}, nil
 	}
 }
 
