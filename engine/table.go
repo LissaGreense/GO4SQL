@@ -72,6 +72,9 @@ func (table *Table) getDistinctTable() *Table {
 
 // ToString - Return string contain all values and Column names in Table
 func (table *Table) ToString() string {
+	if table == nil {
+		return ""
+	}
 	columWidths := getColumWidths(table.Columns)
 	bar := getBar(columWidths)
 	result := bar + "\n"

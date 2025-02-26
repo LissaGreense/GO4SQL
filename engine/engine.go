@@ -55,9 +55,6 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.SelectCommand:
 			var selectOutput *Table
 			selectOutput, err = engine.getSelectResponse(mappedCommand)
-			if err != nil {
-				return "", err
-			}
 			result += selectOutput.ToString() + "\n"
 			continue
 		case *ast.DeleteCommand:
