@@ -7,8 +7,10 @@ import (
 
 // Table - Contain Columns that store values in engine
 type Table struct {
-	Columns []*Column
+	Columns Columns
 }
+
+type Columns []*Column
 
 func (table *Table) isEqual(secondTable *Table) bool {
 	if len(table.Columns) != len(secondTable.Columns) {
