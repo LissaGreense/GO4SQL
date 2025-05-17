@@ -79,60 +79,55 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 	return result, err
 }
 
-// getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
+// getSelectResponse - processes a SELECT query represented by the ast.SelectCommand and applies a pipeline of
+// transformations based on options applied to ast.SelectCommand
 func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Table, error) {
 	var table *Table
 	var err error
 
 	if selectCommand.HasJoinCommand() {
-		joinCommand := selectCommand.JoinCommand
-		table, err = engine.joinTables(joinCommand, selectCommand.Name.Token.Literal)
-		if err != nil {
-			return nil, err
-		}
+		table, err = engine.joinTables(selectCommand.JoinCommand, selectCommand.Name.Token.Literal)
 	} else {
-		var exist bool
-		table, exist = engine.Tables[selectCommand.Name.Token.Literal]
-
-		if !exist {
+		var exists bool
+		table, exists = engine.Tables[selectCommand.Name.Token.Literal]
+		if !exists {
 			return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
 		}
 	}
 
-	// TODO: Implement Functional Options Pattern to avoid too specific methods with redundant logic
-	// this fragment should be validated and moved to single sequence of logic
-	if selectCommand.HasWhereCommand() {
-		whereCommand := selectCommand.WhereCommand
-		if selectCommand.HasOrderByCommand() {
-			orderByCommand := selectCommand.OrderByCommand
-			table, err = engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand, table)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			table, err = engine.selectFromTableWithWhere(selectCommand, whereCommand, table)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if selectCommand.HasOrderByCommand() {
-		table, err = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand, table)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		table, err = engine.selectFromProvidedTable(selectCommand, table)
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	if selectCommand.HasLimitCommand() || selectCommand.HasOffsetCommand() {
-		table.applyOffsetAndLimit(selectCommand)
+	// Build transformation pipeline
+	var transformers []TableTransformer
+
+	if selectCommand.HasOrderByCommand() {
+		transformers = append(transformers, engine.withOrderBy(selectCommand))
+	}
+
+	if selectCommand.HasWhereCommand() {
+		transformers = append(transformers, engine.withWhere(selectCommand))
+	}
+
+	if len(transformers) == 0 {
+		transformers = append(transformers, engine.withVanillaSelect(selectCommand))
+	}
+
+	if selectCommand.HasOffsetCommand() || selectCommand.HasLimitCommand() {
+		transformers = append(transformers, engine.withOffsetLimit(selectCommand))
 	}
 
 	if selectCommand.HasDistinct {
-		table = table.getDistinctTable()
+		transformers = append(transformers, engine.withDistinct())
+	}
+
+	// Apply transformations
+	for _, transform := range transformers {
+		table, err = transform(table)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return table, nil
@@ -400,50 +395,6 @@ func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
 	delete(engine.Tables, dropCommand.Name.GetToken().Literal)
 }
 
-// selectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand
-func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, table *Table) (*Table, error) {
-	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
-		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
-	}
-
-	filteredTable, err := engine.getFilteredTable(table, whereCommand, false, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromProvidedTable(selectCommand, filteredTable)
-}
-
-// selectFromTableWithWhereAndOrderBy - Return Table containing all values requested by SelectCommand,
-// filtered by WhereCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
-	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
-		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
-	}
-
-	filteredTable, err := engine.getFilteredTable(table, whereCommand, false, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromTableWithOrderBy(selectCommand, orderByCommand, filteredTable)
-}
-
-// selectFromTableWithOrderBy - Return Table containing all values requested by SelectCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
-	emptyTable := getCopyOfTableWithoutRows(table)
-
-	sortedTable, err := engine.getSortedTable(orderByCommand, table, emptyTable, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromProvidedTable(selectCommand, sortedTable)
-}
-
 func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table *Table, copyOfTable *Table, tableName string) (*Table, error) {
 	sortPatterns := orderByCommand.SortPatterns
 
@@ -611,34 +562,6 @@ func addColumnsWithPrefix(finalTable *Table, columnsToAdd []*Column, prefix stri
 				Values: make([]ValueInterface, 0),
 				Name:   prefix + column.Name,
 			})
-	}
-}
-
-func (table *Table) applyOffsetAndLimit(command *ast.SelectCommand) {
-	var offset = 0
-	var limitRaw = -1
-
-	if command.HasLimitCommand() {
-		limitRaw = command.LimitCommand.Count
-	}
-	if command.HasOffsetCommand() {
-		offset = command.OffsetCommand.Count
-	}
-
-	for _, column := range table.Columns {
-		var limit int
-
-		if limitRaw == -1 || limitRaw+offset > len(column.Values) {
-			limit = len(column.Values)
-		} else {
-			limit = limitRaw + offset
-		}
-
-		if offset > len(column.Values) || limit == 0 {
-			column.Values = make([]ValueInterface, 0)
-		} else {
-			column.Values = column.Values[offset:limit]
-		}
 	}
 }
 

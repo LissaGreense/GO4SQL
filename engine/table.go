@@ -2,7 +2,6 @@ package engine
 
 import (
 	"github.com/LissaGreense/GO4SQL/token"
-	"hash/adler32"
 )
 
 // Table - Contain Columns that store values in engine
@@ -38,38 +37,6 @@ func (table *Table) isEqual(secondTable *Table) bool {
 	}
 
 	return true
-}
-
-// getDistinctTable - Takes input table, and returns new one without any duplicates
-func (table *Table) getDistinctTable() *Table {
-	distinctTable := getCopyOfTableWithoutRows(table)
-
-	rowsCount := len(table.Columns[0].Values)
-
-	checksumSet := map[uint32]struct{}{}
-
-	for iRow := 0; iRow < rowsCount; iRow++ {
-
-		mergedColumnValues := ""
-		for iColumn := range table.Columns {
-			fieldValue := table.Columns[iColumn].Values[iRow].ToString()
-			if table.Columns[iColumn].Type.Literal == token.TEXT {
-				fieldValue = "'" + fieldValue + "'"
-			}
-			mergedColumnValues += fieldValue
-		}
-		checksum := adler32.Checksum([]byte(mergedColumnValues))
-
-		_, exist := checksumSet[checksum]
-		if !exist {
-			checksumSet[checksum] = struct{}{}
-			for i, column := range distinctTable.Columns {
-				column.Values = append(column.Values, table.Columns[i].Values[iRow])
-			}
-		}
-	}
-
-	return distinctTable
 }
 
 // ToString - Return string contain all values and Column names in Table
