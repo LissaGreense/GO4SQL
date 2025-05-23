@@ -99,38 +99,32 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 		return nil, err
 	}
 
-	// Build transformation pipeline
-	var transformers []TableTransformer
+	processor := NewSelectProcessor(engine, selectCommand)
 
+	// Build the transformation pipeline using the builder pattern
 	if selectCommand.HasOrderByCommand() {
-		transformers = append(transformers, engine.withOrderBy(selectCommand))
+		processor.WithOrderByClause()
 	}
 
 	if selectCommand.HasWhereCommand() {
-		transformers = append(transformers, engine.withWhere(selectCommand))
+		processor.WithWhereClause()
 	}
 
-	if len(transformers) == 0 {
-		transformers = append(transformers, engine.withVanillaSelect(selectCommand))
+	// If no WHERE or ORDER BY, the vanilla select (projection) is applied first.
+	// Otherwise, WHERE/ORDER BY are applied, and then the projection happens within them (handled by their respective transformers).
+	if !selectCommand.HasOrderByCommand() && !selectCommand.HasWhereCommand() {
+		processor.WithVanillaSelectClause()
 	}
 
 	if selectCommand.HasOffsetCommand() || selectCommand.HasLimitCommand() {
-		transformers = append(transformers, engine.withOffsetLimit(selectCommand))
+		processor.WithOffsetLimitClause()
 	}
 
 	if selectCommand.HasDistinct {
-		transformers = append(transformers, engine.withDistinct())
+		processor.WithDistinctClause()
 	}
 
-	// Apply transformations
-	for _, transform := range transformers {
-		table, err = transform(table)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return table, nil
+	return processor.Process(table)
 }
 
 // createTable - initialize new table in engine with specified name
