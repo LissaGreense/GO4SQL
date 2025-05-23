@@ -908,7 +908,7 @@ func testSelectStatement(t *testing.T, command ast.Command, expectedTableName st
 	}
 
 	if !spaceArrayEquals(actualSelectCommand.Space, expectedSpaces) {
-		t.Errorf("actualSelectCommand has diffrent space than expected. %+v != %+v", actualSelectCommand.Space, expectedSpaces)
+		t.Errorf("actualSelectCommand has different space than expected. %+v != %+v", actualSelectCommand.Space, expectedSpaces)
 		return false
 	}
 

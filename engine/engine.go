@@ -28,8 +28,11 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 	commands := sequences.Commands
 
 	result := ""
+	var err error
 	for _, command := range commands {
-
+		if err != nil {
+			return "", err
+		}
 		switch mappedCommand := command.(type) {
 		case *ast.WhereCommand:
 			continue
@@ -42,33 +45,22 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
-			err := engine.createTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.createTable(mappedCommand)
 			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
 			continue
 		case *ast.InsertCommand:
-			err := engine.insertIntoTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.insertIntoTable(mappedCommand)
 			result += "Data Inserted\n"
 			continue
 		case *ast.SelectCommand:
-			selectOutput, err := engine.getSelectResponse(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			var selectOutput *Table
+			selectOutput, err = engine.getSelectResponse(mappedCommand)
 			result += selectOutput.ToString() + "\n"
 			continue
 		case *ast.DeleteCommand:
 			deleteCommand := command.(*ast.DeleteCommand)
 			if deleteCommand.HasWhereCommand() {
-				err := engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
-				if err != nil {
-					return "", err
-				}
+				err = engine.deleteFromTable(mappedCommand, deleteCommand.WhereCommand)
 			}
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
@@ -77,75 +69,62 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
-			err := engine.updateTable(mappedCommand)
-			if err != nil {
-				return "", err
-			}
+			err = engine.updateTable(mappedCommand)
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
 			continue
 		default:
 			return "", &UnsupportedCommandTypeFromParserError{variable: fmt.Sprintf("%s", command)}
 		}
 	}
-
-	return result, nil
+	return result, err
 }
 
-// getSelectResponse - Returns Select response basing on ast.OrderByCommand and ast.WhereCommand included in this Select
+// getSelectResponse - processes a SELECT query represented by the ast.SelectCommand and applies a pipeline of
+// transformations based on options applied to ast.SelectCommand
 func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Table, error) {
 	var table *Table
 	var err error
 
 	if selectCommand.HasJoinCommand() {
-		joinCommand := selectCommand.JoinCommand
-		table, err = engine.joinTables(joinCommand, selectCommand.Name.Token.Literal)
-		if err != nil {
-			return nil, err
-		}
+		table, err = engine.joinTables(selectCommand.JoinCommand, selectCommand.Name.Token.Literal)
 	} else {
-		var exist bool
-		table, exist = engine.Tables[selectCommand.Name.Token.Literal]
-
-		if !exist {
+		var exists bool
+		table, exists = engine.Tables[selectCommand.Name.Token.Literal]
+		if !exists {
 			return nil, &TableDoesNotExistError{selectCommand.Name.Token.Literal}
 		}
 	}
 
-	if selectCommand.HasWhereCommand() {
-		whereCommand := selectCommand.WhereCommand
-		if selectCommand.HasOrderByCommand() {
-			orderByCommand := selectCommand.OrderByCommand
-			table, err = engine.selectFromTableWithWhereAndOrderBy(selectCommand, whereCommand, orderByCommand, table)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			table, err = engine.selectFromTableWithWhere(selectCommand, whereCommand, table)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if selectCommand.HasOrderByCommand() {
-		table, err = engine.selectFromTableWithOrderBy(selectCommand, selectCommand.OrderByCommand, table)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		table, err = engine.selectFromProvidedTable(selectCommand, table)
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	if selectCommand.HasLimitCommand() || selectCommand.HasOffsetCommand() {
-		table.applyOffsetAndLimit(selectCommand)
+	processor := NewSelectProcessor(engine, selectCommand)
+
+	// Build the transformation pipeline using the builder pattern
+	if selectCommand.HasOrderByCommand() {
+		processor.WithOrderByClause()
+	}
+
+	if selectCommand.HasWhereCommand() {
+		processor.WithWhereClause()
+	}
+
+	// If no WHERE or ORDER BY, the vanilla select (projection) is applied first.
+	// Otherwise, WHERE/ORDER BY are applied, and then the projection happens within them (handled by their respective transformers).
+	if !selectCommand.HasOrderByCommand() && !selectCommand.HasWhereCommand() {
+		processor.WithVanillaSelectClause()
+	}
+
+	if selectCommand.HasOffsetCommand() || selectCommand.HasLimitCommand() {
+		processor.WithOffsetLimitClause()
 	}
 
 	if selectCommand.HasDistinct {
-		table = table.getDistinctTable()
+		processor.WithDistinctClause()
 	}
 
-	return table, nil
+	return processor.Process(table)
 }
 
 // createTable - initialize new table in engine with specified name
@@ -169,45 +148,52 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 }
 
 func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
-	table, exist := engine.Tables[command.Name.Token.Literal]
-
-	if !exist {
+	table, exists := engine.Tables[command.Name.Token.Literal]
+	if !exists {
 		return &TableDoesNotExistError{command.Name.Token.Literal}
 	}
 
-	columns := table.Columns
-
-	// TODO: This could be optimized
-	mappedChanges := make(map[int]ast.Anonymitifier)
-	for updatedCol, newValue := range command.Changes {
-		for colIndex := 0; colIndex < len(columns); colIndex++ {
-			if columns[colIndex].Name == updatedCol.Literal {
-				mappedChanges[colIndex] = newValue
-				break
-			}
-			if colIndex == len(columns)-1 {
-				return &ColumnDoesNotExistError{tableName: command.Name.GetToken().Literal, columnName: updatedCol.Literal}
-			}
-		}
+	columnIndices := make(map[string]int, len(table.Columns))
+	for i, col := range table.Columns {
+		columnIndices[col.Name] = i
 	}
 
-	numberOfRows := len(columns[0].Values)
-	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
+	// Map changes to column indices
+	type change struct {
+		index int
+		value ast.Anonymitifier
+	}
+
+	changes := make([]change, 0, len(command.Changes))
+	for colToken, newValue := range command.Changes {
+		colName := colToken.Literal
+		colIndex, ok := columnIndices[colName]
+		if !ok {
+			return &ColumnDoesNotExistError{
+				tableName:  command.Name.Token.Literal,
+				columnName: colName,
+			}
+		}
+		changes = append(changes, change{index: colIndex, value: newValue})
+	}
+
+	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
-			fulfilledFilters, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
+			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
 			if err != nil {
 				return err
 			}
-			if !fulfilledFilters {
+			if !matches {
 				continue
 			}
 		}
-		for colIndex, value := range mappedChanges {
-			interfaceValue, err := getInterfaceValue(value.GetToken())
+
+		for _, change := range changes {
+			val, err := getInterfaceValue(change.value.GetToken())
 			if err != nil {
 				return err
 			}
-			table.Columns[colIndex].Values[rowIndex] = interfaceValue
+			table.Columns[change.index].Values[rowIndex] = val
 		}
 	}
 
@@ -224,13 +210,23 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 	columns := table.Columns
 
 	if len(command.Values) != len(columns) {
-		return &InvalidNumberOfParametersError{expectedNumber: len(columns), actualNumber: len(command.Values), commandName: command.Token.Literal}
+		return &InvalidNumberOfParametersError{
+			expectedNumber: len(columns),
+			actualNumber:   len(command.Values),
+			commandName:    command.Token.Literal,
+		}
 	}
 
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
-		if (expectedToken != command.Values[i].Type) && (command.Values[i].Type != token.NULL) {
-			return &InvalidValueTypeError{expectedType: string(expectedToken), actualType: string(command.Values[i].Type), commandName: command.Token.Literal}
+		colValueType := command.Values[i].Type
+
+		if (expectedToken != colValueType) && (colValueType != token.NULL) {
+			return &InvalidValueTypeError{
+				expectedType: string(expectedToken),
+				actualType:   string(colValueType),
+				commandName:  command.Token.Literal,
+			}
 		}
 		interfaceValue, err := getInterfaceValue(command.Values[i])
 		if err != nil {
@@ -249,11 +245,8 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 		selectedTable := &Table{Columns: make([]*Column, 0)}
 
 		for i := 0; i < len(command.Space); i++ {
-			var columnType token.Token
-			var columnName string
+			col := &Column{}
 			var columnValues []ValueInterface
-			var err error
-			value := make([]ValueInterface, 0)
 			currentSpace := command.Space[i]
 
 			if currentSpace.ColumnName.Type == token.ASTERISK && currentSpace.AggregateFunc.Type == token.COUNT {
@@ -261,33 +254,28 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 					columnValues = columns[0].Values
 				}
 			} else {
+				var err error
 				columnValues, err = getValuesOfColumn(currentSpace.ColumnName.Literal, columns)
-			}
-
-			if err != nil {
-				return nil, err
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			if currentSpace.ContainsAggregateFunc() {
-				columnName = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
+				col.Name = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
 					currentSpace.ColumnName.Literal)
-				columnType = evaluateColumnTypeOfAggregateFunc(currentSpace)
-				aggregatedValue, aggregateErr := aggregateColumnContent(currentSpace, columnValues)
-				if aggregateErr != nil {
-					return nil, aggregateErr
+				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace)
+				aggregatedValue, err := aggregateColumnContent(currentSpace, columnValues)
+				if err != nil {
+					return nil, err
 				}
-				value = append(value, aggregatedValue)
+				col.Values = []ValueInterface{aggregatedValue}
 			} else {
-				columnName = currentSpace.ColumnName.Literal
-				columnType = currentSpace.ColumnName
-				value = append(value, columnValues[0])
+				col.Name = currentSpace.ColumnName.Literal
+				col.Type = currentSpace.ColumnName
+				col.Values = []ValueInterface{columnValues[0]}
 			}
-
-			selectedTable.Columns = append(selectedTable.Columns, &Column{
-				Name:   columnName,
-				Type:   columnType,
-				Values: value,
-			})
+			selectedTable.Columns = append(selectedTable.Columns, col)
 		}
 		return selectedTable, nil
 	} else if command.Space[0].ColumnName.Type == token.ASTERISK {
@@ -322,63 +310,59 @@ func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
 
 func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
 	if space.AggregateFunc.Type == token.COUNT {
-		if space.ColumnName.Type == token.ASTERISK {
-			return IntegerValue{Value: len(columnValues)}, nil
-		}
-		count := 0
-		for _, value := range columnValues {
-			if value.GetType() != NullType {
-				count++
-			}
-		}
-		return IntegerValue{Value: count}, nil
+		return getCount(space, columnValues)
 	}
 	if len(columnValues) == 0 {
 		return NullValue{}, nil
 	}
 	switch space.AggregateFunc.Type {
 	case token.MAX:
-		maxValue, err := getMax(columnValues)
-		if err != nil {
-			return nil, err
-		}
-		return maxValue, nil
+		return getMax(columnValues)
 	case token.MIN:
-		minValue, err := getMin(columnValues)
-		if err != nil {
-			return nil, err
-		}
-		return minValue, nil
+		return getMin(columnValues)
 	case token.SUM:
-		if columnValues[0].GetType() == StringType {
-			return IntegerValue{Value: 0}, nil
-		} else {
-			sum := 0
-			for _, value := range columnValues {
-				if value.GetType() != NullType {
-					num, err := strconv.Atoi(value.ToString())
-					if err != nil {
-						return nil, err
-					}
-					sum += num
-				}
-			}
-			return IntegerValue{Value: sum}, nil
-		}
+		return getSum(columnValues)
 	default:
-		if columnValues[0].GetType() == StringType {
-			return IntegerValue{Value: 0}, nil
-		} else {
-			sum := 0
-			for _, value := range columnValues {
+		return getAvg(columnValues)
+	}
+}
+
+func getCount(space ast.Space, columnValues []ValueInterface) (*IntegerValue, error) {
+	if space.ColumnName.Type == token.ASTERISK {
+		return &IntegerValue{Value: len(columnValues)}, nil
+	}
+	count := 0
+	for _, value := range columnValues {
+		if value.GetType() != NullType {
+			count++
+		}
+	}
+	return &IntegerValue{Value: count}, nil
+}
+
+func getAvg(columnValues []ValueInterface) (*IntegerValue, error) {
+	sum, err := getSum(columnValues)
+	if err != nil {
+		return nil, err
+	}
+	return &IntegerValue{Value: sum.Value / len(columnValues)}, nil
+}
+
+func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
+	if columnValues[0].GetType() == StringType {
+		return &IntegerValue{Value: 0}, nil
+	} else {
+		sum := 0
+		for _, value := range columnValues {
+			if value.GetType() != NullType {
 				num, err := strconv.Atoi(value.ToString())
 				if err != nil {
 					return nil, err
 				}
 				sum += num
 			}
-			return IntegerValue{Value: sum / len(columnValues)}, nil
 		}
+		return &IntegerValue{Value: sum}, nil
 	}
 }
 
@@ -403,54 +387,6 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 // dropTable - Drop table with given name
 func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
 	delete(engine.Tables, dropCommand.Name.GetToken().Literal)
-}
-
-// selectFromTableWithWhere - Return Table containing all values requested by SelectCommand and filtered by WhereCommand
-func (engine *DbEngine) selectFromTableWithWhere(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, table *Table) (*Table, error) {
-	if len(table.Columns) == 0 || len(table.Columns[0].Values) == 0 {
-		return engine.selectFromProvidedTable(selectCommand, &Table{Columns: []*Column{}})
-	}
-
-	filteredTable, err := engine.getFilteredTable(table, whereCommand, false, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromProvidedTable(selectCommand, filteredTable)
-}
-
-// selectFromTableWithWhereAndOrderBy - Return Table containing all values requested by SelectCommand,
-// filtered by WhereCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithWhereAndOrderBy(selectCommand *ast.SelectCommand, whereCommand *ast.WhereCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
-	filteredTable, err := engine.getFilteredTable(table, whereCommand, false, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	emptyTable := getCopyOfTableWithoutRows(table)
-
-	sortedTable, err := engine.getSortedTable(orderByCommand, filteredTable, emptyTable, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromProvidedTable(selectCommand, sortedTable)
-}
-
-// selectFromTableWithOrderBy - Return Table containing all values requested by SelectCommand and sorted by OrderByCommand
-func (engine *DbEngine) selectFromTableWithOrderBy(selectCommand *ast.SelectCommand, orderByCommand *ast.OrderByCommand, table *Table) (*Table, error) {
-	emptyTable := getCopyOfTableWithoutRows(table)
-
-	sortedTable, err := engine.getSortedTable(orderByCommand, table, emptyTable, selectCommand.Name.GetToken().Literal)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return engine.selectFromProvidedTable(selectCommand, sortedTable)
 }
 
 func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table *Table, copyOfTable *Table, tableName string) (*Table, error) {
@@ -623,34 +559,6 @@ func addColumnsWithPrefix(finalTable *Table, columnsToAdd []*Column, prefix stri
 	}
 }
 
-func (table *Table) applyOffsetAndLimit(command *ast.SelectCommand) {
-	var offset = 0
-	var limitRaw = -1
-
-	if command.HasLimitCommand() {
-		limitRaw = command.LimitCommand.Count
-	}
-	if command.HasOffsetCommand() {
-		offset = command.OffsetCommand.Count
-	}
-
-	for _, column := range table.Columns {
-		var limit int
-
-		if limitRaw == -1 || limitRaw+offset > len(column.Values) {
-			limit = len(column.Values)
-		} else {
-			limit = limitRaw + offset
-		}
-
-		if offset > len(column.Values) || limit == 0 {
-			column.Values = make([]ValueInterface, 0)
-		} else {
-			column.Values = column.Values[offset:limit]
-		}
-	}
-}
-
 func xor(fulfilledFilters bool, negation bool) bool {
 	return (fulfilledFilters || negation) && !(fulfilledFilters && negation)
 }
@@ -674,7 +582,7 @@ func isFulfillingFilters(row map[string]ValueInterface, expressionTree ast.Expre
 	case *ast.OperationExpression:
 		return processOperationExpression(row, mappedExpression, commandName)
 	case *ast.BooleanExpression:
-		return processBooleanExpression(mappedExpression)
+		return processBooleanExpression(mappedExpression), nil
 	case *ast.ConditionExpression:
 		return processConditionExpression(row, mappedExpression, commandName)
 	case *ast.ContainExpression:
@@ -742,7 +650,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 		}
 		right, err := isFulfillingFilters(row, operationExpression.Right, commandName)
 
-		return left && right, err
+		return right, err
 	}
 
 	if operationExpression.Operation.Type == token.OR {
@@ -752,17 +660,17 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 		}
 		right, err := isFulfillingFilters(row, operationExpression.Right, commandName)
 
-		return left || right, err
+		return right, err
 	}
 
 	return false, &UnsupportedOperationTokenError{operationExpression.Operation.Literal}
 }
 
-func processBooleanExpression(booleanExpression *ast.BooleanExpression) (bool, error) {
+func processBooleanExpression(booleanExpression *ast.BooleanExpression) bool {
 	if booleanExpression.Boolean.Literal == token.TRUE {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInterface, error) {

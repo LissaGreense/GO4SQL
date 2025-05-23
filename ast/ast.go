@@ -11,7 +11,7 @@ type Sequence struct {
 	Commands []Command
 }
 
-// Node is connector between commands and expressions
+// Node is a connector between commands and expressions
 type Node interface {
 	TokenLiteral() string
 }
@@ -49,9 +49,8 @@ type Tifier interface {
 func (p *Sequence) TokenLiteral() string {
 	if len(p.Commands) > 0 {
 		return p.Commands[0].TokenLiteral()
-	} else {
-		return ""
 	}
+	return ""
 }
 
 // Identifier - Represent Token with string value that is equal to either column or table name
@@ -62,7 +61,7 @@ type Identifier struct {
 func (ls Identifier) IsIdentifier() bool    { return true }
 func (ls Identifier) GetToken() token.Token { return ls.Token }
 
-// Anonymitifier - Represent Token with string value that is equal to simple value that is put into columns
+// Anonymitifier - Represent Token with a string value that is equal to a simple value that is put into columns
 type Anonymitifier struct {
 	Token token.Token // the token.IDENT token
 }
@@ -107,7 +106,7 @@ func (ls ConditionExpression) GetIdentifiers() []Identifier {
 	return identifiers
 }
 
-// ContainExpression - TokenType of Expression that represents structure for IN operator
+// ContainExpression - TokenType of Expression that represents structure for-IN-operator
 //
 // Example:
 // colName IN ('value1', 'value2', 'value3')
@@ -205,7 +204,7 @@ type SelectCommand struct {
 
 func (ls SelectCommand) CommandNode()         {}
 func (ls SelectCommand) TokenLiteral() string { return ls.Token.Literal }
-func (ls *SelectCommand) AggregateFunctionAppears() bool {
+func (ls SelectCommand) AggregateFunctionAppears() bool {
 	for _, space := range ls.Space {
 		if space.ContainsAggregateFunc() {
 			return true
@@ -223,10 +222,7 @@ func (ls *SelectCommand) AggregateFunctionAppears() bool {
 // SELECT * FROM table;
 // Returns false
 func (ls SelectCommand) HasWhereCommand() bool {
-	if ls.WhereCommand == nil {
-		return false
-	}
-	return true
+	return ls.WhereCommand != nil
 }
 
 // HasOrderByCommand - returns true if optional OrderByCommand is present in SelectCommand
@@ -238,10 +234,7 @@ func (ls SelectCommand) HasWhereCommand() bool {
 // SELECT * FROM table;
 // Returns false
 func (ls SelectCommand) HasOrderByCommand() bool {
-	if ls.OrderByCommand == nil {
-		return false
-	}
-	return true
+	return ls.OrderByCommand != nil
 }
 
 // HasLimitCommand - returns true if optional LimitCommand is present in SelectCommand
@@ -253,10 +246,7 @@ func (ls SelectCommand) HasOrderByCommand() bool {
 // SELECT * FROM table;
 // Returns false
 func (ls SelectCommand) HasLimitCommand() bool {
-	if ls.LimitCommand == nil {
-		return false
-	}
-	return true
+	return ls.LimitCommand != nil
 }
 
 // HasOffsetCommand - returns true if optional OffsetCommand is present in SelectCommand
@@ -268,10 +258,7 @@ func (ls SelectCommand) HasLimitCommand() bool {
 // SELECT * FROM table LIMIT 10;
 // Returns false
 func (ls SelectCommand) HasOffsetCommand() bool {
-	if ls.OffsetCommand == nil {
-		return false
-	}
-	return true
+	return ls.OffsetCommand != nil
 }
 
 // HasJoinCommand - returns true if optional JoinCommand is present in SelectCommand
@@ -283,10 +270,7 @@ func (ls SelectCommand) HasOffsetCommand() bool {
 // SELECT * FROM table;
 // Returns false
 func (ls SelectCommand) HasJoinCommand() bool {
-	if ls.JoinCommand == nil {
-		return false
-	}
-	return true
+	return ls.JoinCommand != nil
 }
 
 // UpdateCommand - Part of Command that allow to change existing data
