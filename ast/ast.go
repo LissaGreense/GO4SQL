@@ -11,7 +11,7 @@ type Sequence struct {
 	Commands []Command
 }
 
-// Node is connector between commands and expressions
+// Node is a connector between commands and expressions
 type Node interface {
 	TokenLiteral() string
 }
