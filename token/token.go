@@ -9,76 +9,79 @@ type Token struct {
 }
 
 const (
-	// ASTERISK - Operators
+	// Operators
 	ASTERISK = "*"
 
-	// IDENT - Identifiers + literals
-	IDENT   = "IDENT"   // tab, car, apple...
-	LITERAL = "LITERAL" // 1343456
+	// Identifiers & Literals
+	IDENT   = "IDENT"   // e.g., table, column names
+	LITERAL = "LITERAL" // e.g., numeric or string literals
 
-	// COMMA - Delimiters
-	COMMA     = ","
-	SEMICOLON = ";"
-
-	// EOF - Special tokens
-	EOF        = ""
+	// Delimiters
+	COMMA      = ","
+	SEMICOLON  = ";"
 	APOSTROPHE = "'"
 
-	// LPAREN - Paren
+	// Parentheses
 	LPAREN = "("
 	RPAREN = ")"
 
-	// CREATE - Keywords
-	CREATE   = "CREATE"
-	DROP     = "DROP"
-	TABLE    = "TABLE"
-	INSERT   = "INSERT"
-	INTO     = "INTO"
-	VALUES   = "VALUES"
-	SELECT   = "SELECT"
+	// Special Tokens
+	EOF     = ""
+	ILLEGAL = "ILLEGAL"
+
+	// Commands
+	CREATE = "CREATE"
+	DROP   = "DROP"
+	TABLE  = "TABLE"
+	INSERT = "INSERT"
+	INTO   = "INTO"
+	VALUES = "VALUES"
+	SELECT = "SELECT"
+	DELETE = "DELETE"
+	UPDATE = "UPDATE"
+
+	// Clauses
 	FROM     = "FROM"
 	WHERE    = "WHERE"
-	DELETE   = "DELETE"
 	ORDER    = "ORDER"
 	BY       = "BY"
 	ASC      = "ASC"
 	DESC     = "DESC"
 	LIMIT    = "LIMIT"
 	OFFSET   = "OFFSET"
-	UPDATE   = "UPDATE"
 	SET      = "SET"
 	DISTINCT = "DISTINCT"
-	JOIN     = "JOIN"
-	INNER    = "INNER"
-	FULL     = "FULL"
-	LEFT     = "LEFT"
-	RIGHT    = "RIGHT"
-	ON       = "ON"
-	MIN      = "MIN"
-	MAX      = "MAX"
-	COUNT    = "COUNT"
-	SUM      = "SUM"
-	AVG      = "AVG"
-	IN       = "IN"
-	NOTIN    = "NOTIN"
-	NULL     = "NULL"
+	TO       = "TO"
 
-	TO = "TO"
+	// Joins
+	JOIN  = "JOIN"
+	INNER = "INNER"
+	FULL  = "FULL"
+	LEFT  = "LEFT"
+	RIGHT = "RIGHT"
+	ON    = "ON"
 
-	// EQUAL - Logical operations
+	// Aggregates
+	MIN   = "MIN"
+	MAX   = "MAX"
+	COUNT = "COUNT"
+	SUM   = "SUM"
+	AVG   = "AVG"
+
+	// Logical
 	EQUAL = "EQUAL"
 	NOT   = "NOT"
 	AND   = "AND"
 	OR    = "OR"
 	TRUE  = "TRUE"
 	FALSE = "FALSE"
+	IN    = "IN"
+	NOTIN = "NOTIN"
+	NULL  = "NULL"
 
-	// TEXT - Data types
+	// Data Types
 	TEXT = "TEXT"
 	INT  = "INT"
-
-	// ILLEGAL - System
-	ILLEGAL = "ILLEGAL"
 )
 
 var keywords = map[string]Type{

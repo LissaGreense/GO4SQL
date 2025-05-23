@@ -12,8 +12,7 @@ func MapTableToRows(table *Table) Rows {
 	numberOfRows := len(table.Columns[0].Values)
 
 	for rowIndex := 0; rowIndex < numberOfRows; rowIndex++ {
-		row := getRow(table, rowIndex)
-		rows = append(rows, row)
+		rows = append(rows, getRow(table, rowIndex))
 	}
 	return Rows{rows: rows}
 }
