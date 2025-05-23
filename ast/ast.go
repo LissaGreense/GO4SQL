@@ -61,7 +61,7 @@ type Identifier struct {
 func (ls Identifier) IsIdentifier() bool    { return true }
 func (ls Identifier) GetToken() token.Token { return ls.Token }
 
-// Anonymitifier - Represent Token with string value that is equal to simple value that is put into columns
+// Anonymitifier - Represent Token with a string value that is equal to a simple value that is put into columns
 type Anonymitifier struct {
 	Token token.Token // the token.IDENT token
 }
@@ -106,7 +106,7 @@ func (ls ConditionExpression) GetIdentifiers() []Identifier {
 	return identifiers
 }
 
-// ContainExpression - TokenType of Expression that represents structure for IN operator
+// ContainExpression - TokenType of Expression that represents structure for-IN-operator
 //
 // Example:
 // colName IN ('value1', 'value2', 'value3')

@@ -22,7 +22,7 @@ func NewSelectProcessor(engine *DbEngine, cmd *ast.SelectCommand) *SelectProcess
 	return &SelectProcessor{
 		engine:       engine,
 		cmd:          cmd,
-		transformers: []TableTransformer{}, // Initialize as empty slice
+		transformers: []TableTransformer{}, // Initialize as an empty slice
 	}
 }
 

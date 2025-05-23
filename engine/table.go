@@ -39,7 +39,7 @@ func (table *Table) isEqual(secondTable *Table) bool {
 	return true
 }
 
-// ToString - Return string contain all values and Column names in Table
+// ToString - Return string contains all values and Column names in Table
 func (table *Table) ToString() string {
 	if table == nil {
 		return ""

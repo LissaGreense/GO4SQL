@@ -650,7 +650,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 		}
 		right, err := isFulfillingFilters(row, operationExpression.Right, commandName)
 
-		return left && right, err
+		return right, err
 	}
 
 	if operationExpression.Operation.Type == token.OR {
@@ -660,7 +660,7 @@ func processOperationExpression(row map[string]ValueInterface, operationExpressi
 		}
 		right, err := isFulfillingFilters(row, operationExpression.Right, commandName)
 
-		return left || right, err
+		return right, err
 	}
 
 	return false, &UnsupportedOperationTokenError{operationExpression.Operation.Literal}
