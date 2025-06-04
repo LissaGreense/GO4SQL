@@ -68,13 +68,17 @@ func (m *SyntaxInvalidCommandError) Error() string {
 // LogicalExpressionParsingError - error thrown when logical expression inside WHERE statement
 // couldn't be parsed correctly
 type LogicalExpressionParsingError struct {
-	afterToken *string
+	afterToken    *string
+	customMessage string
 }
 
 func (m *LogicalExpressionParsingError) Error() string {
 	errorMsg := "syntax error, logical expression within WHERE command couldn't be parsed correctly"
+	if m.customMessage != "" {
+		errorMsg += " (" + m.customMessage + ")"
+	}
 	if m.afterToken != nil {
-		return errorMsg + ", after {" + *m.afterToken + "} character"
+		errorMsg += ", after {" + *m.afterToken + "} character"
 	}
 	return errorMsg
 }

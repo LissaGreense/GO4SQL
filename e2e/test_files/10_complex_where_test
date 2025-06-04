@@ -1,0 +1,16 @@
+CREATE TABLE employees (
+    id INT,
+    name TEXT,
+    department TEXT,
+    salary INT,
+    hire_date TEXT
+);
+INSERT INTO employees VALUES(1, 'Alice', 'HR', 60000, '2020-01-15');
+INSERT INTO employees VALUES(2, 'Bob', 'Engineering', 80000, '2019-03-01');
+INSERT INTO employees VALUES(3, 'Charlie', 'Engineering', 75000, '2021-07-30');
+INSERT INTO employees VALUES(4, 'David', 'HR', 65000, NULL);
+INSERT INTO employees VALUES(5, 'Eve', 'Sales', 70000, '2020-05-20');
+INSERT INTO employees VALUES(6, 'Frank', 'Sales', NULL, '2022-01-10');
+INSERT INTO employees VALUES(7, 'Grace', 'Engineering', 90000, '2018-10-01');
+INSERT INTO employees VALUES(8, NULL, 'Marketing', 50000, '2023-01-01');
+SELECT name, department, salary FROM employees WHERE department EQUAL 'Engineering' AND salary GREATER 75000;

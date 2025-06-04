@@ -1,0 +1,36 @@
+CREATE TABLE items (
+    id INT,
+    name TEXT,
+    quantity INT
+);
+
+-- Select from empty table
+SELECT * FROM items;
+SELECT id, name FROM items WHERE quantity GREATER 0; -- Uses GREATER, relies on recent parser/lexer fix
+SELECT id, name FROM items WHERE name EQUAL NULL;
+
+-- Aggregate functions on empty table
+SELECT COUNT(*) FROM items;
+SELECT COUNT(id) FROM items;
+SELECT SUM(quantity) FROM items;
+SELECT AVG(quantity) FROM items;
+SELECT MAX(id) FROM items;
+SELECT MIN(name) FROM items;
+
+-- Update on empty table
+UPDATE items SET quantity = 10 WHERE name EQUAL 'NewItem';
+SELECT * FROM items; -- Should still be empty
+
+-- Delete from empty table
+DELETE FROM items WHERE id EQUAL 1;
+SELECT * FROM items; -- Should still be empty
+
+-- Insert some data and then delete all to make it empty again
+INSERT INTO items VALUES(1, 'TestItem', 5);
+SELECT * FROM items;
+DELETE FROM items;
+SELECT * FROM items; -- Should be empty again
+
+-- Try aggregates again after deleting all rows
+SELECT COUNT(*) FROM items;
+SELECT name FROM items WHERE name NOT NULL;

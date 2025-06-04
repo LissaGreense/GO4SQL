@@ -1,0 +1,50 @@
+CREATE TABLE students (
+    id INT,
+    name TEXT,
+    major TEXT,
+    enrollment_year INT
+);
+
+INSERT INTO students VALUES(1, 'Alice', 'CS', 2020);
+INSERT INTO students VALUES(2, 'Bob', 'Biology', 2019);
+INSERT INTO students VALUES(3, 'Charlie', 'CS', 2020);
+INSERT INTO students VALUES(4, 'David', 'Math', 2021);
+INSERT INTO students VALUES(5, 'Eve', 'Physics', 2019);
+INSERT INTO students VALUES(6, 'Frank', NULL, 2020);
+INSERT INTO students VALUES(7, 'Grace', 'Math', NULL);
+
+-- IN operator with TEXT
+SELECT name, major FROM students WHERE major IN ('CS', 'Math');
+SELECT name, major FROM students WHERE name IN ('Alice', 'Xavier', 'Bob');
+
+-- IN operator with INT
+SELECT name, enrollment_year FROM students WHERE enrollment_year IN (2020, 2022);
+
+-- IN operator with NULL in list (behavior might vary; GO4SQL treats NULL as smallest value)
+-- Test how 'IN (NULL)' or 'IN (value, NULL)' is handled.
+-- Based on "NULL can be compared with EQUAL and NOT", `major IN ('CS', NULL)` might match 'CS' and rows where major IS NULL.
+SELECT name, major FROM students WHERE major IN ('CS', NULL);
+SELECT name, major FROM students WHERE major IN (NULL); -- Should match rows where major IS NULL
+
+-- NOTIN operator with TEXT
+SELECT name, major FROM students WHERE major NOTIN ('Biology', 'Physics');
+SELECT name, major FROM students WHERE name NOTIN ('David', 'Eve', 'Yankee');
+
+-- NOTIN operator with INT
+SELECT name, enrollment_year FROM students WHERE enrollment_year NOTIN (2019, 2021);
+
+-- NOTIN operator with NULL in list
+-- `major NOTIN ('Biology', NULL)`: if NULL handling is consistent,
+-- this means major IS NOT 'Biology' AND major IS NOT NULL.
+SELECT name, major FROM students WHERE major NOTIN ('Biology', NULL);
+SELECT name, major FROM students WHERE major NOTIN (NULL); -- Should match rows where major IS NOT NULL
+
+-- IN with empty list (should select nothing)
+SELECT name, major FROM students WHERE major IN ();
+
+-- NOTIN with empty list (should select everything that's not NULL, or everything if NOTIN () is true)
+SELECT name, major FROM students WHERE major NOTIN ();
+
+-- IN combined with AND/OR (assuming AND before OR)
+SELECT name, major, enrollment_year FROM students WHERE major IN ('CS', 'Math') AND enrollment_year EQUAL 2020;
+SELECT name, major, enrollment_year FROM students WHERE major IN ('Physics') OR enrollment_year NOTIN (2020, 2021);

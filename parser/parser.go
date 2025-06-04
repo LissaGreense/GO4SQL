@@ -710,15 +710,122 @@ func (parser *Parser) parseUpdateCommand() (ast.Command, error) {
 	return updateCommand, nil
 }
 
-// getExpression - Return proper structure of ast.Expression and validate the syntax
-//
-// Available expressions:
-// - ast.OperationExpression
-// - ast.BooleanExpression
-// - ast.ConditionExpression
-// - ast.ContainExpression
+// getExpression is the entry point for parsing logical expressions.
+// It handles OR operations (lowest precedence).
 func (parser *Parser) getExpression() (ast.Expression, error) {
+	leftExpr, err := parser.getTerm()
+	if err != nil {
+		return nil, err // Propagate error from getTerm
+	}
+	if leftExpr == nil { // If getTerm returned (nil,nil) convert to error
+		return nil, &LogicalExpressionParsingError{customMessage: "Missing left operand for OR expression", afterToken: &parser.currentToken.Literal}
+	}
 
+	for parser.currentToken.Type == token.OR {
+		operatorToken := parser.currentToken // Store OR token
+		parser.nextToken()                   // Consume OR
+
+		rightExpr, err := parser.getTerm()
+		if err != nil {
+			return nil, err // Propagate error from getTerm (for RHS)
+		}
+		if rightExpr == nil { // If getTerm for RHS returned (nil,nil) convert to error
+			return nil, &LogicalExpressionParsingError{customMessage: "Missing right operand for OR expression", afterToken: &operatorToken.Literal}
+		}
+
+		leftExpr = &ast.OperationExpression{Left: leftExpr, Operation: operatorToken, Right: rightExpr}
+	}
+
+	return leftExpr, nil
+}
+
+// getTerm handles AND operations (medium precedence).
+func (parser *Parser) getTerm() (ast.Expression, error) {
+	leftExpr, err := parser.getFactor()
+	if err != nil {
+		return nil, err // Propagate error from getFactor
+	}
+	if leftExpr == nil { // If getFactor returned (nil,nil) convert to error
+		return nil, &LogicalExpressionParsingError{customMessage: "Missing left operand for AND expression", afterToken: &parser.currentToken.Literal}
+	}
+
+	for parser.currentToken.Type == token.AND {
+		operatorToken := parser.currentToken // Store AND token
+		parser.nextToken()                   // Consume AND
+
+		rightExpr, err := parser.getFactor()
+		if err != nil {
+			return nil, err // Propagate error from getFactor (for RHS)
+		}
+		if rightExpr == nil { // If getFactor for RHS returned (nil,nil) convert to error
+			return nil, &LogicalExpressionParsingError{customMessage: "Missing right operand for AND expression", afterToken: &operatorToken.Literal}
+		}
+
+		leftExpr = &ast.OperationExpression{Left: leftExpr, Operation: operatorToken, Right: rightExpr}
+	}
+
+	return leftExpr, nil
+}
+
+// getFactor handles individual conditions, literals, and parenthesized expressions (highest precedence).
+func (parser *Parser) getFactor() (ast.Expression, error) {
+	if parser.currentToken.Type == token.LPAREN {
+		parser.nextToken() // Consume LPAREN
+		expr, err := parser.getExpression() // Recursive call to parse the inner expression
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil { // If inner expression is (nil,nil) convert to error
+			return nil, &LogicalExpressionParsingError{customMessage: "Empty or invalid parenthesized expression"}
+		}
+		if parser.currentToken.Type != token.RPAREN {
+			return nil, &SyntaxError{expecting: []string{string(token.RPAREN)}, got: string(parser.currentToken.Type)}
+		}
+		parser.nextToken() // Consume RPAREN
+		return expr, nil
+	}
+
+	// Otherwise, parse a simple condition or boolean
+	leftSideValue, isAnonymitifier, err := parser.getExpressionLeftSideValue()
+	if err != nil { // Error from getExpressionLeftSideValue (e.g. unexpected token like AND when factor expected)
+		return nil, err
+	}
+	// If getExpressionLeftSideValue succeeded, leftSideValue is a valid token.
+
+	// Check for specific condition types based on the *next* token
+	// Current token is the operator (e.g. EQUAL, ISNULL, IN)
+	if parser.currentToken.Type == token.EQUAL ||
+		parser.currentToken.Type == token.NOT || // Assuming NOT here implies a condition like "NOT EQUAL" or part of "IS NOT NULL"
+		parser.currentToken.Type == token.ISNULL ||
+		parser.currentToken.Type == token.ISNOTNULL {
+		expr, err := parser.getConditionalExpression(leftSideValue, isAnonymitifier)
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil {
+			return nil, &LogicalExpressionParsingError{customMessage: "Conditional expression parsing failed", afterToken: &leftSideValue.Literal}
+		}
+		return expr, nil
+	} else if parser.currentToken.Type == token.IN || parser.currentToken.Type == token.NOTIN {
+		expr, err := parser.getContainExpression(leftSideValue, isAnonymitifier)
+		if err != nil {
+			return nil, err
+		}
+		if expr == nil {
+			return nil, &LogicalExpressionParsingError{customMessage: "Contain expression parsing failed", afterToken: &leftSideValue.Literal}
+		}
+		return expr, nil
+	} else if leftSideValue.Type == token.TRUE || leftSideValue.Type == token.FALSE {
+		// If no operator follows, but the leftSide itself is TRUE/FALSE, it's a valid factor.
+		return &ast.BooleanExpression{Boolean: leftSideValue}, nil
+	}
+
+	// If leftSideValue was parsed, but no valid operator followed, and it's not TRUE/FALSE by itself
+	return nil, &LogicalExpressionParsingError{customMessage: "Identifier or literal not followed by a valid operator", afterToken: &leftSideValue.Literal}
+}
+
+func (parser *Parser) getExpressionLeftSideValue() (token.Token, bool, error) {
+	// Check if the current token can start an expression leaf (factor)
 	if parser.currentToken.Type == token.IDENT ||
 		parser.currentToken.Type == token.LITERAL ||
 		parser.currentToken.Type == token.NULL ||
@@ -726,96 +833,36 @@ func (parser *Parser) getExpression() (ast.Expression, error) {
 		parser.currentToken.Type == token.TRUE ||
 		parser.currentToken.Type == token.FALSE {
 
-		leftSide, isAnonymitifier, err := parser.getExpressionLeftSideValue()
-		if err != nil {
-			return nil, err
-		}
+		var leftSide token.Token
+		isAnonymitifier := false
+		startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
 
-		expression, err := parser.getExpressionLeaf(leftSide, isAnonymitifier)
-
-		if err != nil {
-			return nil, err
+		if startedWithApostrophe {
+			isAnonymitifier = true
+			value := ""
+			for parser.currentToken.Type != token.EOF && parser.currentToken.Type != token.APOSTROPHE {
+				value += parser.currentToken.Literal
+				parser.nextToken()
+			}
+			leftSide = token.Token{Type: token.IDENT, Literal: value}
+			finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
+			err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, leftSide)
+			if err != nil {
+				return token.Token{}, isAnonymitifier, err
+			}
+		} else {
+			leftSide = parser.currentToken
+			parser.nextToken() // Consume the token
 		}
-
-		if (parser.currentToken.Type == token.AND || parser.currentToken.Type == token.OR) && expression != nil {
-			expression, err = parser.getOperationExpression(expression)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		if expression != nil {
-			return expression, nil
-		}
+		return leftSide, isAnonymitifier, nil
 	}
-	return nil, nil
-}
-
-func (parser *Parser) getExpressionLeaf(leftSide token.Token, isAnonymitifier bool) (ast.Expression, error) {
-	if parser.currentToken.Type == token.EQUAL || parser.currentToken.Type == token.NOT {
-		return parser.getConditionalExpression(leftSide, isAnonymitifier)
-	} else if parser.currentToken.Type == token.IN || parser.currentToken.Type == token.NOTIN {
-		return parser.getContainExpression(leftSide, isAnonymitifier)
-	} else if leftSide.Type == token.TRUE || leftSide.Type == token.FALSE {
-		return &ast.BooleanExpression{Boolean: leftSide}, nil
-	}
-	return nil, nil
-}
-
-func (parser *Parser) getExpressionLeftSideValue() (token.Token, bool, error) {
-	var leftSide token.Token
-	isAnonymitifier := false
-	startedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
-
-	if startedWithApostrophe {
-		isAnonymitifier = true
-		value := ""
-		for parser.currentToken.Type != token.EOF && parser.currentToken.Type != token.APOSTROPHE {
-			value += parser.currentToken.Literal
-			parser.nextToken()
-		}
-
-		leftSide = token.Token{Type: token.IDENT, Literal: value}
-
-		finishedWithApostrophe := parser.skipIfCurrentTokenIsApostrophe()
-
-		err := validateApostropheWrapping(startedWithApostrophe, finishedWithApostrophe, leftSide)
-
-		if err != nil {
-			return token.Token{}, isAnonymitifier, err
-		}
-	} else {
-		leftSide = parser.currentToken
-		parser.nextToken()
-	}
-	return leftSide, isAnonymitifier, nil
-}
-
-// getOperationExpression - Return ast.OperationExpression created from tokens and validate the syntax
-func (parser *Parser) getOperationExpression(expression ast.Expression) (*ast.OperationExpression, error) {
-	operationExpression := &ast.OperationExpression{}
-	operationExpression.Left = expression
-
-	operationExpression.Operation = parser.currentToken
-	parser.nextToken()
-
-	expression, err := parser.getExpression()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if expression == nil {
-		return nil, &LogicalExpressionParsingError{afterToken: &operationExpression.Operation.Literal}
-	}
-
-	operationExpression.Right = expression
-
-	return operationExpression, nil
+	// If the token is not one of the above, it cannot start a simple factor.
+	return token.Token{}, false, &SyntaxError{expecting: []string{"IDENT", "LITERAL", "NULL", "TRUE", "FALSE", "'"}, got: string(parser.currentToken.Type)}
 }
 
 // getConditionalExpression - Return ast.ConditionExpression created from tokens and validate the syntax
+// This function assumes parser.currentToken is the operator (EQUAL, NOT, ISNULL, ISNOTNULL)
+// when it's called by getFactor.
 func (parser *Parser) getConditionalExpression(leftSide token.Token, isAnonymitifier bool) (*ast.ConditionExpression, error) {
 	conditionalExpression := &ast.ConditionExpression{Condition: parser.currentToken}
 

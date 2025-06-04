@@ -78,6 +78,9 @@ const (
 	IN    = "IN"
 	NOTIN = "NOTIN"
 	NULL  = "NULL"
+	IS    = "IS"
+	ISNULL = "IS NULL"
+	ISNOTNULL = "IS NOT NULL"
 
 	// Data Types
 	TEXT = "TEXT"
@@ -123,10 +126,16 @@ var keywords = map[string]Type{
 	"EQUAL":    EQUAL,
 	"NOT":      NOT,
 	"AND":      AND,
-	"OR":       OR,
-	"TRUE":     TRUE,
-	"FALSE":    FALSE,
-	"NULL":     NULL,
+	"OR":           OR,
+	"TRUE":         TRUE,
+	"FALSE":        FALSE,
+	"NULL":         NULL,
+	"IS":           IS,
+	"GREATER":      EQUAL,
+	"LESS":         EQUAL,
+	"GREATEREQUAL": EQUAL,
+	"LESSEQUAL":    EQUAL,
+	"NOTEQUAL":     NOT,
 }
 
 // LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type

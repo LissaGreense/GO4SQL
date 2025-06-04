@@ -1,0 +1,15 @@
+Table 'employees' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
++---------+-------------+--------+
+|    name |  department | salary |
++---------+-------------+--------+
+|   'Bob' | 'Engineering' |  80000 |
+| 'Grace' | 'Engineering' |  90000 |
++---------+-------------+--------+
