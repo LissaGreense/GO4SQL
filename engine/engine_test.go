@@ -944,6 +944,45 @@ func TestAggregateFunctionAvgOnTextColumnWithNullInFirstRow(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionsOnIntColumnWithNullInFirstRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( value INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL);",
+			"INSERT INTO table1 VALUES(4);",
+		},
+		selectInput: "SELECT SUM(value), AVG(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(value)", "AVG(value)"},
+			{"4", "2"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionSumOnIntColumnWithUpdatedStringInLaterRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 3);",
+			"INSERT INTO table1 VALUES(2, 4);",
+			"UPDATE table1 SET value TO '10' WHERE id EQUAL 2;",
+		},
+		selectInput: "SELECT SUM(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(value)"},
+			{"13"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

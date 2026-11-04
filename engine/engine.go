@@ -350,17 +350,23 @@ func getAvg(columnValues []ValueInterface) (*IntegerValue, error) {
 
 func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
 	sum := 0
+	sawNumber := false
 	for _, value := range columnValues {
-		if value.GetType() == StringType {
+		if value.GetType() == NullType {
+			continue
+		}
+		// Only the first non-NULL value identifies a TEXT column. UPDATE doesn't
+		// type-check, so a later string in an INT column must still error or parse
+		// rather than discard the sum.
+		if value.GetType() == StringType && !sawNumber {
 			return &IntegerValue{Value: 0}, nil
 		}
-		if value.GetType() != NullType {
-			num, err := strconv.Atoi(value.ToString())
-			if err != nil {
-				return nil, err
-			}
-			sum += num
+		num, err := strconv.Atoi(value.ToString())
+		if err != nil {
+			return nil, err
 		}
+		sum += num
+		sawNumber = true
 	}
 	return &IntegerValue{Value: sum}, nil
 }
