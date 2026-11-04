@@ -983,6 +983,66 @@ func TestAggregateFunctionSumOnIntColumnWithUpdatedStringInLaterRow(t *testing.T
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionSumOnIntColumnWithUpdatedStringInFirstNonNullRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, NULL);",
+			"INSERT INTO table1 VALUES(2, 3);",
+			"INSERT INTO table1 VALUES(3, 4);",
+			"UPDATE table1 SET value TO '10' WHERE id EQUAL 2;",
+		},
+		selectInput: "SELECT SUM(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(value)"},
+			{"14"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionSumOnTextColumnWithUpdatedNumberInFirstRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+			"UPDATE table1 SET value TO 5 WHERE id EQUAL 1;",
+		},
+		selectInput: "SELECT SUM(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(value)"},
+			{"0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionSumOnTextColumnWithWhereAndOrderBy(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+		},
+		selectInput: "SELECT SUM(value), value FROM table1 WHERE TRUE ORDER BY id ASC;",
+		expectedOutput: [][]string{
+			{"SUM(value)", "value"},
+			{"0", "Value1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

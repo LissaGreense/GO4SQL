@@ -109,6 +109,7 @@ func TestEngineAggregateOnIntColumnWithUpdatedNonNumericString(t *testing.T) {
 	runEngineErrorHandlingSuite(t, []errorHandlingTestSuite{
 		{setup + "SELECT SUM(value) FROM t;", want},
 		{setup + "SELECT AVG(value) FROM t;", want},
+		{"CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 1;SELECT SUM(value) FROM t;", want},
 	})
 }
 
