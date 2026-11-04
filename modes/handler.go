@@ -33,6 +33,7 @@ func HandleFileMode(filePath string, engine *engine.DbEngine) error {
 
 // HandleStreamMode - Handle GO4SQL use case where client sends input via stdin
 func HandleStreamMode(engine *engine.DbEngine) error {
+	printBanner()
 	reader := bufio.NewScanner(os.Stdin)
 	for reader.Scan() {
 		sequences, err := bytesToSequences(reader.Bytes())
@@ -52,6 +53,7 @@ func HandleStreamMode(engine *engine.DbEngine) error {
 
 // HandleSocketMode - Handle GO4SQL use case where client sends input via socket protocol
 func HandleSocketMode(port int, engine *engine.DbEngine) {
+	printBanner()
 	listener, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
 	log.Printf("Starting Socket Server on %d port\n", port)
 
