@@ -247,6 +247,7 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 		for i := 0; i < len(command.Space); i++ {
 			col := &Column{}
 			var columnValues []ValueInterface
+			var columnType token.Token
 			currentSpace := command.Space[i]
 
 			if currentSpace.ColumnName.Type == token.ASTERISK && currentSpace.AggregateFunc.Type == token.COUNT {
@@ -254,25 +255,26 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 					columnValues = columns[0].Values
 				}
 			} else {
-				var err error
-				columnValues, err = getValuesOfColumn(currentSpace.ColumnName.Literal, columns)
+				sourceColumn, err := getSourceColumn(currentSpace.ColumnName.Literal, columns)
 				if err != nil {
 					return nil, err
 				}
+				columnValues = sourceColumn.Values
+				columnType = sourceColumn.Type
 			}
 
 			if currentSpace.ContainsAggregateFunc() {
 				col.Name = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
 					currentSpace.ColumnName.Literal)
 				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace)
-				aggregatedValue, err := aggregateColumnContent(currentSpace, columnValues)
+				aggregatedValue, err := aggregateColumnContent(currentSpace, columnValues, columnType)
 				if err != nil {
 					return nil, err
 				}
 				col.Values = []ValueInterface{aggregatedValue}
 			} else {
 				col.Name = currentSpace.ColumnName.Literal
-				col.Type = currentSpace.ColumnName
+				col.Type = columnType
 				col.Values = []ValueInterface{columnValues[0]}
 			}
 			selectedTable.Columns = append(selectedTable.Columns, col)
@@ -291,13 +293,13 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 	}
 }
 
-func getValuesOfColumn(columnName string, columns []*Column) ([]ValueInterface, error) {
+func getSourceColumn(columnName string, columns []*Column) (*Column, error) {
 	wantedColumnName := []string{columnName}
 	columnContent, err := extractColumnContent(columns, &wantedColumnName, "")
 	if err != nil {
 		return nil, err
 	}
-	return columnContent.Columns[0].Values, nil
+	return columnContent.Columns[0], nil
 }
 
 func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
@@ -308,7 +310,7 @@ func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
 	return token.Token{Type: token.INT, Literal: "INT"}
 }
 
-func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (ValueInterface, error) {
+func aggregateColumnContent(space ast.Space, columnValues []ValueInterface, columnType token.Token) (ValueInterface, error) {
 	if space.AggregateFunc.Type == token.COUNT {
 		return getCount(space, columnValues)
 	}
@@ -321,9 +323,9 @@ func aggregateColumnContent(space ast.Space, columnValues []ValueInterface) (Val
 	case token.MIN:
 		return getMin(columnValues)
 	case token.SUM:
-		return getSum(columnValues)
+		return getSum(columnValues, columnType)
 	default:
-		return getAvg(columnValues)
+		return getAvg(columnValues, columnType)
 	}
 }
 
@@ -340,8 +342,8 @@ func getCount(space ast.Space, columnValues []ValueInterface) (*IntegerValue, er
 	return &IntegerValue{Value: count}, nil
 }
 
-func getAvg(columnValues []ValueInterface) (ValueInterface, error) {
-	sum, err := getSum(columnValues)
+func getAvg(columnValues []ValueInterface, columnType token.Token) (ValueInterface, error) {
+	sum, err := getSum(columnValues, columnType)
 	if err != nil {
 		return nil, err
 	}
@@ -352,27 +354,27 @@ func getAvg(columnValues []ValueInterface) (ValueInterface, error) {
 	return &IntegerValue{Value: sumAsInteger.Value / len(columnValues)}, nil
 }
 
-func getSum(columnValues []ValueInterface) (ValueInterface, error) {
-	if columnValues[0].GetType() == StringType {
+func getSum(columnValues []ValueInterface, columnType token.Token) (ValueInterface, error) {
+	if columnType.Type == token.TEXT {
 		return &IntegerValue{Value: 0}, nil
-	} else {
-		sum := 0
-		hasValue := false
-		for _, value := range columnValues {
-			if value.GetType() != NullType {
-				num, err := strconv.Atoi(value.ToString())
-				if err != nil {
-					return nil, err
-				}
-				sum += num
-				hasValue = true
-			}
-		}
-		if !hasValue {
-			return NullValue{}, nil
-		}
-		return &IntegerValue{Value: sum}, nil
 	}
+	sum := 0
+	hasValue := false
+	for _, value := range columnValues {
+		if value.GetType() == NullType {
+			continue
+		}
+		num, err := strconv.Atoi(value.ToString())
+		if err != nil {
+			return nil, err
+		}
+		sum += num
+		hasValue = true
+	}
+	if !hasValue {
+		return NullValue{}, nil
+	}
+	return &IntegerValue{Value: sum}, nil
 }
 
 // deleteFromTable - Delete all rows of data from table that match given condition

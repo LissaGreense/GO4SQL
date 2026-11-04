@@ -1,5 +1,8 @@
 Table 'table1' has been created
 Table 'table2' has been created
+Table 'table3' has been created
+Data Inserted
+Data Inserted
 Data Inserted
 Data Inserted
 Data Inserted
@@ -34,3 +37,8 @@ Data Inserted
 +---------+----+
 |       1 |  1 |
 +---------+----+
++------------+------------+
+| SUM(value) | AVG(value) |
++------------+------------+
+|          0 |          0 |
++------------+------------+
