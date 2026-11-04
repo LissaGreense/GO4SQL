@@ -340,19 +340,24 @@ func getCount(space ast.Space, columnValues []ValueInterface) (*IntegerValue, er
 	return &IntegerValue{Value: count}, nil
 }
 
-func getAvg(columnValues []ValueInterface) (*IntegerValue, error) {
+func getAvg(columnValues []ValueInterface) (ValueInterface, error) {
 	sum, err := getSum(columnValues)
 	if err != nil {
 		return nil, err
 	}
-	return &IntegerValue{Value: sum.Value / len(columnValues)}, nil
+	sumAsInteger, isInteger := sum.(*IntegerValue)
+	if !isInteger {
+		return NullValue{}, nil
+	}
+	return &IntegerValue{Value: sumAsInteger.Value / len(columnValues)}, nil
 }
 
-func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
+func getSum(columnValues []ValueInterface) (ValueInterface, error) {
 	if columnValues[0].GetType() == StringType {
 		return &IntegerValue{Value: 0}, nil
 	} else {
 		sum := 0
+		hasValue := false
 		for _, value := range columnValues {
 			if value.GetType() != NullType {
 				num, err := strconv.Atoi(value.ToString())
@@ -360,7 +365,11 @@ func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
 					return nil, err
 				}
 				sum += num
+				hasValue = true
 			}
+		}
+		if !hasValue {
+			return NullValue{}, nil
 		}
 		return &IntegerValue{Value: sum}, nil
 	}
