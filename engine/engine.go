@@ -355,11 +355,6 @@ func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
 		if value.GetType() == NullType {
 			continue
 		}
-		// getSum only sees values, so it guesses the column type from the first
-		// non-NULL one: a string means TEXT (sum is 0), a number means INT, where a
-		// later string must parse or error rather than discard the sum. UPDATE
-		// doesn't type-check, so the guess can be wrong: INT ['10', 4] sums to 0 and
-		// TEXT [5, 'b'] errors.
 		if value.GetType() == StringType && !sawNumber {
 			return &IntegerValue{Value: 0}, nil
 		}
