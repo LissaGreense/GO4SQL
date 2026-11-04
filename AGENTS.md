@@ -30,7 +30,6 @@ Based on Thorsten Ball's *Writing An Interpreter In Go*, adapted for SQL.
 
 ## Differences from the book
 
-- The parser returns the first typed error; it doesn't collect errors.
 - There is no Pratt parsing or precedence. WHERE recurses right, so
   `a AND b OR c` means `a AND (b OR c)`.
 - `Command` replaces the book's `Statement`, and SELECT runs a transformer
