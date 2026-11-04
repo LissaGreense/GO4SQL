@@ -356,8 +356,8 @@ func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
 			continue
 		}
 		// Only the first non-NULL value identifies a TEXT column. UPDATE doesn't
-		// type-check, so a later string in an INT column must still error or parse
-		// rather than discard the sum.
+		// type-check, so a string after a number is bad data in an INT column: it
+		// must parse or error rather than discard the sum.
 		if value.GetType() == StringType && !sawNumber {
 			return &IntegerValue{Value: 0}, nil
 		}

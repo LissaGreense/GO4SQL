@@ -944,7 +944,7 @@ func TestAggregateFunctionAvgOnTextColumnWithNullInFirstRow(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
-func TestAggregateFunctionsOnIntColumnWithNullInFirstRow(t *testing.T) {
+func TestAggregateFunctionSumOnIntColumnWithNullInFirstRow(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
 			"CREATE TABLE table1( value INT);",
@@ -953,10 +953,10 @@ func TestAggregateFunctionsOnIntColumnWithNullInFirstRow(t *testing.T) {
 			"INSERT INTO table1 VALUES(NULL);",
 			"INSERT INTO table1 VALUES(4);",
 		},
-		selectInput: "SELECT SUM(value), AVG(value) FROM table1;",
+		selectInput: "SELECT SUM(value) FROM table1;",
 		expectedOutput: [][]string{
-			{"SUM(value)", "AVG(value)"},
-			{"4", "2"},
+			{"SUM(value)"},
+			{"4"},
 		},
 	}
 

@@ -103,6 +103,15 @@ func TestEngineFullJoinErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineAggregateOnIntColumnWithUpdatedNonNumericString(t *testing.T) {
+	setup := "CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 2;"
+	want := `strconv.Atoi: parsing "abc": invalid syntax`
+	runEngineErrorHandlingSuite(t, []errorHandlingTestSuite{
+		{setup + "SELECT SUM(value) FROM t;", want},
+		{setup + "SELECT AVG(value) FROM t;", want},
+	})
+}
+
 func runEngineErrorHandlingSuite(t *testing.T, suite []errorHandlingTestSuite) {
 	for i, test := range suite {
 		errorMsg := getErrorMessage(t, test.input, i)
