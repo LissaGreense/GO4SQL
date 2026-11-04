@@ -349,21 +349,20 @@ func getAvg(columnValues []ValueInterface) (*IntegerValue, error) {
 }
 
 func getSum(columnValues []ValueInterface) (*IntegerValue, error) {
-	if columnValues[0].GetType() == StringType {
-		return &IntegerValue{Value: 0}, nil
-	} else {
-		sum := 0
-		for _, value := range columnValues {
-			if value.GetType() != NullType {
-				num, err := strconv.Atoi(value.ToString())
-				if err != nil {
-					return nil, err
-				}
-				sum += num
-			}
+	sum := 0
+	for _, value := range columnValues {
+		if value.GetType() == StringType {
+			return &IntegerValue{Value: 0}, nil
 		}
-		return &IntegerValue{Value: sum}, nil
+		if value.GetType() != NullType {
+			num, err := strconv.Atoi(value.ToString())
+			if err != nil {
+				return nil, err
+			}
+			sum += num
+		}
 	}
+	return &IntegerValue{Value: sum}, nil
 }
 
 // deleteFromTable - Delete all rows of data from table that match given condition

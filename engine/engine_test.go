@@ -906,6 +906,44 @@ func TestAggregateFunctionAvg(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionSumOnTextColumnWithNullInFirstRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL);",
+			"INSERT INTO table1 VALUES('Value1');",
+		},
+		selectInput: "SELECT SUM(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(value)"},
+			{"0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionAvgOnTextColumnWithNullInFirstRow(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL);",
+			"INSERT INTO table1 VALUES('Value1');",
+		},
+		selectInput: "SELECT AVG(value) FROM table1;",
+		expectedOutput: [][]string{
+			{"AVG(value)"},
+			{"0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestAggregateFunctionWithColumnSelection(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
