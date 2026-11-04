@@ -347,10 +347,10 @@ func getAvg(columnValues []ValueInterface, columnType token.Token) (ValueInterfa
 	if err != nil {
 		return nil, err
 	}
-	sumAsInteger, isInteger := sum.(*IntegerValue)
-	if !isInteger {
-		return NullValue{}, nil
+	if sum.GetType() == NullType {
+		return sum, nil
 	}
+	sumAsInteger := sum.(*IntegerValue)
 	return &IntegerValue{Value: sumAsInteger.Value / len(columnValues)}, nil
 }
 
