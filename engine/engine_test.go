@@ -2,11 +2,13 @@ package engine
 
 import (
 	"log"
+	"strings"
 	"testing"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
+	"github.com/LissaGreense/GO4SQL/token"
 )
 
 func TestCreate(t *testing.T) {
@@ -1142,6 +1144,189 @@ func TestAggregateFunctionWithColumnSelectionAndOrderBy(t *testing.T) {
 	}
 
 	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateResultColumnType(t *testing.T) {
+	createInput := "CREATE TABLE s( name TEXT, score INT );"
+	textType := token.Token{Type: token.TEXT, Literal: "TEXT"}
+	intType := token.Token{Type: token.INT, Literal: "INT"}
+	rows := []string{
+		"INSERT INTO s VALUES( 'dan', 10 );",
+		"INSERT INTO s VALUES( 'amy', 30 );",
+	}
+	nullRows := []string{
+		"INSERT INTO s VALUES( NULL, NULL );",
+		"INSERT INTO s VALUES( NULL, NULL );",
+	}
+
+	testCases := []struct {
+		name          string
+		inserts       []string
+		selectInput   string
+		expectedTypes []token.Token
+		expectedTable string
+	}{
+		{
+			name:          "MIN on TEXT",
+			inserts:       rows,
+			selectInput:   "SELECT MIN(name) FROM s;",
+			expectedTypes: []token.Token{textType},
+			expectedTable: `
++-----------+
+| MIN(name) |
++-----------+
+|     'amy' |
++-----------+`,
+		},
+		{
+			name:          "MAX on TEXT",
+			inserts:       rows,
+			selectInput:   "SELECT MAX(name) FROM s;",
+			expectedTypes: []token.Token{textType},
+			expectedTable: `
++-----------+
+| MAX(name) |
++-----------+
+|     'dan' |
++-----------+`,
+		},
+		{
+			name:          "MAX on TEXT widens the column for the quotes",
+			inserts:       []string{"INSERT INTO s VALUES( 'abcdefghijk', 10 );"},
+			selectInput:   "SELECT MAX(name) FROM s;",
+			expectedTypes: []token.Token{textType},
+			expectedTable: `
++---------------+
+|     MAX(name) |
++---------------+
+| 'abcdefghijk' |
++---------------+`,
+		},
+		{
+			name:          "MIN on INT",
+			inserts:       rows,
+			selectInput:   "SELECT MIN(score) FROM s;",
+			expectedTypes: []token.Token{intType},
+			expectedTable: `
++------------+
+| MIN(score) |
++------------+
+|         10 |
++------------+`,
+		},
+		{
+			name:          "MAX on INT",
+			inserts:       rows,
+			selectInput:   "SELECT MAX(score) FROM s;",
+			expectedTypes: []token.Token{intType},
+			expectedTable: `
++------------+
+| MAX(score) |
++------------+
+|         30 |
++------------+`,
+		},
+		{
+			name:          "plain column next to an aggregate",
+			inserts:       rows,
+			selectInput:   "SELECT MAX(score), name FROM s;",
+			expectedTypes: []token.Token{intType, textType},
+			expectedTable: `
++------------+-------+
+| MAX(score) |  name |
++------------+-------+
+|         30 | 'dan' |
++------------+-------+`,
+		},
+		{
+			name:          "MIN and MAX on all NULL values",
+			inserts:       nullRows,
+			selectInput:   "SELECT MIN(name), MAX(name), MIN(score), MAX(score) FROM s;",
+			expectedTypes: []token.Token{textType, textType, intType, intType},
+			expectedTable: `
++-----------+-----------+------------+------------+
+| MIN(name) | MAX(name) | MIN(score) | MAX(score) |
++-----------+-----------+------------+------------+
+|      NULL |      NULL |       NULL |       NULL |
++-----------+-----------+------------+------------+`,
+		},
+		{
+			name:          "MIN and MAX on an empty table",
+			selectInput:   "SELECT MIN(name), MAX(name), MIN(score), MAX(score) FROM s;",
+			expectedTypes: []token.Token{textType, textType, intType, intType},
+			expectedTable: `
++-----------+-----------+------------+------------+
+| MIN(name) | MAX(name) | MIN(score) | MAX(score) |
++-----------+-----------+------------+------------+
+|      NULL |      NULL |       NULL |       NULL |
++-----------+-----------+------------+------------+`,
+		},
+		{
+			name:          "MIN and MAX when WHERE matches no rows",
+			inserts:       rows,
+			selectInput:   "SELECT MIN(name), MAX(score) FROM s WHERE score EQUAL 999;",
+			expectedTypes: []token.Token{textType, intType},
+			expectedTable: `
++-----------+------------+
+| MIN(name) | MAX(score) |
++-----------+------------+
+|      NULL |       NULL |
++-----------+------------+`,
+		},
+		{
+			name:          "COUNT, SUM and AVG stay INT",
+			inserts:       rows,
+			selectInput:   "SELECT COUNT(*), COUNT(name), SUM(name), AVG(name), SUM(score), AVG(score) FROM s;",
+			expectedTypes: []token.Token{intType, intType, intType, intType, intType, intType},
+			expectedTable: `
++----------+-------------+-----------+-----------+------------+------------+
+| COUNT(*) | COUNT(name) | SUM(name) | AVG(name) | SUM(score) | AVG(score) |
++----------+-------------+-----------+-----------+------------+------------+
+|        2 |           2 |         0 |         0 |         40 |         20 |
++----------+-------------+-----------+-----------+------------+------------+`,
+		},
+		{
+			name:          "COUNT(*) on an empty table stays INT",
+			selectInput:   "SELECT COUNT(*) FROM s;",
+			expectedTypes: []token.Token{intType},
+			expectedTable: `
++----------+
+| COUNT(*) |
++----------+
+|        0 |
++----------+`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			engine := New()
+			setup := inputsToString(append([]string{createInput}, testCase.inserts...))
+			if _, err := engine.Evaluate(getSequences(setup)); err != nil {
+				t.Fatal(err)
+			}
+
+			selectCommand := getSequences(testCase.selectInput).Commands[0].(*ast.SelectCommand)
+			actualTable, err := engine.getSelectResponse(selectCommand)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(actualTable.Columns) != len(testCase.expectedTypes) {
+				t.Fatalf("expected %d columns, got %d", len(testCase.expectedTypes), len(actualTable.Columns))
+			}
+			for i, column := range actualTable.Columns {
+				if column.Type != testCase.expectedTypes[i] {
+					t.Errorf("column %s: expected type %v, got %v", column.Name, testCase.expectedTypes[i], column.Type)
+				}
+			}
+
+			expectedTable := strings.TrimPrefix(testCase.expectedTable, "\n")
+			if actualTable.ToString() != expectedTable {
+				t.Errorf("expected table:\n%s\ngot:\n%s", expectedTable, actualTable.ToString())
+			}
+		})
+	}
 }
 
 type engineDBContentTestSuite struct {
