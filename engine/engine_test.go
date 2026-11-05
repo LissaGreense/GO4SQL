@@ -944,6 +944,27 @@ func TestAggregateFunctionAvgWithAllNulls(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionAvgWithPartialNullsInIntColumn(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE s( name TEXT, score INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO s VALUES('ann', 10);",
+			"INSERT INTO s VALUES('bob', 20);",
+			"INSERT INTO s VALUES('cat', NULL);",
+			"INSERT INTO s VALUES('dan', NULL);",
+		},
+		selectInput: "SELECT AVG(score) FROM s;",
+		expectedOutput: [][]string{
+			{"AVG(score)"},
+			{"15"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestAggregateFunctionSumOnTextColumnWithNullInFirstRow(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
