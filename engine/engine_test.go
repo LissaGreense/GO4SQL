@@ -885,6 +885,25 @@ func TestAggregateFunctionSum(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionSumWithAllNulls(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( score INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL);",
+			"INSERT INTO table1 VALUES(NULL);",
+		},
+		selectInput: "SELECT SUM(score) FROM table1;",
+		expectedOutput: [][]string{
+			{"SUM(score)"},
+			{"NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestAggregateFunctionAvg(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
@@ -900,6 +919,46 @@ func TestAggregateFunctionAvg(t *testing.T) {
 		expectedOutput: [][]string{
 			{"AVG(id)", "AVG(value)"},
 			{"4", "0"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionAvgWithAllNulls(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( score INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL);",
+			"INSERT INTO table1 VALUES(NULL);",
+		},
+		selectInput: "SELECT AVG(score) FROM table1;",
+		expectedOutput: [][]string{
+			{"AVG(score)"},
+			{"NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionAvgWithPartialNullsInIntColumn(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE s( name TEXT, score INT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO s VALUES('ann', 10);",
+			"INSERT INTO s VALUES('bob', 20);",
+			"INSERT INTO s VALUES('cat', NULL);",
+			"INSERT INTO s VALUES('dan', NULL);",
+		},
+		selectInput: "SELECT AVG(score) FROM s;",
+		expectedOutput: [][]string{
+			{"AVG(score)"},
+			{"15"},
 		},
 	}
 

@@ -333,39 +333,63 @@ func getCount(space ast.Space, columnValues []ValueInterface) (*IntegerValue, er
 	if space.ColumnName.Type == token.ASTERISK {
 		return &IntegerValue{Value: len(columnValues)}, nil
 	}
+	return &IntegerValue{Value: countNonNull(columnValues)}, nil
+}
+
+func countNonNull(columnValues []ValueInterface) int {
 	count := 0
 	for _, value := range columnValues {
 		if value.GetType() != NullType {
 			count++
 		}
 	}
-	return &IntegerValue{Value: count}, nil
+	return count
 }
 
-func getAvg(columnValues []ValueInterface, columnType token.Token) (*IntegerValue, error) {
+func getAvg(columnValues []ValueInterface, columnType token.Token) (ValueInterface, error) {
 	sum, err := getSum(columnValues, columnType)
 	if err != nil {
 		return nil, err
 	}
-	return &IntegerValue{Value: sum.Value / len(columnValues)}, nil
+
+	nonNullCount := countNonNull(columnValues)
+	nothingToAverage := sum.GetType() == NullType || nonNullCount == 0
+	if nothingToAverage {
+		return sum, nil
+	}
+
+	sumAsInt, err := valueToInt(sum)
+	if err != nil {
+		return nil, err
+	}
+	return &IntegerValue{Value: sumAsInt / nonNullCount}, nil
 }
 
-func getSum(columnValues []ValueInterface, columnType token.Token) (*IntegerValue, error) {
+func getSum(columnValues []ValueInterface, columnType token.Token) (ValueInterface, error) {
 	if columnType.Type == token.TEXT {
 		return &IntegerValue{Value: 0}, nil
 	}
 	sum := 0
+	hasValue := false
 	for _, value := range columnValues {
 		if value.GetType() == NullType {
 			continue
 		}
-		num, err := strconv.Atoi(value.ToString())
+		num, err := valueToInt(value)
 		if err != nil {
 			return nil, err
 		}
 		sum += num
+		hasValue = true
+	}
+	if !hasValue {
+		return NullValue{}, nil
 	}
 	return &IntegerValue{Value: sum}, nil
+}
+
+func valueToInt(value ValueInterface) (int, error) {
+	return strconv.Atoi(value.ToString())
 }
 
 // deleteFromTable - Delete all rows of data from table that match given condition
