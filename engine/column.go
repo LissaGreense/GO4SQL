@@ -6,9 +6,10 @@ import (
 
 // Column - part of the Table containing the name of Column and values in it
 type Column struct {
-	Name   string
-	Type   token.Token
-	Values []ValueInterface
+	Name      string
+	Type      token.Token
+	IsNotNull bool
+	Values    []ValueInterface
 }
 
 func extractColumnContent(columns []*Column, wantedColumnNames *[]string, tableName string) (*Table, error) {

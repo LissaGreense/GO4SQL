@@ -79,6 +79,51 @@ func TestEngineUpdateCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineNotNullConstraintErrorHandling(t *testing.T) {
+	insertNull := NullValueNotAllowedError{columnName: "id", commandName: "INSERT"}
+	updateNull := NullValueNotAllowedError{columnName: "id", commandName: "UPDATE"}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(NULL, 'a');", insertNull.Error()},
+		{"CREATE TABLE tbl(nickname TEXT, id INT NOT NULL); INSERT INTO tbl VALUES('a', NULL);", insertNull.Error()},
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET id TO NULL;", updateNull.Error()},
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET nickname TO 'b', id TO NULL WHERE nickname EQUAL 'a';", updateNull.Error()},
+		// DELETE rebuilds the table via getCopyOfTableWithoutRows; NOT NULL must survive even a no-op DELETE.
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); DELETE FROM tbl WHERE id EQUAL 99; UPDATE tbl SET id TO NULL;", updateNull.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineUpdateSetColumnErrorPrecedesWhereColumnError - a nonexistent SET column must be
+// reported before a nonexistent WHERE column, matching the precedence that existed before NOT
+// NULL validation was added (SET columns are fully resolved before WHERE is evaluated).
+func TestEngineUpdateSetColumnErrorPrecedesWhereColumnError(t *testing.T) {
+	setColumnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "nosuch"}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(id INT); UPDATE tbl SET nosuch TO 1 WHERE alsomissing EQUAL 1;", setColumnDoesNotExist.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineUpdateSetColumnErrorIsDeterministicAcrossMapOrder - command.Changes is a map, so
+// iteration order is randomized per run. A nonexistent SET column must always be reported, never
+// masked by an unrelated NOT NULL violation elsewhere in the same SET clause, regardless of which
+// entry the map visits first. Runs many times since the bug this guards against is intermittent.
+func TestEngineUpdateSetColumnErrorIsDeterministicAcrossMapOrder(t *testing.T) {
+	setColumnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "nosuch"}
+	setup := "CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a');"
+
+	for i := 0; i < 50; i++ {
+		errorMsg := getErrorMessage(t, setup+"UPDATE tbl SET nosuch TO 1, id TO NULL;", i)
+		if errorMsg != setColumnDoesNotExist.Error() {
+			t.Fatalf("[%d] Was expecting error: \n\t{%s},\n\tbut it was:\n\t{%s}", i, setColumnDoesNotExist.Error(), errorMsg)
+		}
+	}
+}
+
 func TestEngineOrderByCommandErrorHandling(t *testing.T) {
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "two"}
 

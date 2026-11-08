@@ -109,13 +109,24 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 			return nil, &IllegalPeriodInIdentParserError{name: parser.currentToken.Literal}
 		}
 
-		createCommand.ColumnNames = append(createCommand.ColumnNames, parser.currentToken.Literal)
-		createCommand.ColumnTypes = append(createCommand.ColumnTypes, parser.peekToken)
+		columnDefinition := ast.ColumnDefinition{Name: parser.currentToken.Literal, Type: parser.peekToken}
 
 		// Skip token.IDENT
 		parser.nextToken()
 		// Skip token.TEXT or token.INT
 		parser.nextToken()
+
+		if parser.currentToken.Type == token.NOT {
+			// Skip token.NOT
+			parser.nextToken()
+			err = validateTokenAndSkip(parser, []token.Type{token.NULL})
+			if err != nil {
+				return nil, err
+			}
+			columnDefinition.IsNotNull = true
+		}
+
+		createCommand.Columns = append(createCommand.Columns, columnDefinition)
 
 		if parser.currentToken.Type != token.COMMA {
 			break

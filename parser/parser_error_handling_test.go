@@ -19,6 +19,8 @@ func TestParseCreateCommandErrorHandling(t *testing.T) {
 	noColumnName := SyntaxError{[]string{token.RPAREN}, token.TEXT}
 	noColumnType := SyntaxError{[]string{token.TEXT, token.INT}, token.COMMA}
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON}, ""}
+	notWithoutNull := SyntaxError{[]string{token.NULL}, token.COMMA}
+	notNullWithoutType := SyntaxError{[]string{token.TEXT, token.INT}, token.NOT}
 
 	tests := []errorHandlingTestSuite{
 		{"CREATE tbl(one TEXT);", noTableKeyword.Error()},
@@ -28,6 +30,8 @@ func TestParseCreateCommandErrorHandling(t *testing.T) {
 		{"CREATE TABLE tbl (TEXT, two INT);", noColumnName.Error()},
 		{"CREATE TABLE tbl (one , two INT);", noColumnType.Error()},
 		{"CREATE TABLE tbl (one TEXT, two INT)", noSemicolon.Error()},
+		{"CREATE TABLE tbl (one TEXT NOT, two INT);", notWithoutNull.Error()},
+		{"CREATE TABLE tbl (one NOT NULL, two INT);", notNullWithoutType.Error()},
 	}
 
 	runParserErrorHandlingSuite(t, tests)
