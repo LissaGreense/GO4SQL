@@ -385,6 +385,83 @@ func TestUpdateWithWhere(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestCreateWithNotNullColumn(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine, "CREATE TABLE users( id INT NOT NULL, nickname TEXT );")
+
+	columns := engine.Tables["users"].Columns
+	if !columns[0].IsNotNull {
+		t.Errorf("expected column %s to be NOT NULL", columns[0].Name)
+	}
+	if columns[1].IsNotNull {
+		t.Errorf("expected column %s to be nullable", columns[1].Name)
+	}
+}
+
+func TestNotNullColumnAcceptsValuesAndNullableColumnAcceptsNull(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE users( id INT NOT NULL, nickname TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO users VALUES( 1, 'kate' );",
+			"INSERT INTO users VALUES( 2, NULL );",
+			"UPDATE users SET nickname TO NULL WHERE id EQUAL 1;",
+			"UPDATE users SET id TO NULL WHERE id EQUAL 3;",
+			"UPDATE users SET id TO 5 WHERE id EQUAL 2;",
+		},
+		selectInput: "SELECT * FROM users;",
+		expectedOutput: [][]string{
+			{"id", "nickname"},
+			{"1", "NULL"},
+			{"5", "NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestRejectedNotNullCommandsLeaveTableUnchanged(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine,
+		"CREATE TABLE users( nickname TEXT, id INT NOT NULL );",
+		"INSERT INTO users VALUES( 'kate', 1 );",
+	)
+
+	for _, input := range []string{
+		"INSERT INTO users VALUES( 'bob', NULL );",
+		"UPDATE users SET nickname TO 'changed', id TO NULL;",
+	} {
+		sequences, err := parser.New(lexer.RunLexer(input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error: %s", err)
+		}
+		if _, err := engine.Evaluate(sequences); err == nil {
+			t.Fatalf("expected error for %q", input)
+		}
+	}
+
+	columns := engine.Tables["users"].Columns
+	if len(columns[0].Values) != 1 || len(columns[1].Values) != 1 {
+		t.Fatalf("expected 1 row in each column, got %d and %d", len(columns[0].Values), len(columns[1].Values))
+	}
+	if columns[0].Values[0].ToString() != "kate" || columns[1].Values[0].ToString() != "1" {
+		t.Fatalf("expected row (kate, 1), got (%s, %s)", columns[0].Values[0].ToString(), columns[1].Values[0].ToString())
+	}
+}
+
+func evaluateInputs(t *testing.T, engine *DbEngine, inputs ...string) {
+	for _, input := range inputs {
+		sequences, err := parser.New(lexer.RunLexer(input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error for %q: %s", input, err)
+		}
+		if _, err := engine.Evaluate(sequences); err != nil {
+			t.Fatalf("engine error for %q: %s", input, err)
+		}
+	}
+}
+
 func TestUpdateWithoutWhere(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

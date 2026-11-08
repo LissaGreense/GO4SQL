@@ -136,12 +136,13 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 	}
 
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
-	for i, columnName := range command.ColumnNames {
+	for _, columnDefinition := range command.Columns {
 		engine.Tables[command.Name.Token.Literal].Columns = append(engine.Tables[command.Name.Token.Literal].Columns,
 			&Column{
-				Type:   command.ColumnTypes[i],
-				Values: make([]ValueInterface, 0),
-				Name:   columnName,
+				Type:      columnDefinition.Type,
+				IsNotNull: columnDefinition.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      columnDefinition.Name,
 			})
 	}
 	return nil
@@ -158,7 +159,23 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		columnIndices[col.Name] = i
 	}
 
-	// Map changes to column indices
+	matchingRowIndices := make([]int, 0)
+	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
+		if command.HasWhereCommand() {
+			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
+			if err != nil {
+				return err
+			}
+			if !matches {
+				continue
+			}
+		}
+		matchingRowIndices = append(matchingRowIndices, rowIndex)
+	}
+	hasMatches := len(matchingRowIndices) > 0
+
+	// Map changes to column indices, rejecting NULL for NOT NULL columns before mutating
+	// anything (skipped when nothing matches, since no row would actually change).
 	type change struct {
 		index int
 		value ast.Anonymitifier
@@ -174,20 +191,14 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 				columnName: colName,
 			}
 		}
+		column := table.Columns[colIndex]
+		if hasMatches && column.IsNotNull && newValue.GetToken().Type == token.NULL {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
+		}
 		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
-	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
-		if command.HasWhereCommand() {
-			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
-			if err != nil {
-				return err
-			}
-			if !matches {
-				continue
-			}
-		}
-
+	for _, rowIndex := range matchingRowIndices {
 		for _, change := range changes {
 			val, err := getInterfaceValue(change.value.GetToken())
 			if err != nil {
@@ -217,11 +228,17 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		}
 	}
 
+	// Validate every value before appending so a rejected INSERT doesn't leave a partial row
+	interfaceValues := make([]ValueInterface, len(columns))
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
 		colValueType := command.Values[i].Type
 
-		if (expectedToken != colValueType) && (colValueType != token.NULL) {
+		if colValueType == token.NULL {
+			if columns[i].IsNotNull {
+				return &NullValueNotAllowedError{columnName: columns[i].Name, commandName: command.Token.Literal}
+			}
+		} else if expectedToken != colValueType {
 			return &InvalidValueTypeError{
 				expectedType: string(expectedToken),
 				actualType:   string(colValueType),
@@ -232,7 +249,10 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		if err != nil {
 			return err
 		}
-		columns[i].Values = append(columns[i].Values, interfaceValue)
+		interfaceValues[i] = interfaceValue
+	}
+	for i := range columns {
+		columns[i].Values = append(columns[i].Values, interfaceValues[i])
 	}
 	return nil
 }

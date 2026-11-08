@@ -1,0 +1,10 @@
+CREATE TABLE users( id INT NOT NULL, nickname TEXT );
+
+INSERT INTO users VALUES( 1, 'kate' );
+INSERT INTO users VALUES( 2, NULL );
+INSERT INTO users VALUES( 3, 'bob' );
+
+UPDATE users SET nickname TO NULL WHERE id EQUAL 3;
+UPDATE users SET id TO 4 WHERE id EQUAL 2;
+
+SELECT * FROM users;

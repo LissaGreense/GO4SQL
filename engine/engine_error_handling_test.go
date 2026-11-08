@@ -79,6 +79,20 @@ func TestEngineUpdateCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineNotNullConstraintErrorHandling(t *testing.T) {
+	insertNull := NullValueNotAllowedError{columnName: "id", commandName: "INSERT"}
+	updateNull := NullValueNotAllowedError{columnName: "id", commandName: "UPDATE"}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(NULL, 'a');", insertNull.Error()},
+		{"CREATE TABLE tbl(nickname TEXT, id INT NOT NULL); INSERT INTO tbl VALUES('a', NULL);", insertNull.Error()},
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET id TO NULL;", updateNull.Error()},
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET nickname TO 'b', id TO NULL WHERE nickname EQUAL 'a';", updateNull.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func TestEngineOrderByCommandErrorHandling(t *testing.T) {
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "two"}
 
