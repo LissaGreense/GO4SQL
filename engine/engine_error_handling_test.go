@@ -24,9 +24,11 @@ func TestEngineCreateCommandErrorHandling(t *testing.T) {
 
 func TestEngineDropCommandErrorHandling(t *testing.T) {
 	tableDoNotExistError := TableDoesNotExistError{"table1"}
+	missingMidSequenceError := TableDoesNotExistError{"nope"}
 
 	tests := []errorHandlingTestSuite{
 		{"DROP TABLE table1;", tableDoNotExistError.Error()},
+		{"CREATE TABLE a( x INT ); DROP TABLE nope; CREATE TABLE b( x INT );", missingMidSequenceError.Error()},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)

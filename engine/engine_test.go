@@ -41,9 +41,13 @@ func TestDrop(t *testing.T) {
 }
 
 func TestCreateIfNotExists(t *testing.T) {
+	// tb2 only exists if the first statement didn't error, since the suite ignores Evaluate's error.
 	createsMissingTableCase := engineDBContentTestSuite{
-		inputs:             []string{"CREATE TABLE IF NOT EXISTS tb1( one TEXT );"},
-		expectedTableNames: []string{"tb1"},
+		inputs: []string{
+			"CREATE TABLE IF NOT EXISTS tb1( one TEXT );",
+			"CREATE TABLE tb2( one TEXT );",
+		},
+		expectedTableNames: []string{"tb1", "tb2"},
 	}
 	createsMissingTableCase.runTestSuite(t)
 
