@@ -42,6 +42,11 @@ Data Inserted
 +------------+------------+
 |          0 |          0 |
 +------------+------------+
++---------+--------+
+| MAX(id) |  value |
++---------+--------+
+|    NULL |   NULL |
++---------+--------+
 Table 'table4' has been created
 Data Inserted
 Data Inserted
@@ -66,6 +71,11 @@ Table 'table5' has been created
 +------------+---------+----------+
 |       NULL |    NULL |        0 |
 +------------+---------+----------+
++---------+--------+
+| MAX(id) |  value |
++---------+--------+
+|    NULL |   NULL |
++---------+--------+
 Data Inserted
 +------------+------------+---------+
 | MIN(value) | MAX(value) | MAX(id) |

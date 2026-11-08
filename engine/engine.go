@@ -275,7 +275,10 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 			} else {
 				col.Name = currentSpace.ColumnName.Literal
 				col.Type = columnType
-				col.Values = []ValueInterface{columnValues[0]}
+				col.Values = []ValueInterface{NullValue{}}
+				if len(columnValues) > 0 {
+					col.Values[0] = columnValues[0]
+				}
 			}
 			selectedTable.Columns = append(selectedTable.Columns, col)
 		}

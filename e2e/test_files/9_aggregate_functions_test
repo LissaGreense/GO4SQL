@@ -16,6 +16,7 @@ SELECT SUM(id), SUM(value) FROM table1;
 SELECT AVG(id), AVG(value) FROM table1;
 SELECT AVG(id), id FROM table1;
 SELECT SUM(value), AVG(value) FROM table3;
+SELECT MAX(id), value FROM table1 WHERE id EQUAL 999;
 
 CREATE TABLE table4( id INT, value TEXT);
 INSERT INTO table4 VALUES(1, 'abcdefghi');
@@ -26,5 +27,6 @@ SELECT MIN(value), MAX(id) FROM table4 WHERE id EQUAL 999;
 
 CREATE TABLE table5( id INT, value TEXT);
 SELECT MIN(value), MAX(id), COUNT(*) FROM table5;
+SELECT MAX(id), value FROM table5;
 INSERT INTO table5 VALUES(NULL, NULL);
 SELECT MIN(value), MAX(value), MAX(id) FROM table5;
