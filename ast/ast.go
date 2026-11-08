@@ -143,11 +143,13 @@ func (ls OperationExpression) GetIdentifiers() []Identifier {
 //
 // Example:
 // CREATE TABLE table1( one TEXT , two INT);
+// CREATE TABLE IF NOT EXISTS table1( one TEXT , two INT);
 type CreateCommand struct {
 	Token       token.Token
 	Name        Identifier // name of the table
 	ColumnNames []string
 	ColumnTypes []token.Token
+	IfNotExists bool
 }
 
 func (ls CreateCommand) CommandNode()         {}
@@ -351,9 +353,11 @@ func (ls DeleteCommand) TokenLiteral() string { return ls.Token.Literal }
 //
 // Example:
 // DROP TABLE table;
+// DROP TABLE IF EXISTS table;
 type DropCommand struct {
-	Token token.Token
-	Name  Identifier // name of the table
+	Token    token.Token
+	Name     Identifier // name of the table
+	IfExists bool
 }
 
 func (ls DropCommand) CommandNode()         {}

@@ -68,6 +68,7 @@ func validateToken(tokenType token.Type, expectedTokens []token.Type) error {
 //
 // Example of input parsable to the ast.CreateCommand:
 // create table tbl( one TEXT , two INT );
+// CREATE TABLE IF NOT EXISTS tbl( one TEXT , two INT );
 func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 	// token.CREATE already at current position in parser
 	createCommand := &ast.CreateCommand{Token: parser.currentToken}
@@ -78,6 +79,21 @@ func (parser *Parser) parseCreateCommand() (ast.Command, error) {
 	err := validateTokenAndSkip(parser, []token.Type{token.TABLE})
 	if err != nil {
 		return nil, err
+	}
+
+	if parser.currentToken.Type == token.IF {
+		parser.nextToken()
+
+		err = validateTokenAndSkip(parser, []token.Type{token.NOT})
+		if err != nil {
+			return nil, err
+		}
+
+		err = validateTokenAndSkip(parser, []token.Type{token.EXISTS})
+		if err != nil {
+			return nil, err
+		}
+		createCommand.IfNotExists = true
 	}
 
 	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})
@@ -424,6 +440,7 @@ func (parser *Parser) parseDeleteCommand() (ast.Command, error) {
 //
 // Example of input parsable to the ast.DropCommand:
 // DROP TABLE table;
+// DROP TABLE IF EXISTS table;
 func (parser *Parser) parseDropCommand() (ast.Command, error) {
 	// token.DROP already at current position in parser
 	dropCommand := &ast.DropCommand{Token: parser.currentToken}
@@ -434,6 +451,16 @@ func (parser *Parser) parseDropCommand() (ast.Command, error) {
 	err := validateTokenAndSkip(parser, []token.Type{token.TABLE})
 	if err != nil {
 		return nil, err
+	}
+
+	if parser.currentToken.Type == token.IF {
+		parser.nextToken()
+
+		err = validateTokenAndSkip(parser, []token.Type{token.EXISTS})
+		if err != nil {
+			return nil, err
+		}
+		dropCommand.IfExists = true
 	}
 
 	err = validateToken(parser.currentToken.Type, []token.Type{token.IDENT})

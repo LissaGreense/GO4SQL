@@ -1,0 +1,4 @@
+Table 'tbl' has been created
+Table 'tbl' already exists, skipped
+Table: 'tbl' has been dropped
+Table: 'tbl' doesn't exist, skipped

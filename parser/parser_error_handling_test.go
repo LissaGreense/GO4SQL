@@ -12,6 +12,8 @@ type errorHandlingTestSuite struct {
 }
 
 func TestParseCreateCommandErrorHandling(t *testing.T) {
+	ifExistsOnCreate := SyntaxError{[]string{token.NOT}, token.EXISTS}
+	ifNotWithoutExists := SyntaxError{[]string{token.EXISTS}, token.IDENT}
 	noTableKeyword := SyntaxError{[]string{token.TABLE}, token.IDENT}
 	noTableName := SyntaxError{[]string{token.IDENT}, token.LPAREN}
 	noLeftParen := SyntaxError{[]string{token.LPAREN}, token.IDENT}
@@ -21,6 +23,8 @@ func TestParseCreateCommandErrorHandling(t *testing.T) {
 	noSemicolon := SyntaxError{[]string{token.SEMICOLON}, ""}
 
 	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE IF EXISTS tbl(one TEXT);", ifExistsOnCreate.Error()},
+		{"CREATE TABLE IF NOT tbl(one TEXT);", ifNotWithoutExists.Error()},
 		{"CREATE tbl(one TEXT);", noTableKeyword.Error()},
 		{"CREATE TABLE (one TEXT);", noTableName.Error()},
 		{"CREATE TABLE tbl one TEXT);", noLeftParen.Error()},
@@ -39,7 +43,11 @@ func TestParseDropCommandErrorHandling(t *testing.T) {
 	missingDropKeywordError := SyntaxInvalidCommandError{token.TABLE}
 	missingSemicolonError := &SyntaxError{expecting: []string{token.SEMICOLON}, got: ""}
 	invalidIdentError := &SyntaxError{expecting: []string{token.IDENT}, got: token.LITERAL}
+	ifNotExistsOnDrop := &SyntaxError{expecting: []string{token.EXISTS}, got: token.NOT}
+	ifWithoutExists := &SyntaxError{expecting: []string{token.EXISTS}, got: token.IDENT}
 	tests := []errorHandlingTestSuite{
+		{input: "DROP TABLE IF NOT EXISTS tbl;", expectedError: ifNotExistsOnDrop.Error()},
+		{input: "DROP TABLE IF tbl;", expectedError: ifWithoutExists.Error()},
 		{input: "DROP table;", expectedError: missingTableKeywordError.Error()},
 		{input: "TABLE table;", expectedError: missingDropKeywordError.Error()},
 		{input: "DROP TABLE table", expectedError: missingSemicolonError.Error()},
