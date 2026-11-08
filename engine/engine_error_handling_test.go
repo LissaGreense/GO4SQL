@@ -88,6 +88,8 @@ func TestEngineNotNullConstraintErrorHandling(t *testing.T) {
 		{"CREATE TABLE tbl(nickname TEXT, id INT NOT NULL); INSERT INTO tbl VALUES('a', NULL);", insertNull.Error()},
 		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET id TO NULL;", updateNull.Error()},
 		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET nickname TO 'b', id TO NULL WHERE nickname EQUAL 'a';", updateNull.Error()},
+		// DELETE rebuilds the table via getCopyOfTableWithoutRows; NOT NULL must survive even a no-op DELETE.
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); DELETE FROM tbl WHERE id EQUAL 99; UPDATE tbl SET id TO NULL;", updateNull.Error()},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)

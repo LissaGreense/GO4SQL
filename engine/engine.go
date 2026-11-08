@@ -618,9 +618,10 @@ func getCopyOfTableWithoutRows(table *Table) *Table {
 	for _, column := range table.Columns {
 		filteredTable.Columns = append(filteredTable.Columns,
 			&Column{
-				Type:   column.Type,
-				Values: make([]ValueInterface, 0),
-				Name:   column.Name,
+				Type:      column.Type,
+				IsNotNull: column.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      column.Name,
 			})
 	}
 	return filteredTable
