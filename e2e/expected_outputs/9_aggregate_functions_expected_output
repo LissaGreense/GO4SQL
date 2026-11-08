@@ -1,7 +1,6 @@
 Table 'table1' has been created
 Table 'table2' has been created
 Table 'table3' has been created
-Table 'table4' has been created
 Data Inserted
 Data Inserted
 Data Inserted
@@ -11,7 +10,7 @@ Data Inserted
 +---------+------------+
 | MAX(id) | MAX(value) |
 +---------+------------+
-|       2 |     Value1 |
+|       2 |   'Value1' |
 +---------+------------+
 +------------+---------+
 | MIN(value) | MIN(id) |
@@ -48,8 +47,38 @@ Data Inserted
 +---------+--------+
 |    NULL |   NULL |
 +---------+--------+
+Table 'table4' has been created
+Data Inserted
+Data Inserted
++-------------+-------------+
+|  MIN(value) |  MAX(value) |
++-------------+-------------+
+| 'abcdefghi' | 'abcdefghj' |
++-------------+-------------+
++---------+-------------+
+| MAX(id) |       value |
++---------+-------------+
+|       2 | 'abcdefghi' |
++---------+-------------+
++------------+---------+
+| MIN(value) | MAX(id) |
++------------+---------+
+|       NULL |    NULL |
++------------+---------+
+Table 'table5' has been created
++------------+---------+----------+
+| MIN(value) | MAX(id) | COUNT(*) |
++------------+---------+----------+
+|       NULL |    NULL |        0 |
++------------+---------+----------+
 +---------+--------+
 | MAX(id) |  value |
 +---------+--------+
 |    NULL |   NULL |
 +---------+--------+
+Data Inserted
++------------+------------+---------+
+| MIN(value) | MAX(value) | MAX(id) |
++------------+------------+---------+
+|       NULL |       NULL |    NULL |
++------------+------------+---------+

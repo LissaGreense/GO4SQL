@@ -266,7 +266,7 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 			if currentSpace.ContainsAggregateFunc() {
 				col.Name = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
 					currentSpace.ColumnName.Literal)
-				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace)
+				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace, columnType)
 				aggregatedValue, err := aggregateColumnContent(currentSpace, columnValues, columnType)
 				if err != nil {
 					return nil, err
@@ -305,10 +305,10 @@ func getSourceColumn(columnName string, columns []*Column) (*Column, error) {
 	return columnContent.Columns[0], nil
 }
 
-func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
+func evaluateColumnTypeOfAggregateFunc(space ast.Space, columnType token.Token) token.Token {
 	if space.AggregateFunc.Type == token.MIN ||
 		space.AggregateFunc.Type == token.MAX {
-		return space.ColumnName
+		return columnType
 	}
 	return token.Token{Type: token.INT, Literal: "INT"}
 }
