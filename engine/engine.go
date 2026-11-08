@@ -159,23 +159,8 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		columnIndices[col.Name] = i
 	}
 
-	matchingRowIndices := make([]int, 0)
-	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
-		if command.HasWhereCommand() {
-			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
-			if err != nil {
-				return err
-			}
-			if !matches {
-				continue
-			}
-		}
-		matchingRowIndices = append(matchingRowIndices, rowIndex)
-	}
-	hasMatches := len(matchingRowIndices) > 0
-
-	// Map changes to column indices, rejecting NULL for NOT NULL columns before mutating
-	// anything (skipped when nothing matches, since no row would actually change).
+	// Resolve all SET columns before checking WHERE/NOT NULL, so a missing column is always
+	// reported first, regardless of command.Changes' random map iteration order.
 	type change struct {
 		index int
 		value ast.Anonymitifier
@@ -191,11 +176,29 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 				columnName: colName,
 			}
 		}
-		column := table.Columns[colIndex]
-		if hasMatches && column.IsNotNull && newValue.GetToken().Type == token.NULL {
+		changes = append(changes, change{index: colIndex, value: newValue})
+	}
+
+	matchingRowIndices := make([]int, 0)
+	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
+		if command.HasWhereCommand() {
+			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
+			if err != nil {
+				return err
+			}
+			if !matches {
+				continue
+			}
+		}
+		matchingRowIndices = append(matchingRowIndices, rowIndex)
+	}
+
+	// Validate before mutating so a rejected UPDATE leaves the table untouched.
+	for _, change := range changes {
+		column := table.Columns[change.index]
+		if len(matchingRowIndices) > 0 && column.IsNotNull && change.value.GetToken().Type == token.NULL {
 			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
 		}
-		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
 	for _, rowIndex := range matchingRowIndices {
