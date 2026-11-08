@@ -7,6 +7,7 @@ import (
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
+	"github.com/LissaGreense/GO4SQL/token"
 )
 
 func TestCreate(t *testing.T) {
@@ -798,6 +799,7 @@ func TestAggregateFunctionMax(t *testing.T) {
 			{"MAX(id)", "MAX(value)"},
 			{"2", "Value2"},
 		},
+		expectedColumnTypes: []token.Token{intColumnType, textColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -818,6 +820,7 @@ func TestAggregateFunctionMin(t *testing.T) {
 			{"MIN(value)", "MIN(id)"},
 			{"Value1", "1"},
 		},
+		expectedColumnTypes: []token.Token{textColumnType, intColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -838,6 +841,7 @@ func TestAggregateFunctionMinWithNull(t *testing.T) {
 			{"MIN(value)", "MIN(id)"},
 			{"NULL", "1"},
 		},
+		expectedColumnTypes: []token.Token{textColumnType, intColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -859,6 +863,7 @@ func TestAggregateFunctionCount(t *testing.T) {
 			{"COUNT(*)", "COUNT(id)", "COUNT(value)"},
 			{"4", "3", "3"},
 		},
+		expectedColumnTypes: []token.Token{intColumnType, intColumnType, intColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -880,6 +885,7 @@ func TestAggregateFunctionSum(t *testing.T) {
 			{"SUM(id)", "SUM(value)"},
 			{"6", "0"},
 		},
+		expectedColumnTypes: []token.Token{intColumnType, intColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -920,6 +926,7 @@ func TestAggregateFunctionAvg(t *testing.T) {
 			{"AVG(id)", "AVG(value)"},
 			{"4", "0"},
 		},
+		expectedColumnTypes: []token.Token{intColumnType, intColumnType},
 	}
 
 	engineTestSuite.runTestSuite(t)
@@ -1144,6 +1151,97 @@ func TestAggregateFunctionWithColumnSelectionAndOrderBy(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestAggregateFunctionWithTextColumnSelection(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+			"INSERT INTO table1 VALUES(2, 'Value2');",
+		},
+		selectInput: "SELECT MAX(id), value FROM table1;",
+		expectedOutput: [][]string{
+			{"MAX(id)", "value"},
+			{"2", "Value1"},
+		},
+		expectedColumnTypes: []token.Token{intColumnType, textColumnType},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionMinAndMaxWithAllNulls(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(NULL, NULL);",
+			"INSERT INTO table1 VALUES(NULL, NULL);",
+		},
+		selectInput: "SELECT MIN(value), MAX(value), MIN(id), MAX(id) FROM table1;",
+		expectedOutput: [][]string{
+			{"MIN(value)", "MAX(value)", "MIN(id)", "MAX(id)"},
+			{"NULL", "NULL", "NULL", "NULL"},
+		},
+		expectedColumnTypes: []token.Token{textColumnType, textColumnType, intColumnType, intColumnType},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionMinAndMaxOnEmptyTable(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		selectInput: "SELECT MIN(value), MAX(value), MIN(id), MAX(id) FROM table1;",
+		expectedOutput: [][]string{
+			{"MIN(value)", "MAX(value)", "MIN(id)", "MAX(id)"},
+			{"NULL", "NULL", "NULL", "NULL"},
+		},
+		expectedColumnTypes: []token.Token{textColumnType, textColumnType, intColumnType, intColumnType},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionMinAndMaxWhenWhereMatchesNoRows(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO table1 VALUES(1, 'Value1');",
+		},
+		selectInput: "SELECT MIN(value), MAX(id) FROM table1 WHERE id EQUAL 999;",
+		expectedOutput: [][]string{
+			{"MIN(value)", "MAX(id)"},
+			{"NULL", "NULL"},
+		},
+		expectedColumnTypes: []token.Token{textColumnType, intColumnType},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestAggregateFunctionCountOnEmptyTable(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE table1( id INT, value TEXT);",
+		},
+		selectInput: "SELECT COUNT(*) FROM table1;",
+		expectedOutput: [][]string{
+			{"COUNT(*)"},
+			{"0"},
+		},
+		expectedColumnTypes: []token.Token{intColumnType},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 type engineDBContentTestSuite struct {
 	inputs             []string
 	expectedTableNames []string
@@ -1165,11 +1263,17 @@ func (engineTestSuite *engineDBContentTestSuite) runTestSuite(t *testing.T) {
 	}
 }
 
+var (
+	textColumnType = token.Token{Type: token.TEXT, Literal: "TEXT"}
+	intColumnType  = token.Token{Type: token.INT, Literal: "INT"}
+)
+
 type engineTableContentTestSuite struct {
 	createInputs          []string
 	insertAndDeleteInputs []string
 	selectInput           string
 	expectedOutput        [][]string
+	expectedColumnTypes   []token.Token
 }
 
 func (engineTestSuite *engineTableContentTestSuite) runTestSuite(t *testing.T) {
@@ -1218,6 +1322,17 @@ func (engineTestSuite *engineTableContentTestSuite) runTestSuite(t *testing.T) {
 		}
 	}
 
+	if engineTestSuite.expectedColumnTypes == nil {
+		return
+	}
+	if len(actualTable.Columns) != len(engineTestSuite.expectedColumnTypes) {
+		t.Fatalf("Number of column types is incorrect, expecting %d, got %d", len(engineTestSuite.expectedColumnTypes), len(actualTable.Columns))
+	}
+	for i, column := range actualTable.Columns {
+		if column.Type != engineTestSuite.expectedColumnTypes[i] {
+			t.Errorf("Column %s has wrong type, expected: %v, got: %v", column.Name, engineTestSuite.expectedColumnTypes[i], column.Type)
+		}
+	}
 }
 
 func inputsToString(inputs []string) string {
