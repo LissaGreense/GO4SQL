@@ -45,6 +45,11 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
+			_, exist := engine.Tables[mappedCommand.Name.GetToken().Literal]
+			if mappedCommand.IfNotExists && exist {
+				result += "Table '" + mappedCommand.Name.GetToken().Literal + "' already exists, skipped\n"
+				continue
+			}
 			err = engine.createTable(mappedCommand)
 			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
 			continue
@@ -65,7 +70,12 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
 		case *ast.DropCommand:
-			engine.dropTable(mappedCommand)
+			_, exist := engine.Tables[mappedCommand.Name.GetToken().Literal]
+			if mappedCommand.IfExists && !exist {
+				result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' doesn't exist, skipped\n"
+				continue
+			}
+			err = engine.dropTable(mappedCommand)
 			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
@@ -411,8 +421,15 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 }
 
 // dropTable - Drop table with given name
-func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
+func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) error {
+	_, exist := engine.Tables[dropCommand.Name.GetToken().Literal]
+
+	if !exist {
+		return &TableDoesNotExistError{dropCommand.Name.GetToken().Literal}
+	}
+
 	delete(engine.Tables, dropCommand.Name.GetToken().Literal)
+	return nil
 }
 
 func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table *Table, copyOfTable *Table, tableName string) (*Table, error) {

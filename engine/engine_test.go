@@ -40,6 +40,51 @@ func TestDrop(t *testing.T) {
 	simpleDropCase.runTestSuite(t)
 }
 
+func TestCreateIfNotExists(t *testing.T) {
+	createsMissingTableCase := engineDBContentTestSuite{
+		inputs:             []string{"CREATE TABLE IF NOT EXISTS tb1( one TEXT );"},
+		expectedTableNames: []string{"tb1"},
+	}
+	createsMissingTableCase.runTestSuite(t)
+
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello', 1 );",
+			"CREATE TABLE IF NOT EXISTS tb1( other TEXT );",
+		},
+		selectInput: "SELECT * FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"hello", "1"},
+		},
+	}
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestDropIfExists(t *testing.T) {
+	dropsExistingTableCase := engineDBContentTestSuite{
+		inputs: []string{
+			"CREATE TABLE tb1( one TEXT );",
+			"DROP TABLE IF EXISTS tb1;",
+		},
+		expectedTableNames: []string{},
+	}
+	dropsExistingTableCase.runTestSuite(t)
+
+	// The suite ignores Evaluate's error, but an error here would abort the sequence before tb2 is created.
+	skipsMissingTableCase := engineDBContentTestSuite{
+		inputs: []string{
+			"DROP TABLE IF EXISTS tb1;",
+			"CREATE TABLE tb2( one TEXT );",
+		},
+		expectedTableNames: []string{"tb2"},
+	}
+	skipsMissingTableCase.runTestSuite(t)
+}
+
 func TestSelectCommand(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

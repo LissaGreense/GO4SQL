@@ -52,6 +52,8 @@ const (
 	SET      = "SET"
 	DISTINCT = "DISTINCT"
 	TO       = "TO"
+	IF       = "IF"
+	EXISTS   = "EXISTS"
 
 	// Joins
 	JOIN  = "JOIN"
@@ -118,6 +120,8 @@ var keywords = map[string]Type{
 	"IN":       IN,
 	"NOTIN":    NOTIN,
 	"TO":       TO,
+	"IF":       IF,
+	"EXISTS":   EXISTS,
 	"VALUES":   VALUES,
 	"WHERE":    WHERE,
 	"EQUAL":    EQUAL,

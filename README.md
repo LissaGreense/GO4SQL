@@ -85,6 +85,11 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ```
   First column is called ``one`` and it contains strings (keyword ``TEXT``), second
   one is called ``two`` and it contains integers (keyword ``INT``).
+  Creating a table that already exists is an error, unless you add ``IF NOT EXISTS``:
+  ```sql
+  CREATE TABLE IF NOT EXISTS table1( one TEXT , two INT);
+  ```
+  In that case the command is skipped and the existing table with its data stays unchanged.
 
 * ***DROP TABLE*** - you can destroy the table of name ``table1`` using
   command:
@@ -93,6 +98,11 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ```
   After using this command table1 will no longer be available and all data connected to it (column
   definitions and inserted values) will be lost.
+  Dropping a table that doesn't exist is an error, unless you add ``IF EXISTS``:
+  ```sql
+  DROP TABLE IF EXISTS table1;
+  ```
+  In that case the command is skipped.
 
 
 * ***INSERT INTO*** - you can insert values into table called ``table1`` with
