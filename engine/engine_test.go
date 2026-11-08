@@ -476,6 +476,232 @@ func TestOrderByWithMultipleSorts(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestOrderByTiedSortColumnAsc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', 1 );",
+			"INSERT INTO tb1 VALUES( 'c', 2 );",
+			"INSERT INTO tb1 VALUES( 'd', 1 );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"b", "1"},
+			{"d", "1"},
+			{"a", "2"},
+			{"c", "2"},
+			{"e", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedSortColumnDesc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', 1 );",
+			"INSERT INTO tb1 VALUES( 'c', 2 );",
+			"INSERT INTO tb1 VALUES( 'd', 1 );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two DESC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"e", "3"},
+			{"a", "2"},
+			{"c", "2"},
+			{"b", "1"},
+			{"d", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTieBrokenByLaterColumn(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2, 10, 'x' );",
+			"INSERT INTO tb1 VALUES( 'b', 1, 10, 'y' );",
+			"INSERT INTO tb1 VALUES( 'c', 1, 20, 'x' );",
+			"INSERT INTO tb1 VALUES( 'd', 2, 20, 'x' );",
+			"INSERT INTO tb1 VALUES( 'e', 1, 10, 'x' );",
+		},
+		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, three DESC, four ASC;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"c"},
+			{"e"},
+			{"b"},
+			{"d"},
+			{"a"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedOnAllSortColumns(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'first',  1, 'x' );",
+			"INSERT INTO tb1 VALUES( 'second', 2, 'x' );",
+			"INSERT INTO tb1 VALUES( 'third',  1, 'x' );",
+			"INSERT INTO tb1 VALUES( 'fourth', 1, 'y' );",
+			"INSERT INTO tb1 VALUES( 'fifth',  2, 'x' );",
+		},
+		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, four DESC;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"fourth"},
+			{"first"},
+			{"third"},
+			{"second"},
+			{"fifth"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedNullsAsc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', NULL );",
+			"INSERT INTO tb1 VALUES( 'c', 1 );",
+			"INSERT INTO tb1 VALUES( 'd', NULL );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+			"INSERT INTO tb1 VALUES( 'f', NULL );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"b", "NULL"},
+			{"d", "NULL"},
+			{"f", "NULL"},
+			{"c", "1"},
+			{"a", "2"},
+			{"e", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedNullsDesc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', NULL );",
+			"INSERT INTO tb1 VALUES( 'c', 1 );",
+			"INSERT INTO tb1 VALUES( 'd', NULL );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+			"INSERT INTO tb1 VALUES( 'f', NULL );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two DESC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"e", "3"},
+			{"a", "2"},
+			{"c", "1"},
+			{"b", "NULL"},
+			{"d", "NULL"},
+			{"f", "NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+// sort.Slice falls back to a stable insertion sort at 12 elements or fewer, so
+// this fixture must stay larger than that or an unstable sort would pass too.
+func TestOrderByKeepsInsertionOrderWithinTies(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'r01', 2 );",
+			"INSERT INTO tb1 VALUES( 'r02', 3 );",
+			"INSERT INTO tb1 VALUES( 'r03', 1 );",
+			"INSERT INTO tb1 VALUES( 'r04', 2 );",
+			"INSERT INTO tb1 VALUES( 'r05', 3 );",
+			"INSERT INTO tb1 VALUES( 'r06', 1 );",
+			"INSERT INTO tb1 VALUES( 'r07', 2 );",
+			"INSERT INTO tb1 VALUES( 'r08', 3 );",
+			"INSERT INTO tb1 VALUES( 'r09', 1 );",
+			"INSERT INTO tb1 VALUES( 'r10', 2 );",
+			"INSERT INTO tb1 VALUES( 'r11', 3 );",
+			"INSERT INTO tb1 VALUES( 'r12', 1 );",
+			"INSERT INTO tb1 VALUES( 'r13', 2 );",
+			"INSERT INTO tb1 VALUES( 'r14', 3 );",
+			"INSERT INTO tb1 VALUES( 'r15', 1 );",
+			"INSERT INTO tb1 VALUES( 'r16', 2 );",
+			"INSERT INTO tb1 VALUES( 'r17', 3 );",
+			"INSERT INTO tb1 VALUES( 'r18', 1 );",
+			"INSERT INTO tb1 VALUES( 'r19', 2 );",
+			"INSERT INTO tb1 VALUES( 'r20', 3 );",
+			"INSERT INTO tb1 VALUES( 'r21', 1 );",
+			"INSERT INTO tb1 VALUES( 'r22', 2 );",
+			"INSERT INTO tb1 VALUES( 'r23', 3 );",
+			"INSERT INTO tb1 VALUES( 'r24', 1 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"r03", "1"},
+			{"r06", "1"},
+			{"r09", "1"},
+			{"r12", "1"},
+			{"r15", "1"},
+			{"r18", "1"},
+			{"r21", "1"},
+			{"r24", "1"},
+			{"r01", "2"},
+			{"r04", "2"},
+			{"r07", "2"},
+			{"r10", "2"},
+			{"r13", "2"},
+			{"r16", "2"},
+			{"r19", "2"},
+			{"r22", "2"},
+			{"r02", "3"},
+			{"r05", "3"},
+			{"r08", "3"},
+			{"r11", "3"},
+			{"r14", "3"},
+			{"r17", "3"},
+			{"r20", "3"},
+			{"r23", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestLimit(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
