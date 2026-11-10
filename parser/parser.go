@@ -764,8 +764,12 @@ func (parser *Parser) getExpression() (ast.Expression, error) {
 }
 
 func (parser *Parser) getExpressionLeaf(leftSide token.Token, isAnonymitifier bool) (ast.Expression, error) {
-	if parser.currentToken.Type == token.EQUAL || parser.currentToken.Type == token.NOT {
-		return parser.getConditionalExpression(leftSide, isAnonymitifier)
+	if parser.currentToken.Type == token.NOT && parser.peekToken.Type == token.LIKE {
+		// NOT LIKE is two tokens, unlike single-word NOTIN, so consume NOT and mark negated.
+		parser.nextToken()
+		return parser.getConditionalExpression(leftSide, isAnonymitifier, true)
+	} else if parser.currentToken.Type == token.EQUAL || parser.currentToken.Type == token.NOT || parser.currentToken.Type == token.LIKE {
+		return parser.getConditionalExpression(leftSide, isAnonymitifier, false)
 	} else if parser.currentToken.Type == token.IN || parser.currentToken.Type == token.NOTIN {
 		return parser.getContainExpression(leftSide, isAnonymitifier)
 	} else if leftSide.Type == token.TRUE || leftSide.Type == token.FALSE {
@@ -827,8 +831,16 @@ func (parser *Parser) getOperationExpression(expression ast.Expression) (*ast.Op
 }
 
 // getConditionalExpression - Return ast.ConditionExpression created from tokens and validate the syntax
-func (parser *Parser) getConditionalExpression(leftSide token.Token, isAnonymitifier bool) (*ast.ConditionExpression, error) {
-	conditionalExpression := &ast.ConditionExpression{Condition: parser.currentToken}
+//
+// isNotLike indicates that currentToken is LIKE, but with a leading NOT already consumed by the
+// caller (the two-token "NOT LIKE" sequence); Condition.Type stays token.LIKE and the negation is
+// recorded via Negated instead of a separate synthesized token type.
+func (parser *Parser) getConditionalExpression(leftSide token.Token, isAnonymitifier bool, isNotLike bool) (*ast.ConditionExpression, error) {
+	conditionToken := parser.currentToken
+	if isNotLike {
+		conditionToken.Literal = token.NOT + " " + token.LIKE
+	}
+	conditionalExpression := &ast.ConditionExpression{Condition: conditionToken, Negated: isNotLike}
 
 	if isAnonymitifier {
 		conditionalExpression.Left = ast.Anonymitifier{Token: leftSide}
@@ -836,7 +848,7 @@ func (parser *Parser) getConditionalExpression(leftSide token.Token, isAnonymiti
 		conditionalExpression.Left = ast.Identifier{Token: leftSide}
 	}
 
-	// skip EQUAL or NOT
+	// skip EQUAL, NOT or LIKE
 	parser.nextToken()
 
 	if parser.currentToken.Type == token.IDENT || parser.currentToken.Type == token.LITERAL ||

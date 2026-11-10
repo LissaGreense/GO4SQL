@@ -90,6 +90,7 @@ type ConditionExpression struct {
 	Left      Tifier      // name of column
 	Right     Tifier      // value which column should have
 	Condition token.Token // example: token.EQUAL
+	Negated   bool        // LIKE or NOT LIKE
 }
 
 func (ls ConditionExpression) GetIdentifiers() []Identifier {

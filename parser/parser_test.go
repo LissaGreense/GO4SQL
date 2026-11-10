@@ -249,6 +249,123 @@ func TestParseWhereCommand(t *testing.T) {
 	}
 }
 
+func TestParseWhereCommandWithLike(t *testing.T) {
+	likeExpression := ast.ConditionExpression{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "J%"}},
+		Condition: token.Token{Type: token.LIKE, Literal: "LIKE"},
+	}
+
+	notLikeExpression := ast.ConditionExpression{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+		Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "%test%"}},
+		Condition: token.Token{Type: token.LIKE, Literal: "NOT LIKE"},
+		Negated:   true,
+	}
+
+	likeAndExpression := ast.OperationExpression{
+		Left: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "J%"}},
+			Condition: token.Token{Type: token.LIKE, Literal: "LIKE"},
+		},
+		Right: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "age"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.LITERAL, Literal: "30"}},
+			Condition: token.Token{Type: token.EQUAL, Literal: "EQUAL"},
+		},
+		Operation: token.Token{Type: token.AND, Literal: "AND"},
+	}
+
+	likeOrNotLikeExpression := ast.OperationExpression{
+		Left: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "J%"}},
+			Condition: token.Token{Type: token.LIKE, Literal: "LIKE"},
+		},
+		Right: ast.ConditionExpression{
+			Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+			Right:     ast.Anonymitifier{Token: token.Token{Type: token.IDENT, Literal: "%test%"}},
+			Condition: token.Token{Type: token.LIKE, Literal: "NOT LIKE"},
+			Negated:   true,
+		},
+		Operation: token.Token{Type: token.OR, Literal: "OR"},
+	}
+
+	tests := []struct {
+		input              string
+		expectedExpression ast.Expression
+	}{
+		{
+			input:              "SELECT * FROM users WHERE name LIKE 'J%';",
+			expectedExpression: likeExpression,
+		},
+		{
+			input:              "SELECT * FROM users WHERE name NOT LIKE '%test%';",
+			expectedExpression: notLikeExpression,
+		},
+		{
+			input:              "SELECT * FROM users WHERE name LIKE 'J%' AND age EQUAL 30;",
+			expectedExpression: likeAndExpression,
+		},
+		{
+			input:              "SELECT * FROM users WHERE name LIKE 'J%' OR name NOT LIKE '%test%';",
+			expectedExpression: likeOrNotLikeExpression,
+		},
+	}
+
+	for testIndex, tt := range tests {
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
+		}
+
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("[%d] sequences does not contain 1 statements, got=%d", testIndex, len(sequences.Commands))
+		}
+
+		selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+		if !selectCommand.HasWhereCommand() {
+			t.Fatalf("[%d] sequences does not contain where command", testIndex)
+		}
+
+		if !whereStatementIsValid(t, selectCommand.WhereCommand, tt.expectedExpression) {
+			t.Fatalf("[%d] Actual expression and expected one are different", testIndex)
+		}
+	}
+}
+
+// TestParseWhereCommandWithLikeAgainstColumn checks that an unquoted identifier on the right of LIKE
+// is parsed as ast.Identifier (resolved per-row at engine time), not ast.Anonymitifier (a literal),
+// since validateConditionExpression's literal-string comparison alone wouldn't catch a type regression here.
+func TestParseWhereCommandWithLikeAgainstColumn(t *testing.T) {
+	input := "SELECT * FROM users WHERE name LIKE pattern;"
+	expectedExpression := ast.ConditionExpression{
+		Left:      ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "name"}},
+		Right:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "pattern"}},
+		Condition: token.Token{Type: token.LIKE, Literal: "LIKE"},
+	}
+
+	lexer := lexer.RunLexer(input)
+	parserInstance := New(lexer)
+	sequences, err := parserInstance.ParseSequence()
+	if err != nil {
+		t.Fatalf("Got error from parser: %s", err)
+	}
+
+	selectCommand := sequences.Commands[0].(*ast.SelectCommand)
+	if !whereStatementIsValid(t, selectCommand.WhereCommand, expectedExpression) {
+		t.Fatalf("Actual expression and expected one are different")
+	}
+
+	actualCondition := selectCommand.WhereCommand.Expression.(*ast.ConditionExpression)
+	if _, isIdentifier := actualCondition.Right.(ast.Identifier); !isIdentifier {
+		t.Fatalf("Right side of LIKE expression is not ast.Identifier, got=%T", actualCondition.Right)
+	}
+}
+
 func TestParseDeleteCommand(t *testing.T) {
 	input := "DELETE FROM colName1 WHERE colName2 EQUAL 6462389;"
 	expectedDeleteCommand := ast.DeleteCommand{
@@ -1170,6 +1287,10 @@ func validateConditionExpression(second ast.Expression, conditionExpression *ast
 	}
 
 	if conditionExpression.Condition.Literal != secondConditionExpression.Condition.Literal {
+		return false
+	}
+
+	if conditionExpression.Negated != secondConditionExpression.Negated {
 		return false
 	}
 

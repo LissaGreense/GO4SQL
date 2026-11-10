@@ -3,8 +3,10 @@ package engine
 import (
 	"fmt"
 	"maps"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/LissaGreense/GO4SQL/ast"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -662,9 +664,56 @@ func processConditionExpression(row map[string]ValueInterface, conditionExpressi
 		return valueLeft.IsEqual(valueRight), nil
 	case token.NOT:
 		return !(valueLeft.IsEqual(valueRight)), nil
+	case token.LIKE:
+		matched, err := matchesLikePattern(valueLeft, valueRight, commandName)
+		if err != nil {
+			return false, err
+		}
+		return matched != conditionExpression.Negated, nil
 	default:
 		return false, &UnsupportedConditionalTokenError{variable: conditionExpression.Condition.Literal, commandName: commandName}
 	}
+}
+
+// matchesLikePattern - Return true if valueLeft matches the SQL LIKE pattern held by valueRight.
+//
+// Both operands are restricted to TEXT or NULL values: a NULL operand (on either side) never
+// matches, while an IntegerValue operand is rejected with InvalidLikeOperandError.
+func matchesLikePattern(valueLeft ValueInterface, valueRight ValueInterface, commandName string) (bool, error) {
+	left, leftIsNull, err := likeOperandString(valueLeft, commandName)
+	if err != nil {
+		return false, err
+	}
+	right, rightIsNull, err := likeOperandString(valueRight, commandName)
+	if err != nil {
+		return false, err
+	}
+	if leftIsNull || rightIsNull {
+		return false, nil
+	}
+
+	return regexp.MatchString(likePatternToRegex(right), left)
+}
+
+// likeOperandString - Validate and unwrap a LIKE operand: NULL is reported via isNull (never an
+// error), anything other than NULL/StringValue is rejected with InvalidLikeOperandError.
+func likeOperandString(value ValueInterface, commandName string) (str string, isNull bool, err error) {
+	if _, isNull := value.(NullValue); isNull {
+		return "", true, nil
+	}
+	stringValue, isString := value.(StringValue)
+	if !isString {
+		return "", false, &InvalidLikeOperandError{actualType: token.INT, commandName: commandName}
+	}
+	return stringValue.Value, false, nil
+}
+
+// likePatternToRegex - Convert a SQL LIKE pattern into an anchored Go regular expression.
+func likePatternToRegex(pattern string) string {
+	escaped := regexp.QuoteMeta(pattern)
+	escaped = strings.ReplaceAll(escaped, "%", ".*")
+	escaped = strings.ReplaceAll(escaped, "_", ".")
+	return "^" + escaped + "$"
 }
 
 func processContainExpression(row map[string]ValueInterface, containExpression *ast.ContainExpression) (bool, error) {

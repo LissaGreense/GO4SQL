@@ -175,6 +175,20 @@ func TestParseWhereCommandErrorHandling(t *testing.T) {
 	runParserErrorHandlingSuite(t, tests)
 }
 
+func TestParseWhereCommandWithLikeErrorHandling(t *testing.T) {
+	selectCommandPrefix := "SELECT * FROM tbl "
+	patternIsMissing := SyntaxError{expecting: []string{token.APOSTROPHE, token.IDENT, token.LITERAL, token.NULL}, got: token.SEMICOLON}
+	noRightApostrophe := NoApostropheOnRightParserError{ident: "J%"}
+
+	tests := []errorHandlingTestSuite{
+		{selectCommandPrefix + "WHERE name LIKE;", patternIsMissing.Error()},
+		{selectCommandPrefix + "WHERE name NOT LIKE;", patternIsMissing.Error()},
+		{selectCommandPrefix + "WHERE name LIKE 'J%", noRightApostrophe.Error()},
+	}
+
+	runParserErrorHandlingSuite(t, tests)
+}
+
 func TestParseOrderByCommandErrorHandling(t *testing.T) {
 	selectCommandPrefix := "SELECT * FROM tbl "
 	noPredecessorError := NoPredecessorParserError{command: token.ORDER}

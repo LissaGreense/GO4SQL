@@ -1,0 +1,12 @@
+CREATE TABLE tbl( name TEXT, email TEXT );
+
+INSERT INTO tbl VALUES( 'John', 'john@example.com' );
+INSERT INTO tbl VALUES( 'Jane', 'jane@example.com' );
+INSERT INTO tbl VALUES( 'Anne', 'anne@other.com' );
+INSERT INTO tbl VALUES( NULL, NULL );
+
+SELECT * FROM tbl WHERE name LIKE 'J%';
+SELECT * FROM tbl WHERE email LIKE '%@example.com';
+SELECT * FROM tbl WHERE name LIKE 'J_ne';
+SELECT * FROM tbl WHERE name NOT LIKE 'J%';
+SELECT * FROM tbl WHERE name LIKE 'j%';
