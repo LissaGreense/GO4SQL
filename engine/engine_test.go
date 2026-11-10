@@ -209,6 +209,246 @@ func TestSelectWithWhereNotContainsButResponseIsEmpty(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestSelectWithWhereLikePrefix(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE 'he%';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeSuffix(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE '%bye';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"goodbye", "2", "22", "w"},
+			{"byebye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeContains(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE '%ood%';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"goodbye", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeSingleCharWildcard(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'hallo', 	2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE 'h_llo';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+			{"hallo", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeIsCaseSensitive(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'HELLO',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'hello', 	2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE 'hello';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeOnNullValueDoesNotMatch(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( NULL, 		2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE '%';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereNotLike(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one NOT LIKE '%bye';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "q"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereNotLikeOnNullValueMatches(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( NULL, 		2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one NOT LIKE '%';",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"NULL", "2", "22", "w"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeCombinedWithAndOr(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'e'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE '%bye' AND two EQUAL 3;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"byebye", "3", "33", "e"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeAgainstNullPattern(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'q'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'w'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE NULL;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestSelectWithWhereLikeAgainstColumnPattern(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello',	1, 	11, 'hel%'  );",
+			"INSERT INTO tb1 VALUES( 'goodbye', 2, 	22, 'by%'  );",
+			"INSERT INTO tb1 VALUES( 'byebye', 	3, 	33,	'he%'  );",
+		},
+		selectInput: "SELECT one, two, three, four FROM tb1 WHERE one LIKE four;",
+		expectedOutput: [][]string{
+			{"one", "two", "three", "four"},
+			{"hello", "1", "11", "hel%"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestJoinOnLikeCondition(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE books( title TEXT);",
+			"CREATE TABLE authors( title_pattern TEXT, name TEXT);",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO books VALUES('Fire and Ash');",
+			"INSERT INTO books VALUES('Earthbound');",
+			"INSERT INTO authors VALUES('Fire%', 'Alissa Ireneus');",
+			"INSERT INTO authors VALUES('Earth%', 'Reynold Boyka');",
+		},
+		selectInput: "SELECT books.title, authors.name FROM books JOIN authors ON books.title LIKE authors.title_pattern;",
+		expectedOutput: [][]string{
+			{"books.title", "authors.name"},
+			{"Fire and Ash", "Alissa Ireneus"},
+			{"Earthbound", "Reynold Boyka"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 
 	engineTestSuite := engineTableContentTestSuite{

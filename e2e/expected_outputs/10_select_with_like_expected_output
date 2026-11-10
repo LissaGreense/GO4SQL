@@ -1,0 +1,32 @@
+Table 'tbl' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Data Inserted
++--------+--------------------+
+|   name |              email |
++--------+--------------------+
+| 'John' | 'john@example.com' |
+| 'Jane' | 'jane@example.com' |
++--------+--------------------+
++--------+--------------------+
+|   name |              email |
++--------+--------------------+
+| 'John' | 'john@example.com' |
+| 'Jane' | 'jane@example.com' |
++--------+--------------------+
++--------+--------------------+
+|   name |              email |
++--------+--------------------+
+| 'Jane' | 'jane@example.com' |
++--------+--------------------+
++--------+------------------+
+|   name |            email |
++--------+------------------+
+| 'Anne' | 'anne@other.com' |
+|   NULL |             NULL |
++--------+------------------+
++------+-------+
+| name | email |
++------+-------+
++------+-------+

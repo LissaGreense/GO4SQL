@@ -151,6 +151,28 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ``table_name`` is the name of the table, and ``WHERE`` returns rows which values are not equal to
   ``value1`` and not equal to ``value2``
 
+* ***LIKE*** - is used to search for a specified pattern in a ``TEXT`` column. It can be used with
+  ``WHERE`` like this:
+  ```sql
+  SELECT column1, column2
+  FROM table_name
+  WHERE column1 LIKE 'value%';
+  ```
+  ``table_name`` is the name of the table, and ``WHERE`` returns rows where ``column1`` matches the
+  given pattern. Two wildcards are supported: ``%`` matches any sequence of characters (including
+  none), and ``_`` matches exactly one character. Matching is case-sensitive, a ``NULL`` value never
+  matches any pattern, and ``column1`` must be a ``TEXT`` (or ``NULL``) column.
+
+* ***NOT LIKE*** - is used to search for a value that does not match a specified pattern in a
+  ``TEXT`` column. It can be used with ``WHERE`` like this:
+  ```sql
+  SELECT column1, column2
+  FROM table_name
+  WHERE column1 NOT LIKE '%value';
+  ```
+  ``table_name`` is the name of the table, and ``WHERE`` returns rows where ``column1`` does not
+  match the given pattern, following the same wildcard and ``NULL`` rules as ``LIKE``.
+
 * ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
   ```sql
   DELETE FROM tb1 WHERE two EQUAL 3;

@@ -67,6 +67,18 @@ func TestEngineWhereCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineLikeCommandErrorHandling(t *testing.T) {
+	invalidLikeOperand := InvalidLikeOperandError{actualType: token.INT, commandName: token.WHERE}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE two LIKE '5%';", invalidLikeOperand.Error()},
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE one LIKE 5;", invalidLikeOperand.Error()},
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE two NOT LIKE '5%';", invalidLikeOperand.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func TestEngineUpdateCommandErrorHandling(t *testing.T) {
 	noTableDoesNotExist := TableDoesNotExistError{"tb1"}
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "two"}

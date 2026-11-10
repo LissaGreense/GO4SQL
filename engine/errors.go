@@ -75,7 +75,7 @@ func (m *UnsupportedOperationTokenError) Error() string {
 }
 
 // UnsupportedConditionalTokenError - error thrown when the engine found unsupported conditional token
-// inside the expression (supported are: EQUAL, NOT)
+// inside the expression (supported are: EQUAL, NOT, LIKE, NOT LIKE)
 type UnsupportedConditionalTokenError struct {
 	variable    string
 	commandName string
@@ -83,6 +83,17 @@ type UnsupportedConditionalTokenError struct {
 
 func (m *UnsupportedConditionalTokenError) Error() string {
 	return "operation '" + m.variable + "' provided in " + m.commandName + " command isn't allowed"
+}
+
+// InvalidLikeOperandError - error thrown when a LIKE/NOT LIKE condition is evaluated against a
+// value that isn't TEXT or NULL (ex. an IntegerValue)
+type InvalidLikeOperandError struct {
+	actualType  string
+	commandName string
+}
+
+func (m *InvalidLikeOperandError) Error() string {
+	return "invalid operand type provided in " + m.commandName + " command for LIKE, expecting: TEXT or NULL, got: " + m.actualType
 }
 
 // UnsupportedExpressionTypeError - error thrown when the engine found an unsupported expression type
