@@ -13,15 +13,18 @@ func TestParserCreateCommand(t *testing.T) {
 	intType := token.Token{Type: token.INT, Literal: "INT"}
 
 	tests := []struct {
-		input             string
-		expectedTableName string
-		expectedColumns   []ast.ColumnDefinition
+		input               string
+		expectedTableName   string
+		expectedColumns     []ast.ColumnDefinition
+		expectedIfNotExists bool
 	}{
-		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}}},
-		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: intType}}},
-		{"CREATE TABLE 	TBL(  );", "TBL", []ast.ColumnDefinition{}},
-		{"CREATE TABLE TBL( ONE INT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}}},
-		{"CREATE TABLE TBL( ONE INT NOT NULL, TWO TEXT, THREE TEXT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: textType, IsNotNull: true}}},
+		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}}, false},
+		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: intType}}, false},
+		{"CREATE TABLE 	TBL(  );", "TBL", []ast.ColumnDefinition{}, false},
+		{"CREATE TABLE TBL( ONE INT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}}, false},
+		{"CREATE TABLE TBL( ONE INT NOT NULL, TWO TEXT, THREE TEXT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: textType, IsNotNull: true}}, false},
+		{"CREATE TABLE IF NOT EXISTS TBL( ONE TEXT );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}}, true},
+		{"CREATE TABLE IF NOT EXISTS TBL( ONE INT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}}, true},
 	}
 
 	for testIndex, tt := range tests {
@@ -36,13 +39,13 @@ func TestParserCreateCommand(t *testing.T) {
 			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
-		if !testCreateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns) {
+		if !testCreateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns, tt.expectedIfNotExists) {
 			return
 		}
 	}
 }
 
-func testCreateStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumns []ast.ColumnDefinition) bool {
+func testCreateStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumns []ast.ColumnDefinition, expectedIfNotExists bool) bool {
 	if command.TokenLiteral() != "CREATE" {
 		t.Errorf("command.TokenLiteral() not 'CREATE'. got=%q", command.TokenLiteral())
 		return false
@@ -69,6 +72,11 @@ func testCreateStatement(t *testing.T, command ast.Command, expectedTableName st
 			t.Errorf("column %d: expected %+v, got %+v", i, expected, actualCreateCommand.Columns[i])
 			return false
 		}
+	}
+
+	if actualCreateCommand.IfNotExists != expectedIfNotExists {
+		t.Errorf("IfNotExists is not %t. got=%t", expectedIfNotExists, actualCreateCommand.IfNotExists)
+		return false
 	}
 
 	return true
@@ -295,34 +303,49 @@ func TestParseDeleteCommand(t *testing.T) {
 }
 
 func TestParseDropCommand(t *testing.T) {
-	input := "DROP TABLE table;"
-	expectedDropCommand := ast.DropCommand{
-		Token: token.Token{Type: token.DROP, Literal: "DROP"},
-		Name:  ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: "table"}},
+	tests := []struct {
+		input             string
+		expectedTableName string
+		expectedIfExists  bool
+	}{
+		{"DROP TABLE table;", "table", false},
+		{"DROP TABLE IF EXISTS tbl;", "tbl", true},
 	}
 
-	lexer := lexer.RunLexer(input)
-	parserInstance := New(lexer)
-	sequences, err := parserInstance.ParseSequence()
-	if err != nil {
-		t.Fatalf("Got error from parser: %s", err)
-	}
+	for testIndex, tt := range tests {
+		expectedDropCommand := ast.DropCommand{
+			Token:    token.Token{Type: token.DROP, Literal: "DROP"},
+			Name:     ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: tt.expectedTableName}},
+			IfExists: tt.expectedIfExists,
+		}
 
-	if len(sequences.Commands) != 1 {
-		t.Fatalf("sequences does not contain 1 statements. got=%d", len(sequences.Commands))
-	}
+		lexer := lexer.RunLexer(tt.input)
+		parserInstance := New(lexer)
+		sequences, err := parserInstance.ParseSequence()
+		if err != nil {
+			t.Fatalf("[%d] Got error from parser: %s", testIndex, err)
+		}
 
-	actualDropCommand, ok := sequences.Commands[0].(*ast.DropCommand)
-	if !ok {
-		t.Errorf("actualDropCommand is not %T. got=%T", &ast.DropCommand{}, sequences.Commands[0])
-	}
+		if len(sequences.Commands) != 1 {
+			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
+		}
 
-	if expectedDropCommand.TokenLiteral() != actualDropCommand.TokenLiteral() {
-		t.Errorf("TokenLiteral of DropCommand is not %s. got=%s", expectedDropCommand.TokenLiteral(), actualDropCommand.TokenLiteral())
-	}
+		actualDropCommand, ok := sequences.Commands[0].(*ast.DropCommand)
+		if !ok {
+			t.Fatalf("[%d] actualDropCommand is not %T. got=%T", testIndex, &ast.DropCommand{}, sequences.Commands[0])
+		}
 
-	if expectedDropCommand.Name.GetToken().Literal != actualDropCommand.Name.GetToken().Literal {
-		t.Errorf("Table name of DropCommand is not %s. got=%s", expectedDropCommand.Name.GetToken().Literal, actualDropCommand.Name.GetToken().Literal)
+		if expectedDropCommand.TokenLiteral() != actualDropCommand.TokenLiteral() {
+			t.Errorf("[%d] TokenLiteral of DropCommand is not %s. got=%s", testIndex, expectedDropCommand.TokenLiteral(), actualDropCommand.TokenLiteral())
+		}
+
+		if expectedDropCommand.Name.GetToken().Literal != actualDropCommand.Name.GetToken().Literal {
+			t.Errorf("[%d] Table name of DropCommand is not %s. got=%s", testIndex, expectedDropCommand.Name.GetToken().Literal, actualDropCommand.Name.GetToken().Literal)
+		}
+
+		if expectedDropCommand.IfExists != actualDropCommand.IfExists {
+			t.Errorf("[%d] IfExists of DropCommand is not %t. got=%t", testIndex, expectedDropCommand.IfExists, actualDropCommand.IfExists)
+		}
 	}
 }
 

@@ -22,6 +22,18 @@ func TestEngineCreateCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineDropCommandErrorHandling(t *testing.T) {
+	tableDoNotExistError := TableDoesNotExistError{"table1"}
+	missingMidSequenceError := TableDoesNotExistError{"nope"}
+
+	tests := []errorHandlingTestSuite{
+		{"DROP TABLE table1;", tableDoNotExistError.Error()},
+		{"CREATE TABLE a( x INT ); DROP TABLE nope; CREATE TABLE b( x INT );", missingMidSequenceError.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func TestEngineInsertCommandErrorHandling(t *testing.T) {
 	tableDoNotExistError := TableDoesNotExistError{"table1"}
 	invalidNumberOfParametersError := InvalidNumberOfParametersError{expectedNumber: 2, actualNumber: 1, commandName: token.INSERT}

@@ -323,6 +323,36 @@ func TestDropStatement(t *testing.T) {
 	runLexerTestSuite(t, input, tests)
 }
 
+func TestIfExistsClauses(t *testing.T) {
+	input := `CREATE TABLE IF NOT EXISTS tbl( one TEXT );
+			DROP TABLE IF EXISTS tbl;`
+	tests := []struct {
+		expectedType    token.Type
+		expectedLiteral string
+	}{
+		{token.CREATE, "CREATE"},
+		{token.TABLE, "TABLE"},
+		{token.IF, "IF"},
+		{token.NOT, "NOT"},
+		{token.EXISTS, "EXISTS"},
+		{token.IDENT, "tbl"},
+		{token.LPAREN, "("},
+		{token.IDENT, "one"},
+		{token.TEXT, "TEXT"},
+		{token.RPAREN, ")"},
+		{token.SEMICOLON, ";"},
+		{token.DROP, "DROP"},
+		{token.TABLE, "TABLE"},
+		{token.IF, "IF"},
+		{token.EXISTS, "EXISTS"},
+		{token.IDENT, "tbl"},
+		{token.SEMICOLON, ";"},
+		{token.EOF, ""},
+	}
+
+	runLexerTestSuite(t, input, tests)
+}
+
 func TestLimitAndOffsetStatement(t *testing.T) {
 	input := `LIMIT 5 OFFSET 6;`
 	tests := []struct {
