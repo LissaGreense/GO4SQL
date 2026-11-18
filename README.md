@@ -171,7 +171,9 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   WHERE column1 NOT LIKE '%value';
   ```
   ``table_name`` is the name of the table, and ``WHERE`` returns rows where ``column1`` does not
-  match the given pattern, following the same wildcard and ``NULL`` rules as ``LIKE``.
+  match the given pattern, using the same wildcards as ``LIKE``. A ``NULL`` value always matches
+  ``NOT LIKE`` (the opposite of ``LIKE``, which it never matches), and ``column1`` must be a
+  ``TEXT`` (or ``NULL``) column.
 
 * ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
   ```sql

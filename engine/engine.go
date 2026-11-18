@@ -679,7 +679,7 @@ func likeOperandString(value ValueInterface, commandName string) (str string, is
 	}
 	stringValue, isString := value.(StringValue)
 	if !isString {
-		return "", false, &InvalidLikeOperandError{actualType: token.INT, commandName: commandName}
+		return "", false, &InvalidLikeOperandError{actualType: value.GetType().String(), commandName: commandName}
 	}
 	return stringValue.Value, false, nil
 }
