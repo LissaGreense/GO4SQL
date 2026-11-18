@@ -80,6 +80,7 @@ const (
 	IN    = "IN"
 	NOTIN = "NOTIN"
 	NULL  = "NULL"
+	LIKE  = "LIKE"
 
 	// Data Types
 	TEXT = "TEXT"
@@ -131,6 +132,7 @@ var keywords = map[string]Type{
 	"TRUE":     TRUE,
 	"FALSE":    FALSE,
 	"NULL":     NULL,
+	"LIKE":     LIKE,
 }
 
 // LookupIdent - Return keyword type from defined list if exists, otherwise it returns IDENT type

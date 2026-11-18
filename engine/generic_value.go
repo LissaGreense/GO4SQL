@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"strconv"
+
+	"github.com/LissaGreense/GO4SQL/token"
 )
 
 // ValueInterface - Represent all supported types of data that can be inserted into Table
@@ -22,6 +24,20 @@ const (
 	StringType
 	NullType
 )
+
+// String - Human-readable name for a SupportedTypes, used in error messages (ex. InvalidLikeOperandError).
+func (t SupportedTypes) String() string {
+	switch t {
+	case IntType:
+		return token.INT
+	case StringType:
+		return token.TEXT
+	case NullType:
+		return token.NULL
+	default:
+		return "UNKNOWN"
+	}
+}
 
 // IntegerValue - Implementation of ValueInterface that is containing integer values
 type IntegerValue struct {

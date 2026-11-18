@@ -79,6 +79,18 @@ func TestEngineWhereCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+func TestEngineLikeCommandErrorHandling(t *testing.T) {
+	invalidLikeOperand := InvalidLikeOperandError{actualType: token.INT, commandName: token.WHERE}
+
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE two LIKE '5%';", invalidLikeOperand.Error()},
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE one LIKE 5;", invalidLikeOperand.Error()},
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('hello', 5); SELECT * FROM tbl WHERE two NOT LIKE '5%';", invalidLikeOperand.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func TestEngineUpdateCommandErrorHandling(t *testing.T) {
 	noTableDoesNotExist := TableDoesNotExistError{"tb1"}
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "two"}
@@ -150,11 +162,13 @@ func TestEngineFullJoinErrorHandling(t *testing.T) {
 	leftTableNotExist := TableDoesNotExistError{tableName: "leftTable"}
 	rightTableNotExist := TableDoesNotExistError{tableName: "rightTable"}
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "", columnName: "leftTable.two"}
+	invalidLikeOperandInJoin := InvalidLikeOperandError{actualType: token.INT, commandName: token.JOIN}
 
 	tests := []errorHandlingTestSuite{
 		{"CREATE TABLE rightTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", leftTableNotExist.Error()},
 		{"CREATE TABLE leftTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", rightTableNotExist.Error()},
 		{"CREATE TABLE leftTable(one TEXT); CREATE TABLE rightTable(one TEXT); INSERT INTO leftTable VALUES('hi'); INSERT INTO rightTable VALUES('hi'); SELECT * FROM leftTable JOIN rightTable ON leftTable.two EQUAL rightTable.one;", columnDoesNotExist.Error()},
+		{"CREATE TABLE leftTable(id INT); CREATE TABLE rightTable(id INT); INSERT INTO leftTable VALUES(1); INSERT INTO rightTable VALUES(1); SELECT * FROM leftTable JOIN rightTable ON leftTable.id LIKE rightTable.id;", invalidLikeOperandInJoin.Error()},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)
