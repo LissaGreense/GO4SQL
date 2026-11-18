@@ -3,15 +3,31 @@
 e2e_failed=false
 
 for test_file in e2e/test_files/*_test; do
-  output_file="./e2e/$(basename "${test_file/_test/_output}")"
+  name="$(basename "${test_file%_test}")"
+  output_file="./e2e/${name}_output"
+  expected_output="e2e/expected_outputs/${name}_expected_output"
+  expected_exit_file="e2e/expected_outputs/${name}_expected_exit"
+
   ./GO4SQL -file "$test_file" > "$output_file"
-  expected_output="e2e/expected_outputs/$(basename "${test_file/_test/_expected_output}")"
-  diff "$output_file" "$expected_output"
-  if [ $? -ne 0 ]; then
-    echo "E2E test for: {$test_file} failed"
+  actual_exit=$?
+
+  expected_exit=0
+  if [ -f "$expected_exit_file" ]; then
+    expected_exit="$(tr -d '[:space:]' < "$expected_exit_file")"
+  fi
+
+  # Exit code is checked separately because Evaluate discards earlier output
+  # on error, so a failing fixture can still match an empty expected output.
+  if ! diff "$output_file" "$expected_output"; then
+    echo "E2E test for: {$test_file} failed: stdout differs from $expected_output"
     e2e_failed=true
   fi
-  rm "./$output_file"
+  if [ "$actual_exit" != "$expected_exit" ]; then
+    echo "E2E test for: {$test_file} failed: expected exit code $expected_exit, got $actual_exit"
+    e2e_failed=true
+  fi
+
+  rm "$output_file"
 done
 
 if [ "$e2e_failed" = true ]; then

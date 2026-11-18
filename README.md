@@ -54,6 +54,9 @@ There are integrated with Github actions e2e tests that can be found in: `.githu
 Tests run files inside `e2e/test_files` directory through `GO4SQL`, save stdout into files, and finally compare
 then with expected outputs inside `e2e/expected_outputs` directory.
 
+Each fixture `<name>_test` must also exit with the expected code, which is `0` by default. For fixtures that
+should fail, add `e2e/expected_outputs/<name>_expected_exit` containing the expected exit code (e.g. `1`).
+
 To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the root directory.
 
 ## Docker
