@@ -636,8 +636,8 @@ func TestOrderByTiedNullsDesc(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
-// sort.Slice falls back to a stable insertion sort at 12 elements or fewer, so
-// this fixture must stay larger than that or an unstable sort would pass too.
+// slices.SortFunc falls back to a stable insertion sort at 12 elements or fewer,
+// so this fixture must stay larger than that or an unstable sort would pass too.
 func TestOrderByKeepsInsertionOrderWithinTies(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{

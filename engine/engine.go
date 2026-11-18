@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 	"maps"
-	"sort"
+	"slices"
 	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -436,20 +436,18 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 
 	rows := MapTableToRows(table).rows
 
-	sort.SliceStable(rows, func(i, j int) bool {
+	slices.SortStableFunc(rows, func(a, b map[string]ValueInterface) int {
 		for _, sortPattern := range sortPatterns {
 			columnToSort := sortPattern.ColumnName.Literal
-			first, second := rows[i][columnToSort], rows[j][columnToSort]
-
-			if first.IsEqual(second) {
-				continue
-			}
+			c := compareValues(a[columnToSort], b[columnToSort])
 			if sortPattern.Order.Type == token.DESC {
-				return first.isGreaterThan(second)
+				c = -c
 			}
-			return first.isSmallerThan(second)
+			if c != 0 {
+				return c
+			}
 		}
-		return false
+		return 0
 	})
 
 	for _, row := range rows {
