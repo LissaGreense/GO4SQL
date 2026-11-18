@@ -21,17 +21,6 @@ func getInterfaceValue(t token.Token) (ValueInterface, error) {
 	}
 }
 
-func tokenMapper(inputToken token.Type) token.Type {
-	switch inputToken {
-	case token.TEXT:
-		return token.IDENT
-	case token.INT:
-		return token.LITERAL
-	default:
-		return inputToken
-	}
-}
-
 func unique(arr []string) *[]string {
 	occurred := map[string]bool{}
 	var result []string

@@ -37,11 +37,35 @@ func TestEngineDropCommandErrorHandling(t *testing.T) {
 func TestEngineInsertCommandErrorHandling(t *testing.T) {
 	tableDoNotExistError := TableDoesNotExistError{"table1"}
 	invalidNumberOfParametersError := InvalidNumberOfParametersError{expectedNumber: 2, actualNumber: 1, commandName: token.INSERT}
-	invalidParametersTypeError := InvalidValueTypeError{expectedType: token.IDENT, actualType: token.LITERAL, commandName: token.INSERT}
+	invalidParametersTypeError := InvalidValueTypeError{expectedType: token.TEXT, actualValue: "1", commandName: token.INSERT}
 	tests := []errorHandlingTestSuite{
 		{"INSERT INTO table1 VALUES( 'hello', 1);", tableDoNotExistError.Error()},
 		{"CREATE TABLE table1( one TEXT , two INT); INSERT INTO table1 VALUES(1);", invalidNumberOfParametersError.Error()},
 		{"CREATE TABLE table1( one TEXT , two INT); INSERT INTO table1 VALUES(1, 1 );", invalidParametersTypeError.Error()},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+func TestEngineInsertValueTypeErrorWording(t *testing.T) {
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE t( a INT ); INSERT INTO t VALUES( 3.14 );", "invalid value type provided in INSERT command, expecting: INT, got: 3.14"},
+		{"CREATE TABLE t( a INT ); INSERT INTO t VALUES( 99999999999999999999 );", "invalid value type provided in INSERT command, expecting: INT, got: 99999999999999999999"},
+		{"CREATE TABLE t( a INT ); INSERT INTO t VALUES( 'x' );", "invalid value type provided in INSERT command, expecting: INT, got: 'x'"},
+		{"CREATE TABLE t( a TEXT ); INSERT INTO t VALUES( 5 );", "invalid value type provided in INSERT command, expecting: TEXT, got: 5"},
+		{"CREATE TABLE t( a INT NOT NULL, b INT ); INSERT INTO t VALUES( NULL, 3.14 );", "NULL value isn't allowed in INSERT command for NOT NULL column: a"},
+		{"CREATE TABLE t( a INT, b INT NOT NULL ); INSERT INTO t VALUES( 3.14, NULL );", "invalid value type provided in INSERT command, expecting: INT, got: 3.14"},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+func TestEngineCreateDuplicateColumnErrorHandling(t *testing.T) {
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE t( a INT, a TEXT );", "column with the name of a is declared more than once in table t"},
+		{"CREATE TABLE t( a INT NOT NULL, a INT );", "column with the name of a is declared more than once in table t"},
+		{"CREATE TABLE IF NOT EXISTS t2( a INT, a TEXT );", "column with the name of a is declared more than once in table t2"},
+		{"CREATE TABLE t( a INT ); CREATE TABLE t( a INT, a TEXT );", "table with the name of t already exists"},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)

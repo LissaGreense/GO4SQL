@@ -31,6 +31,16 @@ func (m *ColumnDoesNotExistError) Error() string {
 	return "column with the name of " + m.columnName + " doesn't exist in table " + m.tableName
 }
 
+// DuplicateColumnNameError - error thrown when a user creates a table that declares the same column name twice
+type DuplicateColumnNameError struct {
+	tableName  string
+	columnName string
+}
+
+func (m *DuplicateColumnNameError) Error() string {
+	return "column with the name of " + m.columnName + " is declared more than once in table " + m.tableName
+}
+
 // InvalidNumberOfParametersError - error thrown when user provides invalid number of expected parameters
 // (ex. fewer values in insert than defined)
 type InvalidNumberOfParametersError struct {
@@ -46,12 +56,12 @@ func (m *InvalidNumberOfParametersError) Error() string {
 // InvalidValueTypeError - error thrown when a user provides value of a different type than expected
 type InvalidValueTypeError struct {
 	expectedType string
-	actualType   string
+	actualValue  string
 	commandName  string
 }
 
 func (m *InvalidValueTypeError) Error() string {
-	return "invalid value type provided in " + m.commandName + " command, expecting: " + m.expectedType + ", got: " + m.actualType
+	return "invalid value type provided in " + m.commandName + " command, expecting: " + m.expectedType + ", got: " + m.actualValue
 }
 
 // NullValueNotAllowedError - error thrown when a user tries to store NULL in a column declared as NOT NULL

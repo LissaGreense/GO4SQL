@@ -149,6 +149,16 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 		return &TableAlreadyExistsError{command.Name.Token.Literal}
 	}
 
+	// Rows are keyed by column name, so a duplicate name would let one column's values
+	// land in the other. Checked before registration so a rejected CREATE leaves no table.
+	declaredNames := make(map[string]bool, len(command.Columns))
+	for _, columnDefinition := range command.Columns {
+		if declaredNames[columnDefinition.Name] {
+			return &DuplicateColumnNameError{tableName: command.Name.Token.Literal, columnName: columnDefinition.Name}
+		}
+		declaredNames[columnDefinition.Name] = true
+	}
+
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
 	for _, columnDefinition := range command.Columns {
 		engine.Tables[command.Name.Token.Literal].Columns = append(engine.Tables[command.Name.Token.Literal].Columns,
@@ -247,26 +257,19 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 
 	// Validate every value before appending so a rejected INSERT doesn't leave a partial row
 	interfaceValues := make([]ValueInterface, len(columns))
-	for i := range columns {
-		expectedToken := tokenMapper(columns[i].Type.Type)
-		colValueType := command.Values[i].Type
-
-		if colValueType == token.NULL {
-			if columns[i].IsNotNull {
-				return &NullValueNotAllowedError{columnName: columns[i].Name, commandName: command.Token.Literal}
-			}
-		} else if expectedToken != colValueType {
+	for i, column := range columns {
+		value, ok := coerce(command.Values[i], declaredTarget(column.Type.Type))
+		if !ok {
 			return &InvalidValueTypeError{
-				expectedType: string(expectedToken),
-				actualType:   string(colValueType),
+				expectedType: string(column.Type.Type),
+				actualValue:  displayValue(command.Values[i]),
 				commandName:  command.Token.Literal,
 			}
 		}
-		interfaceValue, err := getInterfaceValue(command.Values[i])
-		if err != nil {
-			return err
+		if column.IsNotNull && value.GetType() == NullType {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
 		}
-		interfaceValues[i] = interfaceValue
+		interfaceValues[i] = value
 	}
 	for i := range columns {
 		columns[i].Values = append(columns[i].Values, interfaceValues[i])
