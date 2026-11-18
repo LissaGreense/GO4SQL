@@ -54,6 +54,16 @@ func (m *InvalidValueTypeError) Error() string {
 	return "invalid value type provided in " + m.commandName + " command, expecting: " + m.expectedType + ", got: " + m.actualType
 }
 
+// NullValueNotAllowedError - error thrown when a user tries to store NULL in a column declared as NOT NULL
+type NullValueNotAllowedError struct {
+	columnName  string
+	commandName string
+}
+
+func (m *NullValueNotAllowedError) Error() string {
+	return "NULL value isn't allowed in " + m.commandName + " command for NOT NULL column: " + m.columnName
+}
+
 // UnsupportedValueType - error thrown when the engine found unsupported data type to be stored inside
 // the columns
 type UnsupportedValueType struct {

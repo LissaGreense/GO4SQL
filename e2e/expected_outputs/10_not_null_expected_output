@@ -1,0 +1,13 @@
+Table 'users' has been created
+Data Inserted
+Data Inserted
+Data Inserted
+Table: 'users' has been updated
+Table: 'users' has been updated
++----+----------+
+| id | nickname |
++----+----------+
+|  1 |   'kate' |
+|  4 |     NULL |
+|  3 |     NULL |
++----+----------+

@@ -9,17 +9,22 @@ import (
 )
 
 func TestParserCreateCommand(t *testing.T) {
+	textType := token.Token{Type: token.TEXT, Literal: "TEXT"}
+	intType := token.Token{Type: token.INT, Literal: "INT"}
+
 	tests := []struct {
 		input               string
 		expectedTableName   string
-		expectedColumnNames []string
-		expectedColumTypes  []token.Token
+		expectedColumns     []ast.ColumnDefinition
 		expectedIfNotExists bool
 	}{
-		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}}, false},
-		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []string{"ONE", "TWO", "THREE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}, {Type: token.TEXT, Literal: "TEXT"}, {Type: token.INT, Literal: "INT"}}, false},
-		{"CREATE TABLE 	TBL(  );", "TBL", []string{}, []token.Token{}, false},
-		{"CREATE TABLE IF NOT EXISTS TBL( ONE TEXT );", "TBL", []string{"ONE"}, []token.Token{{Type: token.TEXT, Literal: "TEXT"}}, true},
+		{"CREATE TABLE 	TBL( ONE TEXT );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}}, false},
+		{"CREATE TABLE 	TBL( ONE TEXT,  TWO TEXT, THREE INT);", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: intType}}, false},
+		{"CREATE TABLE 	TBL(  );", "TBL", []ast.ColumnDefinition{}, false},
+		{"CREATE TABLE TBL( ONE INT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}}, false},
+		{"CREATE TABLE TBL( ONE INT NOT NULL, TWO TEXT, THREE TEXT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}, {Name: "TWO", Type: textType}, {Name: "THREE", Type: textType, IsNotNull: true}}, false},
+		{"CREATE TABLE IF NOT EXISTS TBL( ONE TEXT );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: textType}}, true},
+		{"CREATE TABLE IF NOT EXISTS TBL( ONE INT NOT NULL );", "TBL", []ast.ColumnDefinition{{Name: "ONE", Type: intType, IsNotNull: true}}, true},
 	}
 
 	for testIndex, tt := range tests {
@@ -34,13 +39,13 @@ func TestParserCreateCommand(t *testing.T) {
 			t.Fatalf("[%d] sequences does not contain 1 statements. got=%d", testIndex, len(sequences.Commands))
 		}
 
-		if !testCreateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumnNames, tt.expectedColumTypes, tt.expectedIfNotExists) {
+		if !testCreateStatement(t, sequences.Commands[0], tt.expectedTableName, tt.expectedColumns, tt.expectedIfNotExists) {
 			return
 		}
 	}
 }
 
-func testCreateStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumnNames []string, expectedColumTypes []token.Token, expectedIfNotExists bool) bool {
+func testCreateStatement(t *testing.T, command ast.Command, expectedTableName string, expectedColumns []ast.ColumnDefinition, expectedIfNotExists bool) bool {
 	if command.TokenLiteral() != "CREATE" {
 		t.Errorf("command.TokenLiteral() not 'CREATE'. got=%q", command.TokenLiteral())
 		return false
@@ -57,14 +62,16 @@ func testCreateStatement(t *testing.T, command ast.Command, expectedTableName st
 		return false
 	}
 
-	if !stringArrayEquals(actualCreateCommand.ColumnNames, expectedColumnNames) {
-		t.Errorf("")
+	if len(actualCreateCommand.Columns) != len(expectedColumns) {
+		t.Errorf("expected %d columns, got %d", len(expectedColumns), len(actualCreateCommand.Columns))
 		return false
 	}
 
-	if !tokenArrayEquals(actualCreateCommand.ColumnTypes, expectedColumTypes) {
-		t.Errorf("")
-		return false
+	for i, expected := range expectedColumns {
+		if actualCreateCommand.Columns[i] != expected {
+			t.Errorf("column %d: expected %+v, got %+v", i, expected, actualCreateCommand.Columns[i])
+			return false
+		}
 	}
 
 	if actualCreateCommand.IfNotExists != expectedIfNotExists {

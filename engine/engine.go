@@ -146,12 +146,13 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 	}
 
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
-	for i, columnName := range command.ColumnNames {
+	for _, columnDefinition := range command.Columns {
 		engine.Tables[command.Name.Token.Literal].Columns = append(engine.Tables[command.Name.Token.Literal].Columns,
 			&Column{
-				Type:   command.ColumnTypes[i],
-				Values: make([]ValueInterface, 0),
-				Name:   columnName,
+				Type:      columnDefinition.Type,
+				IsNotNull: columnDefinition.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      columnDefinition.Name,
 			})
 	}
 	return nil
@@ -168,7 +169,8 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		columnIndices[col.Name] = i
 	}
 
-	// Map changes to column indices
+	// Resolve all SET columns before checking WHERE/NOT NULL, so a missing column is always
+	// reported first, regardless of command.Changes' random map iteration order.
 	type change struct {
 		index int
 		value ast.Anonymitifier
@@ -187,6 +189,7 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
+	matchingRowIndices := make([]int, 0)
 	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
 			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
@@ -197,7 +200,18 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 				continue
 			}
 		}
+		matchingRowIndices = append(matchingRowIndices, rowIndex)
+	}
 
+	// Validate before mutating so a rejected UPDATE leaves the table untouched.
+	for _, change := range changes {
+		column := table.Columns[change.index]
+		if len(matchingRowIndices) > 0 && column.IsNotNull && change.value.GetToken().Type == token.NULL {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
+		}
+	}
+
+	for _, rowIndex := range matchingRowIndices {
 		for _, change := range changes {
 			val, err := getInterfaceValue(change.value.GetToken())
 			if err != nil {
@@ -227,11 +241,17 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		}
 	}
 
+	// Validate every value before appending so a rejected INSERT doesn't leave a partial row
+	interfaceValues := make([]ValueInterface, len(columns))
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
 		colValueType := command.Values[i].Type
 
-		if (expectedToken != colValueType) && (colValueType != token.NULL) {
+		if colValueType == token.NULL {
+			if columns[i].IsNotNull {
+				return &NullValueNotAllowedError{columnName: columns[i].Name, commandName: command.Token.Literal}
+			}
+		} else if expectedToken != colValueType {
 			return &InvalidValueTypeError{
 				expectedType: string(expectedToken),
 				actualType:   string(colValueType),
@@ -242,7 +262,10 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		if err != nil {
 			return err
 		}
-		columns[i].Values = append(columns[i].Values, interfaceValue)
+		interfaceValues[i] = interfaceValue
+	}
+	for i := range columns {
+		columns[i].Values = append(columns[i].Values, interfaceValues[i])
 	}
 	return nil
 }
@@ -276,7 +299,7 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 			if currentSpace.ContainsAggregateFunc() {
 				col.Name = fmt.Sprintf("%s(%s)", currentSpace.AggregateFunc.Literal,
 					currentSpace.ColumnName.Literal)
-				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace)
+				col.Type = evaluateColumnTypeOfAggregateFunc(currentSpace, columnType)
 				aggregatedValue, err := aggregateColumnContent(currentSpace, columnValues, columnType)
 				if err != nil {
 					return nil, err
@@ -285,7 +308,10 @@ func (engine *DbEngine) selectFromProvidedTable(command *ast.SelectCommand, tabl
 			} else {
 				col.Name = currentSpace.ColumnName.Literal
 				col.Type = columnType
-				col.Values = []ValueInterface{columnValues[0]}
+				col.Values = []ValueInterface{NullValue{}}
+				if len(columnValues) > 0 {
+					col.Values[0] = columnValues[0]
+				}
 			}
 			selectedTable.Columns = append(selectedTable.Columns, col)
 		}
@@ -312,10 +338,10 @@ func getSourceColumn(columnName string, columns []*Column) (*Column, error) {
 	return columnContent.Columns[0], nil
 }
 
-func evaluateColumnTypeOfAggregateFunc(space ast.Space) token.Token {
+func evaluateColumnTypeOfAggregateFunc(space ast.Space, columnType token.Token) token.Token {
 	if space.AggregateFunc.Type == token.MIN ||
 		space.AggregateFunc.Type == token.MAX {
-		return space.ColumnName
+		return columnType
 	}
 	return token.Token{Type: token.INT, Literal: "INT"}
 }
@@ -612,9 +638,10 @@ func getCopyOfTableWithoutRows(table *Table) *Table {
 	for _, column := range table.Columns {
 		filteredTable.Columns = append(filteredTable.Columns,
 			&Column{
-				Type:   column.Type,
-				Values: make([]ValueInterface, 0),
-				Name:   column.Name,
+				Type:      column.Type,
+				IsNotNull: column.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      column.Name,
 			})
 	}
 	return filteredTable

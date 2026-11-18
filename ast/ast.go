@@ -142,14 +142,23 @@ func (ls OperationExpression) GetIdentifiers() []Identifier {
 // CreateCommand - Part of Command that represent creation of table
 //
 // Example:
-// CREATE TABLE table1( one TEXT , two INT);
+// CREATE TABLE table1( one TEXT , two INT NOT NULL);
 // CREATE TABLE IF NOT EXISTS table1( one TEXT , two INT);
 type CreateCommand struct {
 	Token       token.Token
 	Name        Identifier // name of the table
-	ColumnNames []string
-	ColumnTypes []token.Token
+	Columns     []ColumnDefinition
 	IfNotExists bool
+}
+
+// ColumnDefinition - part of CreateCommand describing a single column and its constraints
+//
+// Example:
+// two INT NOT NULL
+type ColumnDefinition struct {
+	Name      string
+	Type      token.Token
+	IsNotNull bool
 }
 
 func (ls CreateCommand) CommandNode()         {}
