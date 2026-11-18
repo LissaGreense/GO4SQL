@@ -45,13 +45,14 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
-			_, exist := engine.Tables[mappedCommand.Name.GetToken().Literal]
+			tableName := mappedCommand.Name.GetToken().Literal
+			_, exist := engine.Tables[tableName]
 			if mappedCommand.IfNotExists && exist {
-				result += "Table '" + mappedCommand.Name.GetToken().Literal + "' already exists, skipped\n"
+				result += "Table '" + tableName + "' already exists, skipped\n"
 				continue
 			}
 			err = engine.createTable(mappedCommand)
-			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
+			result += "Table '" + tableName + "' has been created\n"
 			continue
 		case *ast.InsertCommand:
 			err = engine.insertIntoTable(mappedCommand)
@@ -70,13 +71,14 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
 		case *ast.DropCommand:
-			_, exist := engine.Tables[mappedCommand.Name.GetToken().Literal]
+			tableName := mappedCommand.Name.GetToken().Literal
+			_, exist := engine.Tables[tableName]
 			if mappedCommand.IfExists && !exist {
-				result += "Table '" + mappedCommand.Name.GetToken().Literal + "' doesn't exist, skipped\n"
+				result += "Table '" + tableName + "' doesn't exist, skipped\n"
 				continue
 			}
 			err = engine.dropTable(mappedCommand)
-			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
+			result += "Table '" + tableName + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
 			err = engine.updateTable(mappedCommand)
