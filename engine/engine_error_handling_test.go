@@ -105,11 +105,13 @@ func TestEngineFullJoinErrorHandling(t *testing.T) {
 	leftTableNotExist := TableDoesNotExistError{tableName: "leftTable"}
 	rightTableNotExist := TableDoesNotExistError{tableName: "rightTable"}
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "", columnName: "leftTable.two"}
+	invalidLikeOperandInJoin := InvalidLikeOperandError{actualType: token.INT, commandName: token.JOIN}
 
 	tests := []errorHandlingTestSuite{
 		{"CREATE TABLE rightTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", leftTableNotExist.Error()},
 		{"CREATE TABLE leftTable(one TEXT); SELECT leftTable.one, rightTable.one FROM leftTable JOIN rightTable ON leftTable.one EQUAL rightTable.one;", rightTableNotExist.Error()},
 		{"CREATE TABLE leftTable(one TEXT); CREATE TABLE rightTable(one TEXT); INSERT INTO leftTable VALUES('hi'); INSERT INTO rightTable VALUES('hi'); SELECT * FROM leftTable JOIN rightTable ON leftTable.two EQUAL rightTable.one;", columnDoesNotExist.Error()},
+		{"CREATE TABLE leftTable(id INT); CREATE TABLE rightTable(id INT); INSERT INTO leftTable VALUES(1); INSERT INTO rightTable VALUES(1); SELECT * FROM leftTable JOIN rightTable ON leftTable.id LIKE rightTable.id;", invalidLikeOperandInJoin.Error()},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)
