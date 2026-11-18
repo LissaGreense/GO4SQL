@@ -2,8 +2,8 @@ Table 'users' has been created
 Data Inserted
 Data Inserted
 Data Inserted
-Table: 'users' has been updated
-Table: 'users' has been updated
+Table 'users' has been updated
+Table 'users' has been updated
 +----+----------+
 | id | nickname |
 +----+----------+

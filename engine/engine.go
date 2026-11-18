@@ -72,15 +72,15 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.DropCommand:
 			_, exist := engine.Tables[mappedCommand.Name.GetToken().Literal]
 			if mappedCommand.IfExists && !exist {
-				result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' doesn't exist, skipped\n"
+				result += "Table '" + mappedCommand.Name.GetToken().Literal + "' doesn't exist, skipped\n"
 				continue
 			}
 			err = engine.dropTable(mappedCommand)
-			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
+			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
 			err = engine.updateTable(mappedCommand)
-			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
+			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
 			continue
 		default:
 			return "", &UnsupportedCommandTypeFromParserError{variable: fmt.Sprintf("%s", command)}
