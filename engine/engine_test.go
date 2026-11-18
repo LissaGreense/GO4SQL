@@ -449,6 +449,27 @@ func TestJoinOnLikeCondition(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+// TestSelectWithWhereLikeMatchesAcrossNewlines guards against a regression where % and _
+// failed to match text containing newlines, since Go's regexp "." excludes "\n" by default.
+func TestSelectWithWhereLikeMatchesAcrossNewlines(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE poems( title TEXT, verse TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO poems VALUES( 'Long', 'Roses are red\nviolets are blue' );",
+			"INSERT INTO poems VALUES( 'Short', 'Roses are red' );",
+		},
+		selectInput: "SELECT title FROM poems WHERE verse LIKE '%blue';",
+		expectedOutput: [][]string{
+			{"title"},
+			{"Long"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
 func TestSelectWithWhereLogicalOperationAnd(t *testing.T) {
 
 	engineTestSuite := engineTableContentTestSuite{

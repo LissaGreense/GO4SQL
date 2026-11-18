@@ -10,3 +10,12 @@ SELECT * FROM tbl WHERE email LIKE '%@example.com';
 SELECT * FROM tbl WHERE name LIKE 'J_ne';
 SELECT * FROM tbl WHERE name NOT LIKE 'J%';
 SELECT * FROM tbl WHERE name LIKE 'j%';
+
+CREATE TABLE poems( title TEXT, verse TEXT );
+
+INSERT INTO poems VALUES( 'Long', 'Roses are red
+violets are blue' );
+INSERT INTO poems VALUES( 'Short', 'Roses are red' );
+
+SELECT title FROM poems WHERE verse LIKE 'Roses%';
+SELECT title FROM poems WHERE verse LIKE '%blue';

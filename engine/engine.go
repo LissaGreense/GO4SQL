@@ -685,11 +685,12 @@ func likeOperandString(value ValueInterface, commandName string) (str string, is
 }
 
 // likePatternToRegex - Convert a SQL LIKE pattern into an anchored Go regular expression.
+// (?s) makes . match newlines too, so % and _ can match across multiline TEXT values.
 func likePatternToRegex(pattern string) string {
 	escaped := regexp.QuoteMeta(pattern)
 	escaped = strings.ReplaceAll(escaped, "%", ".*")
 	escaped = strings.ReplaceAll(escaped, "_", ".")
-	return "^" + escaped + "$"
+	return "(?s)^" + escaped + "$"
 }
 
 func processContainExpression(row map[string]ValueInterface, containExpression *ast.ContainExpression) (bool, error) {

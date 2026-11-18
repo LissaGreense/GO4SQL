@@ -30,3 +30,17 @@ Data Inserted
 | name | email |
 +------+-------+
 +------+-------+
+Table 'poems' has been created
+Data Inserted
+Data Inserted
++---------+
+|   title |
++---------+
+|  'Long' |
+| 'Short' |
++---------+
++--------+
+|  title |
++--------+
+| 'Long' |
++--------+
