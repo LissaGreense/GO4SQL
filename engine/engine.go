@@ -3,7 +3,7 @@ package engine
 import (
 	"fmt"
 	"maps"
-	"sort"
+	"slices"
 	"strconv"
 
 	"github.com/LissaGreense/GO4SQL/ast"
@@ -459,26 +459,18 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 
 	rows := MapTableToRows(table).rows
 
-	sort.Slice(rows, func(i, j int) bool {
-		howDeepWeSort := 0
-		sortingType := sortPatterns[howDeepWeSort].Order.Type
-		columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
-
-		for rows[i][columnToSort].IsEqual(rows[j][columnToSort]) {
-			howDeepWeSort++
-			sortingType = sortPatterns[howDeepWeSort].Order.Type
-
-			if howDeepWeSort >= len(orderByCommand.SortPatterns) {
-				return true
+	slices.SortStableFunc(rows, func(a, b map[string]ValueInterface) int {
+		for _, sortPattern := range sortPatterns {
+			columnToSort := sortPattern.ColumnName.Literal
+			c := compareValues(a[columnToSort], b[columnToSort])
+			if sortPattern.Order.Type == token.DESC {
+				c = -c
 			}
-			columnToSort = sortPatterns[howDeepWeSort].ColumnName.Literal
+			if c != 0 {
+				return c
+			}
 		}
-
-		if sortingType == token.DESC {
-			return rows[i][columnToSort].isGreaterThan(rows[j][columnToSort])
-		}
-
-		return rows[i][columnToSort].isSmallerThan(rows[j][columnToSort])
+		return 0
 	})
 
 	for _, row := range rows {
