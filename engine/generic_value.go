@@ -145,6 +145,20 @@ func (value NullValue) isGreaterThan(_ ValueInterface) bool {
 	return false
 }
 
+// compareValues returns -1 if first sorts before second, 0 if they are equal and
+// +1 otherwise, following the cmp.Compare convention. NULL sorts before every
+// other value.
+func compareValues(first ValueInterface, second ValueInterface) int {
+	switch {
+	case first.IsEqual(second):
+		return 0
+	case first.isSmallerThan(second):
+		return -1
+	default:
+		return 1
+	}
+}
+
 func areEqual(first ValueInterface, second ValueInterface) bool {
 	return first.GetType() == second.GetType() && first.ToString() == second.ToString()
 }

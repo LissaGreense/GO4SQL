@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -47,8 +47,14 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 		case *ast.JoinCommand:
 			continue
 		case *ast.CreateCommand:
+			tableName := mappedCommand.Name.GetToken().Literal
+			_, exist := engine.Tables[tableName]
+			if mappedCommand.IfNotExists && exist {
+				result += "Table '" + tableName + "' already exists, skipped\n"
+				continue
+			}
 			err = engine.createTable(mappedCommand)
-			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been created\n"
+			result += "Table '" + tableName + "' has been created\n"
 			continue
 		case *ast.InsertCommand:
 			err = engine.insertIntoTable(mappedCommand)
@@ -67,12 +73,18 @@ func (engine *DbEngine) Evaluate(sequences *ast.Sequence) (string, error) {
 			result += "Data from '" + mappedCommand.Name.GetToken().Literal + "' has been deleted\n"
 			continue
 		case *ast.DropCommand:
-			engine.dropTable(mappedCommand)
-			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been dropped\n"
+			tableName := mappedCommand.Name.GetToken().Literal
+			_, exist := engine.Tables[tableName]
+			if mappedCommand.IfExists && !exist {
+				result += "Table '" + tableName + "' doesn't exist, skipped\n"
+				continue
+			}
+			err = engine.dropTable(mappedCommand)
+			result += "Table '" + tableName + "' has been dropped\n"
 			continue
 		case *ast.UpdateCommand:
 			err = engine.updateTable(mappedCommand)
-			result += "Table: '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
+			result += "Table '" + mappedCommand.Name.GetToken().Literal + "' has been updated\n"
 			continue
 		default:
 			return "", &UnsupportedCommandTypeFromParserError{variable: fmt.Sprintf("%s", command)}
@@ -138,12 +150,13 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 	}
 
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
-	for i, columnName := range command.ColumnNames {
+	for _, columnDefinition := range command.Columns {
 		engine.Tables[command.Name.Token.Literal].Columns = append(engine.Tables[command.Name.Token.Literal].Columns,
 			&Column{
-				Type:   command.ColumnTypes[i],
-				Values: make([]ValueInterface, 0),
-				Name:   columnName,
+				Type:      columnDefinition.Type,
+				IsNotNull: columnDefinition.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      columnDefinition.Name,
 			})
 	}
 	return nil
@@ -160,7 +173,8 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		columnIndices[col.Name] = i
 	}
 
-	// Map changes to column indices
+	// Resolve all SET columns before checking WHERE/NOT NULL, so a missing column is always
+	// reported first, regardless of command.Changes' random map iteration order.
 	type change struct {
 		index int
 		value ast.Anonymitifier
@@ -179,6 +193,7 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
+	matchingRowIndices := make([]int, 0)
 	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
 			matches, err := isFulfillingFilters(getRow(table, rowIndex), command.WhereCommand.Expression, command.WhereCommand.Token.Literal)
@@ -189,7 +204,18 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 				continue
 			}
 		}
+		matchingRowIndices = append(matchingRowIndices, rowIndex)
+	}
 
+	// Validate before mutating so a rejected UPDATE leaves the table untouched.
+	for _, change := range changes {
+		column := table.Columns[change.index]
+		if len(matchingRowIndices) > 0 && column.IsNotNull && change.value.GetToken().Type == token.NULL {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
+		}
+	}
+
+	for _, rowIndex := range matchingRowIndices {
 		for _, change := range changes {
 			val, err := getInterfaceValue(change.value.GetToken())
 			if err != nil {
@@ -219,11 +245,17 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		}
 	}
 
+	// Validate every value before appending so a rejected INSERT doesn't leave a partial row
+	interfaceValues := make([]ValueInterface, len(columns))
 	for i := range columns {
 		expectedToken := tokenMapper(columns[i].Type.Type)
 		colValueType := command.Values[i].Type
 
-		if (expectedToken != colValueType) && (colValueType != token.NULL) {
+		if colValueType == token.NULL {
+			if columns[i].IsNotNull {
+				return &NullValueNotAllowedError{columnName: columns[i].Name, commandName: command.Token.Literal}
+			}
+		} else if expectedToken != colValueType {
 			return &InvalidValueTypeError{
 				expectedType: string(expectedToken),
 				actualType:   string(colValueType),
@@ -234,7 +266,10 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 		if err != nil {
 			return err
 		}
-		columns[i].Values = append(columns[i].Values, interfaceValue)
+		interfaceValues[i] = interfaceValue
+	}
+	for i := range columns {
+		columns[i].Values = append(columns[i].Values, interfaceValues[i])
 	}
 	return nil
 }
@@ -416,8 +451,15 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 }
 
 // dropTable - Drop table with given name
-func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) {
+func (engine *DbEngine) dropTable(dropCommand *ast.DropCommand) error {
+	_, exist := engine.Tables[dropCommand.Name.GetToken().Literal]
+
+	if !exist {
+		return &TableDoesNotExistError{dropCommand.Name.GetToken().Literal}
+	}
+
 	delete(engine.Tables, dropCommand.Name.GetToken().Literal)
+	return nil
 }
 
 func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table *Table, copyOfTable *Table, tableName string) (*Table, error) {
@@ -438,26 +480,18 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 
 	rows := MapTableToRows(table).rows
 
-	sort.Slice(rows, func(i, j int) bool {
-		howDeepWeSort := 0
-		sortingType := sortPatterns[howDeepWeSort].Order.Type
-		columnToSort := sortPatterns[howDeepWeSort].ColumnName.Literal
-
-		for rows[i][columnToSort].IsEqual(rows[j][columnToSort]) {
-			howDeepWeSort++
-			sortingType = sortPatterns[howDeepWeSort].Order.Type
-
-			if howDeepWeSort >= len(orderByCommand.SortPatterns) {
-				return true
+	slices.SortStableFunc(rows, func(a, b map[string]ValueInterface) int {
+		for _, sortPattern := range sortPatterns {
+			columnToSort := sortPattern.ColumnName.Literal
+			c := compareValues(a[columnToSort], b[columnToSort])
+			if sortPattern.Order.Type == token.DESC {
+				c = -c
 			}
-			columnToSort = sortPatterns[howDeepWeSort].ColumnName.Literal
+			if c != 0 {
+				return c
+			}
 		}
-
-		if sortingType == token.DESC {
-			return rows[i][columnToSort].isGreaterThan(rows[j][columnToSort])
-		}
-
-		return rows[i][columnToSort].isSmallerThan(rows[j][columnToSort])
+		return 0
 	})
 
 	for _, row := range rows {
@@ -600,9 +634,10 @@ func getCopyOfTableWithoutRows(table *Table) *Table {
 	for _, column := range table.Columns {
 		filteredTable.Columns = append(filteredTable.Columns,
 			&Column{
-				Type:   column.Type,
-				Values: make([]ValueInterface, 0),
-				Name:   column.Name,
+				Type:      column.Type,
+				IsNotNull: column.IsNotNull,
+				Values:    make([]ValueInterface, 0),
+				Name:      column.Name,
 			})
 	}
 	return filteredTable

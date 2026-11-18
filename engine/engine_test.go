@@ -41,6 +41,55 @@ func TestDrop(t *testing.T) {
 	simpleDropCase.runTestSuite(t)
 }
 
+func TestCreateIfNotExists(t *testing.T) {
+	// tb2 only exists if the first statement didn't error, since the suite ignores Evaluate's error.
+	createsMissingTableCase := engineDBContentTestSuite{
+		inputs: []string{
+			"CREATE TABLE IF NOT EXISTS tb1( one TEXT );",
+			"CREATE TABLE tb2( one TEXT );",
+		},
+		expectedTableNames: []string{"tb1", "tb2"},
+	}
+	createsMissingTableCase.runTestSuite(t)
+
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'hello', 1 );",
+			"CREATE TABLE IF NOT EXISTS tb1( other TEXT );",
+		},
+		selectInput: "SELECT * FROM tb1;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"hello", "1"},
+		},
+	}
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestDropIfExists(t *testing.T) {
+	dropsExistingTableCase := engineDBContentTestSuite{
+		inputs: []string{
+			"CREATE TABLE tb1( one TEXT );",
+			"DROP TABLE IF EXISTS tb1;",
+		},
+		expectedTableNames: []string{},
+	}
+	dropsExistingTableCase.runTestSuite(t)
+
+	// The suite ignores Evaluate's error, but an error here would abort the sequence before tb2 is created.
+	skipsMissingTableCase := engineDBContentTestSuite{
+		inputs: []string{
+			"DROP TABLE IF EXISTS tb1;",
+			"CREATE TABLE tb2( one TEXT );",
+		},
+		expectedTableNames: []string{"tb2"},
+	}
+	skipsMissingTableCase.runTestSuite(t)
+}
+
 func TestSelectCommand(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
@@ -800,6 +849,83 @@ func TestUpdateWithWhere(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+func TestCreateWithNotNullColumn(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine, "CREATE TABLE users( id INT NOT NULL, nickname TEXT );")
+
+	columns := engine.Tables["users"].Columns
+	if !columns[0].IsNotNull {
+		t.Errorf("expected column %s to be NOT NULL", columns[0].Name)
+	}
+	if columns[1].IsNotNull {
+		t.Errorf("expected column %s to be nullable", columns[1].Name)
+	}
+}
+
+func TestNotNullColumnAcceptsValuesAndNullableColumnAcceptsNull(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE users( id INT NOT NULL, nickname TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO users VALUES( 1, 'kate' );",
+			"INSERT INTO users VALUES( 2, NULL );",
+			"UPDATE users SET nickname TO NULL WHERE id EQUAL 1;",
+			"UPDATE users SET id TO NULL WHERE id EQUAL 3;",
+			"UPDATE users SET id TO 5 WHERE id EQUAL 2;",
+		},
+		selectInput: "SELECT * FROM users;",
+		expectedOutput: [][]string{
+			{"id", "nickname"},
+			{"1", "NULL"},
+			{"5", "NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestRejectedNotNullCommandsLeaveTableUnchanged(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine,
+		"CREATE TABLE users( nickname TEXT, id INT NOT NULL );",
+		"INSERT INTO users VALUES( 'kate', 1 );",
+	)
+
+	for _, input := range []string{
+		"INSERT INTO users VALUES( 'bob', NULL );",
+		"UPDATE users SET nickname TO 'changed', id TO NULL;",
+	} {
+		sequences, err := parser.New(lexer.RunLexer(input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error: %s", err)
+		}
+		if _, err := engine.Evaluate(sequences); err == nil {
+			t.Fatalf("expected error for %q", input)
+		}
+	}
+
+	columns := engine.Tables["users"].Columns
+	if len(columns[0].Values) != 1 || len(columns[1].Values) != 1 {
+		t.Fatalf("expected 1 row in each column, got %d and %d", len(columns[0].Values), len(columns[1].Values))
+	}
+	if columns[0].Values[0].ToString() != "kate" || columns[1].Values[0].ToString() != "1" {
+		t.Fatalf("expected row (kate, 1), got (%s, %s)", columns[0].Values[0].ToString(), columns[1].Values[0].ToString())
+	}
+}
+
+func evaluateInputs(t *testing.T, engine *DbEngine, inputs ...string) {
+	for _, input := range inputs {
+		sequences, err := parser.New(lexer.RunLexer(input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error for %q: %s", input, err)
+		}
+		if _, err := engine.Evaluate(sequences); err != nil {
+			t.Fatalf("engine error for %q: %s", input, err)
+		}
+	}
+}
+
 func TestUpdateWithoutWhere(t *testing.T) {
 	engineTestSuite := engineTableContentTestSuite{
 		createInputs: []string{
@@ -884,6 +1010,232 @@ func TestOrderByWithMultipleSorts(t *testing.T) {
 			{"sorry"},
 			{"goodbye"},
 			{"hello"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedSortColumnAsc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', 1 );",
+			"INSERT INTO tb1 VALUES( 'c', 2 );",
+			"INSERT INTO tb1 VALUES( 'd', 1 );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"b", "1"},
+			{"d", "1"},
+			{"a", "2"},
+			{"c", "2"},
+			{"e", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedSortColumnDesc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', 1 );",
+			"INSERT INTO tb1 VALUES( 'c', 2 );",
+			"INSERT INTO tb1 VALUES( 'd', 1 );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two DESC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"e", "3"},
+			{"a", "2"},
+			{"c", "2"},
+			{"b", "1"},
+			{"d", "1"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTieBrokenByLaterColumn(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, three INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2, 10, 'x' );",
+			"INSERT INTO tb1 VALUES( 'b', 1, 10, 'y' );",
+			"INSERT INTO tb1 VALUES( 'c', 1, 20, 'x' );",
+			"INSERT INTO tb1 VALUES( 'd', 2, 20, 'x' );",
+			"INSERT INTO tb1 VALUES( 'e', 1, 10, 'x' );",
+		},
+		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, three DESC, four ASC;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"c"},
+			{"e"},
+			{"b"},
+			{"d"},
+			{"a"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedOnAllSortColumns(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT, four TEXT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'first',  1, 'x' );",
+			"INSERT INTO tb1 VALUES( 'second', 2, 'x' );",
+			"INSERT INTO tb1 VALUES( 'third',  1, 'x' );",
+			"INSERT INTO tb1 VALUES( 'fourth', 1, 'y' );",
+			"INSERT INTO tb1 VALUES( 'fifth',  2, 'x' );",
+		},
+		selectInput: "SELECT one FROM tb1 ORDER BY two ASC, four DESC;",
+		expectedOutput: [][]string{
+			{"one"},
+			{"fourth"},
+			{"first"},
+			{"third"},
+			{"second"},
+			{"fifth"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedNullsAsc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', NULL );",
+			"INSERT INTO tb1 VALUES( 'c', 1 );",
+			"INSERT INTO tb1 VALUES( 'd', NULL );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+			"INSERT INTO tb1 VALUES( 'f', NULL );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"b", "NULL"},
+			{"d", "NULL"},
+			{"f", "NULL"},
+			{"c", "1"},
+			{"a", "2"},
+			{"e", "3"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+func TestOrderByTiedNullsDesc(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'a', 2 );",
+			"INSERT INTO tb1 VALUES( 'b', NULL );",
+			"INSERT INTO tb1 VALUES( 'c', 1 );",
+			"INSERT INTO tb1 VALUES( 'd', NULL );",
+			"INSERT INTO tb1 VALUES( 'e', 3 );",
+			"INSERT INTO tb1 VALUES( 'f', NULL );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two DESC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"e", "3"},
+			{"a", "2"},
+			{"c", "1"},
+			{"b", "NULL"},
+			{"d", "NULL"},
+			{"f", "NULL"},
+		},
+	}
+
+	engineTestSuite.runTestSuite(t)
+}
+
+// slices.SortFunc falls back to a stable insertion sort at 12 elements or fewer,
+// so this fixture must stay larger than that or an unstable sort would pass too.
+func TestOrderByKeepsInsertionOrderWithinTies(t *testing.T) {
+	engineTestSuite := engineTableContentTestSuite{
+		createInputs: []string{
+			"CREATE TABLE tb1( one TEXT, two INT );",
+		},
+		insertAndDeleteInputs: []string{
+			"INSERT INTO tb1 VALUES( 'r01', 2 );",
+			"INSERT INTO tb1 VALUES( 'r02', 3 );",
+			"INSERT INTO tb1 VALUES( 'r03', 1 );",
+			"INSERT INTO tb1 VALUES( 'r04', 2 );",
+			"INSERT INTO tb1 VALUES( 'r05', 3 );",
+			"INSERT INTO tb1 VALUES( 'r06', 1 );",
+			"INSERT INTO tb1 VALUES( 'r07', 2 );",
+			"INSERT INTO tb1 VALUES( 'r08', 3 );",
+			"INSERT INTO tb1 VALUES( 'r09', 1 );",
+			"INSERT INTO tb1 VALUES( 'r10', 2 );",
+			"INSERT INTO tb1 VALUES( 'r11', 3 );",
+			"INSERT INTO tb1 VALUES( 'r12', 1 );",
+			"INSERT INTO tb1 VALUES( 'r13', 2 );",
+			"INSERT INTO tb1 VALUES( 'r14', 3 );",
+			"INSERT INTO tb1 VALUES( 'r15', 1 );",
+			"INSERT INTO tb1 VALUES( 'r16', 2 );",
+			"INSERT INTO tb1 VALUES( 'r17', 3 );",
+			"INSERT INTO tb1 VALUES( 'r18', 1 );",
+			"INSERT INTO tb1 VALUES( 'r19', 2 );",
+			"INSERT INTO tb1 VALUES( 'r20', 3 );",
+			"INSERT INTO tb1 VALUES( 'r21', 1 );",
+			"INSERT INTO tb1 VALUES( 'r22', 2 );",
+			"INSERT INTO tb1 VALUES( 'r23', 3 );",
+			"INSERT INTO tb1 VALUES( 'r24', 1 );",
+		},
+		selectInput: "SELECT one, two FROM tb1 ORDER BY two ASC;",
+		expectedOutput: [][]string{
+			{"one", "two"},
+			{"r03", "1"},
+			{"r06", "1"},
+			{"r09", "1"},
+			{"r12", "1"},
+			{"r15", "1"},
+			{"r18", "1"},
+			{"r21", "1"},
+			{"r24", "1"},
+			{"r01", "2"},
+			{"r04", "2"},
+			{"r07", "2"},
+			{"r10", "2"},
+			{"r13", "2"},
+			{"r16", "2"},
+			{"r19", "2"},
+			{"r22", "2"},
+			{"r02", "3"},
+			{"r05", "3"},
+			{"r08", "3"},
+			{"r11", "3"},
+			{"r14", "3"},
+			{"r17", "3"},
+			{"r20", "3"},
+			{"r23", "3"},
 		},
 	}
 

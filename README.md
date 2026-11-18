@@ -73,8 +73,9 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   while using **CREATE** command. In general every digit-only value is interpreted as this type.
 + **NULL Type** - columns can't be assigned that type, but it can be used with **INSERT INTO**,
   **UPDATE**, and inside **WHERE** statements, also it can be a product of **JOIN** commands
-  (besides **FULL JOIN**). In GO4SQL NULL is the smallest possible value, what means it can be
-  compared with other types with **EQUAL** and **NOT** statements.
+  (besides **FULL JOIN**). Columns accept NULL by default, unless they are declared with the
+  **NOT NULL** constraint in **CREATE TABLE**. In GO4SQL NULL is the smallest possible value, what
+  means it can be compared with other types with **EQUAL** and **NOT** statements.
 
 ## FUNCTIONALITY
 
@@ -85,6 +86,18 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ```
   First column is called ``one`` and it contains strings (keyword ``TEXT``), second
   one is called ``two`` and it contains integers (keyword ``INT``).
+  Creating a table that already exists is an error, unless you add ``IF NOT EXISTS``:
+  ```sql
+  CREATE TABLE IF NOT EXISTS table1( one TEXT , two INT);
+  ```
+  In that case the command is skipped and the existing table with its data stays unchanged.
+
+  A column can be declared with the ``NOT NULL`` constraint, so it must always have a value:
+  ```sql
+  CREATE TABLE users( id INT NOT NULL, nickname TEXT );
+  ```
+  Here ``id`` can't be ``NULL``, while ``nickname`` can. **INSERT INTO** or **UPDATE** that would
+  store ``NULL`` in a ``NOT NULL`` column fails with an error and leaves the table unchanged.
 
 * ***DROP TABLE*** - you can destroy the table of name ``table1`` using
   command:
@@ -93,6 +106,11 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ```
   After using this command table1 will no longer be available and all data connected to it (column
   definitions and inserted values) will be lost.
+  Dropping a table that doesn't exist is an error, unless you add ``IF EXISTS``:
+  ```sql
+  DROP TABLE IF EXISTS table1;
+  ```
+  In that case the command is skipped.
 
 
 * ***INSERT INTO*** - you can insert values into table called ``table1`` with
