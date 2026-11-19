@@ -787,9 +787,9 @@ func processContainExpression(row map[string]ValueInterface, containExpression *
 
 func ifValueInterfaceInArray(array []ast.Anonymitifier, valueLeft ValueInterface) (bool, error) {
 	for _, expectedValue := range array {
-		value, err := getInterfaceValue(expectedValue.Token)
-		if err != nil {
-			return false, err
+		value, ok := literalValue(expectedValue.Token)
+		if !ok {
+			return false, &UnsupportedValueType{expectedValue.Token.Literal}
 		}
 		if value.IsEqual(valueLeft) {
 			return true, nil
@@ -838,7 +838,11 @@ func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInte
 		}
 		return value, nil
 	case ast.Anonymitifier:
-		return getInterfaceValue(mappedTifier.GetToken())
+		value, ok := literalValue(mappedTifier.GetToken())
+		if !ok {
+			return nil, &UnsupportedValueType{mappedTifier.GetToken().Literal}
+		}
+		return value, nil
 	default:
 		return nil, &UnsupportedValueType{tifier.GetToken().Literal}
 	}

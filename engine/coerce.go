@@ -68,3 +68,10 @@ func inferTarget(t token.Token) SupportedTypes {
 		return StringType
 	}
 }
+
+// literalValue converts a filter literal for row evaluation. Inferring its type is safe only
+// because checkFilter already proved it matches what it is compared against. Trip-wire: 5 against
+// a future FLOAT column would pass the check, infer Int, and silently never match.
+func literalValue(t token.Token) (ValueInterface, bool) {
+	return coerce(t, inferTarget(t))
+}
