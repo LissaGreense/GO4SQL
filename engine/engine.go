@@ -117,7 +117,7 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 	// empty-table early return can skip it.
 	if selectCommand.HasWhereCommand() {
 		whereCommand := selectCommand.WhereCommand
-		err = engine.checkFilter(whereCommand.Expression, table, selectCommand.Name.Token.Literal, whereCommand.Token.Literal)
+		err = checkFilter(whereCommand.Expression, table, selectCommand.Name.Token.Literal, whereCommand.Token.Literal)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +237,7 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 	}
 
 	if command.HasWhereCommand() {
-		err := engine.checkFilter(command.WhereCommand.Expression, table, command.Name.Token.Literal, command.WhereCommand.Token.Literal)
+		err := checkFilter(command.WhereCommand.Expression, table, command.Name.Token.Literal, command.WhereCommand.Token.Literal)
 		if err != nil {
 			return err
 		}
@@ -471,7 +471,7 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 		return &TableDoesNotExistError{deleteCommand.Name.Token.Literal}
 	}
 
-	err := engine.checkFilter(whereCommand.Expression, table, deleteCommand.Name.Token.Literal, whereCommand.Token.Literal)
+	err := checkFilter(whereCommand.Expression, table, deleteCommand.Name.Token.Literal, whereCommand.Token.Literal)
 	if err != nil {
 		return err
 	}
@@ -506,12 +506,8 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 		columnNames = append(columnNames, sortPattern.ColumnName.Literal)
 	}
 
-	missingColName := engine.getMissingColumnName(columnNames, table)
-	if missingColName != "" {
-		return nil, &ColumnDoesNotExistError{
-			tableName:  tableName,
-			columnName: missingColName,
-		}
+	if err := checkColumnsExist(columnNames, table, tableName); err != nil {
+		return nil, err
 	}
 
 	rows := MapTableToRows(table).rows
@@ -539,22 +535,6 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 	return copyOfTable, nil
 }
 
-func (engine *DbEngine) getMissingColumnName(columnNames []string, table *Table) string {
-	for _, columnName := range columnNames {
-		exists := false
-		for _, column := range table.Columns {
-			if column.Name == columnName {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			return columnName
-		}
-	}
-	return ""
-}
-
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool, tableName string) (*Table, error) {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
@@ -563,9 +543,8 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 	for _, identifier := range identifiers {
 		columnNames = append(columnNames, identifier.Token.Literal)
 	}
-	missingColumnName := engine.getMissingColumnName(columnNames, table)
-	if missingColumnName != "" {
-		return nil, &ColumnDoesNotExistError{tableName: tableName, columnName: missingColumnName}
+	if err := checkColumnsExist(columnNames, table, tableName); err != nil {
+		return nil, err
 	}
 
 	for _, row := range MapTableToRows(table).rows {
@@ -604,7 +583,7 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 	addColumnsWithPrefix(joinedTable, rightTable.Columns, rightTablePrefix)
 
 	// The empty table name keeps the missing-column error a JOIN ON has always reported.
-	err := engine.checkFilter(joinCommand.Expression, joinedTable, "", joinCommand.Token.Literal)
+	err := checkFilter(joinCommand.Expression, joinedTable, "", joinCommand.Token.Literal)
 	if err != nil {
 		return nil, err
 	}

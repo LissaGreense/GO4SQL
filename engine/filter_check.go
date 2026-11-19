@@ -13,14 +13,13 @@ import (
 //
 // Missing columns are reported before type errors. Unknown conditions, operations and expression
 // types fail closed with the same errors row evaluation would raise.
-func (engine *DbEngine) checkFilter(expression ast.Expression, table *Table, tableName string, commandName string) error {
+func checkFilter(expression ast.Expression, table *Table, tableName string, commandName string) error {
 	columnNames := make([]string, 0)
 	for _, identifier := range expression.GetIdentifiers() {
 		columnNames = append(columnNames, identifier.Token.Literal)
 	}
-	missingColumnName := engine.getMissingColumnName(columnNames, table)
-	if missingColumnName != "" {
-		return &ColumnDoesNotExistError{tableName: tableName, columnName: missingColumnName}
+	if err := checkColumnsExist(columnNames, table, tableName); err != nil {
+		return err
 	}
 
 	return checkTypes(expression, table, commandName)
@@ -127,6 +126,16 @@ func tifierColumn(tifier ast.Tifier, table *Table) *Column {
 		return nil
 	}
 	return findColumn(tifier.GetToken().Literal, table)
+}
+
+// checkColumnsExist reports the first name, in order, that table has no column for.
+func checkColumnsExist(columnNames []string, table *Table, tableName string) error {
+	for _, columnName := range columnNames {
+		if findColumn(columnName, table) == nil {
+			return &ColumnDoesNotExistError{tableName: tableName, columnName: columnName}
+		}
+	}
+	return nil
 }
 
 func findColumn(name string, table *Table) *Column {

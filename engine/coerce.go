@@ -7,8 +7,7 @@ import (
 )
 
 // coerce converts a value token to the target type. ok=true means the value is of the
-// target type or NULL; NOT NULL is the caller's concern. It never panics or builds
-// errors, so every caller can word its own error.
+// target type or NULL. NOT NULL and the error wording are the caller's concern.
 func coerce(t token.Token, target SupportedTypes) (ValueInterface, bool) {
 	if t.Type == token.NULL {
 		return NullValue{}, true

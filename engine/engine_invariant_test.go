@@ -223,6 +223,7 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 	// so a per-row check alone would let these DELETEs wipe the table.
 	filterRows := []string{"CREATE TABLE t( a INT, b TEXT );", "INSERT INTO t VALUES( 1, 'x' );", "INSERT INTO t VALUES( 2, 'y' );"}
 	emptyTable := []string{"CREATE TABLE t( a INT, b TEXT );"}
+	joinRows := []string{"CREATE TABLE t( a INT, b TEXT );", "INSERT INTO t VALUES( 1, 'x' );", "INSERT INTO t VALUES( 2, 'y' );", "CREATE TABLE u( d TEXT );"}
 	tests = append(tests,
 		badStatement{"DELETE NOT decimal on INT", filterRows, "DELETE FROM t WHERE a NOT 3.14;"},
 		badStatement{"DELETE NOT string on INT", filterRows, "DELETE FROM t WHERE a NOT 'abc';"},
@@ -234,7 +235,7 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 		badStatement{"UPDATE missing column on skipped OR side", filterRows, "UPDATE t SET a TO 9 WHERE a EQUAL 1 OR nope EQUAL 2;"},
 		badStatement{"UPDATE NOTIN decimal AND TRUE", filterRows, "UPDATE t SET a TO 9 WHERE a NOTIN (3.14) AND TRUE;"},
 		badStatement{"UPDATE LIKE on INT OR TRUE", filterRows, "UPDATE t SET b TO 'z' WHERE a LIKE '1%' OR TRUE;"},
-		badStatement{"LEFT JOIN ON LIKE on INT with empty right table", append(filterRows, "CREATE TABLE u( d TEXT );"), "SELECT * FROM t LEFT JOIN u ON t.a LIKE u.d;"},
+		badStatement{"LEFT JOIN ON LIKE on INT with empty right table", joinRows, "SELECT * FROM t LEFT JOIN u ON t.a LIKE u.d;"},
 	)
 
 	for _, test := range tests {
@@ -299,6 +300,11 @@ func TestQueriesAreCorrectAfterRejectedUpdates(t *testing.T) {
 		result, err := engine.getSelectResponse(sequence.Commands[0].(*ast.SelectCommand))
 		if err != nil {
 			t.Fatalf("engine error for %q: %s", query.input, err)
+		}
+		for _, column := range result.Columns {
+			if len(column.Values) != len(query.expected) {
+				t.Fatalf("%q column %s: want %d rows, got %d", query.input, column.Name, len(query.expected), len(column.Values))
+			}
 		}
 		for rowIndex, row := range query.expected {
 			for columnIndex, want := range row {

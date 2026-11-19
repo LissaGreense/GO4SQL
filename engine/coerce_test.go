@@ -40,6 +40,9 @@ func TestCoerce(t *testing.T) {
 		{overflow, NullType, nil, false},
 		{str, NullType, nil, false},
 		{asterisk, NullType, nil, false},
+
+		{null, SupportedTypes(99), NullValue{}, true},
+		{integer, SupportedTypes(99), nil, false},
 	}
 
 	for _, test := range tests {
