@@ -236,6 +236,13 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		}
 	}
 
+	if command.HasWhereCommand() {
+		err := engine.checkFilter(command.WhereCommand.Expression, table, command.Name.Token.Literal, command.WhereCommand.Token.Literal)
+		if err != nil {
+			return err
+		}
+	}
+
 	matchingRowIndices := make([]int, 0)
 	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
@@ -595,6 +602,12 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 
 	addColumnsWithPrefix(joinedTable, leftTable.Columns, leftTablePrefix)
 	addColumnsWithPrefix(joinedTable, rightTable.Columns, rightTablePrefix)
+
+	// The empty table name keeps the missing-column error a JOIN ON has always reported.
+	err := engine.checkFilter(joinCommand.Expression, joinedTable, "", joinCommand.Token.Literal)
+	if err != nil {
+		return nil, err
+	}
 
 	leftTableWithAddedPrefix := leftTable.getTableCopyWithAddedPrefixToColumnNames(leftTablePrefix)
 	rightTableWithAddedPrefix := rightTable.getTableCopyWithAddedPrefixToColumnNames(rightTablePrefix)

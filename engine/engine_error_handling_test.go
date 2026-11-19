@@ -362,3 +362,77 @@ func TestEngineWhereOnProjectedColumnIsMissingWhenRowsExist(t *testing.T) {
 
 	runEngineErrorHandlingSuite(t, tests)
 }
+
+// TestEngineUpdateFilterErrorsAreDecidedBeforeRowsAreRead - UPDATE's WHERE error depends only on
+// the statement and the schema, so it must surface whether the scan would see no rows, no
+// matching rows, or rows that let OR/AND skip the bad side.
+func TestEngineUpdateFilterErrorsAreDecidedBeforeRowsAreRead(t *testing.T) {
+	setup := "CREATE TABLE tbl(one TEXT, two INT);"
+	rowsByContext := []struct {
+		name string
+		rows string
+		wrap string
+	}{
+		{"empty table", "", "%s"},
+		{"no-match table", "INSERT INTO tbl VALUES('a', 1);", "one EQUAL 'b' AND %s"},
+		{"skipped OR side", "INSERT INTO tbl VALUES('a', 1);", "one EQUAL 'a' OR %s"},
+	}
+	badFilters := []struct {
+		filter        string
+		expectedError string
+	}{
+		{"two EQUAL 'abc'", "invalid value type provided in WHERE command, expecting: INT, got: 'abc'"},
+		{"two NOTIN (3.14)", "invalid value type provided in WHERE command, expecting: INT, got: 3.14"},
+		{"one EQUAL two", "invalid value type provided in WHERE command, expecting: TEXT, got: INT"},
+		{"two LIKE '1%'", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"one NOT LIKE 5", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"nope EQUAL 1", "column with the name of nope doesn't exist in table tbl"},
+	}
+
+	var tests []errorHandlingTestSuite
+	for _, context := range rowsByContext {
+		for _, bad := range badFilters {
+			filter := fmt.Sprintf(context.wrap, bad.filter)
+			tests = append(tests, errorHandlingTestSuite{setup + context.rows + "UPDATE tbl SET one TO 'z' WHERE " + filter + ";", bad.expectedError})
+		}
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineJoinOnErrorsAreDecidedBeforeRowsAreRead - JOIN ON is checked against the joined
+// table's prefixed columns, so it errors even when either side has no rows. Every join kind
+// reports JOIN, and a missing column keeps the empty table name pinned by the JOIN suite above.
+func TestEngineJoinOnErrorsAreDecidedBeforeRowsAreRead(t *testing.T) {
+	create := "CREATE TABLE a(id INT); CREATE TABLE b(id INT, name TEXT);"
+	rowsByContext := []struct {
+		name string
+		rows string
+	}{
+		{"both empty", ""},
+		{"left empty", "INSERT INTO b VALUES(1, 'x');"},
+		{"right empty", "INSERT INTO a VALUES(1);"},
+		{"both populated", "INSERT INTO a VALUES(1); INSERT INTO b VALUES(1, 'x');"},
+	}
+	joinKinds := []string{"JOIN", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN"}
+	badFilters := []struct {
+		filter        string
+		expectedError string
+	}{
+		{"a.id EQUAL b.name", "invalid value type provided in JOIN command, expecting: INT, got: TEXT"},
+		{"a.id LIKE b.name", "invalid operand type provided in JOIN command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"b.name LIKE a.id", "invalid operand type provided in JOIN command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"a.nope EQUAL b.id", "column with the name of a.nope doesn't exist in table "},
+	}
+
+	var tests []errorHandlingTestSuite
+	for _, context := range rowsByContext {
+		for _, joinKind := range joinKinds {
+			for _, bad := range badFilters {
+				tests = append(tests, errorHandlingTestSuite{create + context.rows + "SELECT * FROM a " + joinKind + " b ON " + bad.filter + ";", bad.expectedError})
+			}
+		}
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}

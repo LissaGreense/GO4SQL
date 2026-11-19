@@ -231,6 +231,10 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 		badStatement{"DELETE NOT LIKE on INT OR TRUE", filterRows, "DELETE FROM t WHERE a NOT LIKE '5%' OR TRUE;"},
 		badStatement{"SELECT LIKE on INT column of empty table", emptyTable, "SELECT * FROM t WHERE a LIKE '1%';"},
 		badStatement{"SELECT literal LIKE INT column of empty table", emptyTable, "SELECT * FROM t WHERE '5' LIKE a;"},
+		badStatement{"UPDATE missing column on skipped OR side", filterRows, "UPDATE t SET a TO 9 WHERE a EQUAL 1 OR nope EQUAL 2;"},
+		badStatement{"UPDATE NOTIN decimal AND TRUE", filterRows, "UPDATE t SET a TO 9 WHERE a NOTIN (3.14) AND TRUE;"},
+		badStatement{"UPDATE LIKE on INT OR TRUE", filterRows, "UPDATE t SET b TO 'z' WHERE a LIKE '1%' OR TRUE;"},
+		badStatement{"LEFT JOIN ON LIKE on INT with empty right table", append(filterRows, "CREATE TABLE u( d TEXT );"), "SELECT * FROM t LEFT JOIN u ON t.a LIKE u.d;"},
 	)
 
 	for _, test := range tests {
