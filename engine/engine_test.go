@@ -778,6 +778,52 @@ func TestSelectWithWhereEqualToFalse(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+// TestFilterTypeCheckAcceptsNullAndMatchingTypes - NULL fits every type (ADR 0002), so the
+// pre-scan check must let these through and leave row evaluation to decide the result.
+func TestFilterTypeCheckAcceptsNullAndMatchingTypes(t *testing.T) {
+	create := []string{"CREATE TABLE tb1( one TEXT, two INT );"}
+	rows := []string{
+		"INSERT INTO tb1 VALUES( 'a', 1 );",
+		"INSERT INTO tb1 VALUES( 'b', NULL );",
+		"INSERT INTO tb1 VALUES( 'c', 3 );",
+	}
+	header := []string{"one", "two"}
+
+	tests := []struct {
+		name           string
+		selectInput    string
+		expectedOutput [][]string
+	}{
+		{"column EQUAL NULL", "SELECT * FROM tb1 WHERE two EQUAL NULL;", [][]string{header, {"b", "NULL"}}},
+		{"NULL row values against a literal", "SELECT * FROM tb1 WHERE two EQUAL 3;", [][]string{header, {"c", "3"}}},
+		{"NULL in an IN list", "SELECT * FROM tb1 WHERE one IN ('a', NULL, 'c');", [][]string{header, {"a", "1"}, {"c", "3"}}},
+		{"literal NOT NULL", "SELECT * FROM tb1 WHERE 'x' NOT NULL;", [][]string{header, {"a", "1"}, {"b", "NULL"}, {"c", "3"}}},
+		{"TEXT column NOT quoted symbol", "SELECT * FROM tb1 WHERE one NOT '*';", [][]string{header, {"a", "1"}, {"b", "NULL"}, {"c", "3"}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			suite := engineTableContentTestSuite{
+				createInputs:          create,
+				insertAndDeleteInputs: rows,
+				selectInput:           test.selectInput,
+				expectedOutput:        test.expectedOutput,
+			}
+			suite.runTestSuite(t)
+		})
+	}
+}
+
+// TestWhereOnProjectedColumnSucceedsOnEmptyTable - the empty-table half of the accepted ORDER BY
+// projection exception (#65); the rows half is pinned in TestEngineWhereOnProjectedColumnIsMissingWhenRowsExist.
+func TestWhereOnProjectedColumnSucceedsOnEmptyTable(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine,
+		"CREATE TABLE tbl( one TEXT, two INT );",
+		"SELECT one FROM tbl WHERE two EQUAL 1 ORDER BY one ASC;",
+	)
+}
+
 func TestDistinctSelect(t *testing.T) {
 
 	engineTestSuite := engineTableContentTestSuite{

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"github.com/LissaGreense/GO4SQL/lexer"
 	"github.com/LissaGreense/GO4SQL/parser"
 	"github.com/LissaGreense/GO4SQL/token"
@@ -269,4 +270,95 @@ func getErrorMessage(t *testing.T, input string, testIndex int) string {
 	}
 
 	return engineError.Error()
+}
+
+// TestEngineFilterErrorsAreDecidedBeforeRowsAreRead - a filter error depends only on the statement
+// and the schema, so it must surface whatever rows the scan would see: none, only NULLs, or rows
+// that let OR/AND skip the bad side.
+func TestEngineFilterErrorsAreDecidedBeforeRowsAreRead(t *testing.T) {
+	setup := "CREATE TABLE tbl(one TEXT, two INT);"
+	rowsByContext := []struct {
+		name string
+		rows string
+		wrap string
+	}{
+		{"empty table", "", "%s"},
+		{"all-NULL column", "INSERT INTO tbl VALUES(NULL, NULL);", "%s"},
+		{"skipped OR side", "INSERT INTO tbl VALUES('a', 1);", "one EQUAL 'a' OR %s"},
+		{"skipped AND side", "INSERT INTO tbl VALUES('a', 1);", "one EQUAL 'b' AND %s"},
+	}
+	badFilters := []struct {
+		filter        string
+		expectedError string
+	}{
+		{"two EQUAL 'abc'", "invalid value type provided in WHERE command, expecting: INT, got: 'abc'"},
+		{"two NOT 3.14", "invalid value type provided in WHERE command, expecting: INT, got: 3.14"},
+		{"one NOT 5", "invalid value type provided in WHERE command, expecting: TEXT, got: 5"},
+		{"'5' EQUAL two", "invalid value type provided in WHERE command, expecting: INT, got: '5'"},
+		{"one EQUAL two", "invalid value type provided in WHERE command, expecting: TEXT, got: INT"},
+		{"'x' EQUAL 5", "invalid value type provided in WHERE command, expecting: TEXT, got: 5"},
+		{"two IN (1, 'x')", "invalid value type provided in WHERE command, expecting: INT, got: 'x'"},
+		{"two NOTIN (3.14)", "invalid value type provided in WHERE command, expecting: INT, got: 3.14"},
+		{"one IN ('a', 5)", "invalid value type provided in WHERE command, expecting: TEXT, got: 5"},
+		{"two LIKE '1%'", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"two NOT LIKE '1%'", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"two LIKE NULL", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"'5' LIKE two", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"one LIKE 5", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{"nope EQUAL 1", "column with the name of nope doesn't exist in table tbl"},
+	}
+
+	var tests []errorHandlingTestSuite
+	for _, context := range rowsByContext {
+		for _, bad := range badFilters {
+			filter := fmt.Sprintf(context.wrap, bad.filter)
+			tests = append(tests,
+				errorHandlingTestSuite{setup + context.rows + "SELECT * FROM tbl WHERE " + filter + ";", bad.expectedError},
+				errorHandlingTestSuite{setup + context.rows + "DELETE FROM tbl WHERE " + filter + ";", bad.expectedError},
+			)
+		}
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineJoinWhereErrorsAreDecidedBeforeRowsAreRead - WHERE on a join is checked against the
+// joined table's prefixed columns, and names the SELECT's table on a missing column.
+func TestEngineJoinWhereErrorsAreDecidedBeforeRowsAreRead(t *testing.T) {
+	setup := "CREATE TABLE a(id INT); CREATE TABLE b(id INT, name TEXT);"
+	join := "SELECT * FROM a JOIN b ON a.id EQUAL b.id WHERE "
+
+	tests := []errorHandlingTestSuite{
+		{setup + join + "b.name EQUAL 5;", "invalid value type provided in WHERE command, expecting: TEXT, got: 5"},
+		{setup + join + "a.id LIKE 'x%';", "invalid operand type provided in WHERE command for LIKE, expecting: TEXT or NULL, got: INT"},
+		{setup + join + "a.id EQUAL b.name;", "invalid value type provided in WHERE command, expecting: INT, got: TEXT"},
+		{setup + join + "b.nope EQUAL 1;", "column with the name of b.nope doesn't exist in table a"},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineFilterMissingColumnPrecedesTypeError - missing columns are reported before any type
+// error, so a misspelt column never surfaces as a confusing type mismatch.
+func TestEngineFilterMissingColumnPrecedesTypeError(t *testing.T) {
+	setup := "CREATE TABLE tbl(one TEXT, two INT);"
+	missing := "column with the name of nope doesn't exist in table tbl"
+
+	tests := []errorHandlingTestSuite{
+		{setup + "SELECT * FROM tbl WHERE two EQUAL 'abc' OR nope EQUAL 1;", missing},
+		{setup + "DELETE FROM tbl WHERE two LIKE '1%' AND nope EQUAL 1;", missing},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
+// TestEngineWhereOnProjectedColumnIsMissingWhenRowsExist - pins an accepted exception:
+// ORDER BY projects before WHERE runs, so a valid column outside the projection is
+// reported missing once rows reach the WHERE (#65).
+func TestEngineWhereOnProjectedColumnIsMissingWhenRowsExist(t *testing.T) {
+	tests := []errorHandlingTestSuite{
+		{"CREATE TABLE tbl(one TEXT, two INT); INSERT INTO tbl VALUES('a', 1); SELECT one FROM tbl WHERE two EQUAL 1 ORDER BY one ASC;", "column with the name of two doesn't exist in table tbl"},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
 }

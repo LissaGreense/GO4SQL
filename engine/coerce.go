@@ -55,3 +55,16 @@ func displayValue(t token.Token) string {
 	}
 	return "'" + t.Literal + "'"
 }
+
+// inferTarget is the type a filter literal has when there is no column to take a type from.
+// It mirrors how row evaluation converts literals, so the check and the scan agree.
+func inferTarget(t token.Token) SupportedTypes {
+	switch t.Type {
+	case token.LITERAL:
+		return IntType
+	case token.NULL:
+		return NullType
+	default:
+		return StringType
+	}
+}

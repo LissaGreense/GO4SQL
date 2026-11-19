@@ -113,6 +113,16 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 		return nil, err
 	}
 
+	// Checked on the source table, before ORDER BY projects it and before the WHERE transformer's
+	// empty-table early return can skip it.
+	if selectCommand.HasWhereCommand() {
+		whereCommand := selectCommand.WhereCommand
+		err = engine.checkFilter(whereCommand.Expression, table, selectCommand.Name.Token.Literal, whereCommand.Token.Literal)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	processor := NewSelectProcessor(engine, selectCommand)
 
 	// Build the transformation pipeline using the builder pattern
@@ -452,6 +462,11 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 
 	if !exist {
 		return &TableDoesNotExistError{deleteCommand.Name.Token.Literal}
+	}
+
+	err := engine.checkFilter(whereCommand.Expression, table, deleteCommand.Name.Token.Literal, whereCommand.Token.Literal)
+	if err != nil {
+		return err
 	}
 
 	newTable, err := engine.getFilteredTable(table, whereCommand, true, deleteCommand.Name.Token.Literal)

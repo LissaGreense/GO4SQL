@@ -219,6 +219,20 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 		})
 	}
 
+	// NOT, NOTIN and NOT LIKE with a misfit match every row, and OR TRUE / AND TRUE hide the bad side,
+	// so a per-row check alone would let these DELETEs wipe the table.
+	filterRows := []string{"CREATE TABLE t( a INT, b TEXT );", "INSERT INTO t VALUES( 1, 'x' );", "INSERT INTO t VALUES( 2, 'y' );"}
+	emptyTable := []string{"CREATE TABLE t( a INT, b TEXT );"}
+	tests = append(tests,
+		badStatement{"DELETE NOT decimal on INT", filterRows, "DELETE FROM t WHERE a NOT 3.14;"},
+		badStatement{"DELETE NOT string on INT", filterRows, "DELETE FROM t WHERE a NOT 'abc';"},
+		badStatement{"DELETE NOTIN decimal AND TRUE", filterRows, "DELETE FROM t WHERE a NOTIN (3.14) AND TRUE;"},
+		badStatement{"DELETE EQUAL decimal OR TRUE", filterRows, "DELETE FROM t WHERE a EQUAL 3.14 OR TRUE;"},
+		badStatement{"DELETE NOT LIKE on INT OR TRUE", filterRows, "DELETE FROM t WHERE a NOT LIKE '5%' OR TRUE;"},
+		badStatement{"SELECT LIKE on INT column of empty table", emptyTable, "SELECT * FROM t WHERE a LIKE '1%';"},
+		badStatement{"SELECT literal LIKE INT column of empty table", emptyTable, "SELECT * FROM t WHERE '5' LIKE a;"},
+	)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			engine := New()
