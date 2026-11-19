@@ -203,6 +203,29 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
+	// Type and NOT NULL checks are separate full passes, so the error category doesn't depend on
+	// map order, and both run before the scan, so the outcome doesn't depend on which rows match.
+	values := make([]ValueInterface, len(changes))
+	for i, change := range changes {
+		column := table.Columns[change.index]
+		value, ok := coerce(change.value.GetToken(), declaredTarget(column.Type.Type))
+		if !ok {
+			return &InvalidValueTypeError{
+				expectedType: string(column.Type.Type),
+				actualValue:  displayValue(change.value.GetToken()),
+				commandName:  command.Token.Literal,
+			}
+		}
+		values[i] = value
+	}
+
+	for i, change := range changes {
+		column := table.Columns[change.index]
+		if column.IsNotNull && values[i].GetType() == NullType {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
+		}
+	}
+
 	matchingRowIndices := make([]int, 0)
 	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
@@ -217,21 +240,9 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		matchingRowIndices = append(matchingRowIndices, rowIndex)
 	}
 
-	// Validate before mutating so a rejected UPDATE leaves the table untouched.
-	for _, change := range changes {
-		column := table.Columns[change.index]
-		if len(matchingRowIndices) > 0 && column.IsNotNull && change.value.GetToken().Type == token.NULL {
-			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
-		}
-	}
-
 	for _, rowIndex := range matchingRowIndices {
-		for _, change := range changes {
-			val, err := getInterfaceValue(change.value.GetToken())
-			if err != nil {
-				return err
-			}
-			table.Columns[change.index].Values[rowIndex] = val
+		for i, change := range changes {
+			table.Columns[change.index].Values[rowIndex] = values[i]
 		}
 	}
 

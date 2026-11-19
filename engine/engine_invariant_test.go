@@ -141,11 +141,12 @@ func TestInvariantHoldsAcrossE2EScripts(t *testing.T) {
 }
 
 func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
-	tests := []struct {
+	type badStatement struct {
 		name  string
 		setup []string
 		bad   string
-	}{
+	}
+	tests := []badStatement{
 		{
 			name:  "string into INT",
 			setup: []string{"CREATE TABLE t( a INT, b INT );", "INSERT INTO t VALUES( 7, 8 );"},
@@ -181,6 +182,43 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 		},
 	}
 
+	intTable := "CREATE TABLE t( id INT, a INT );"
+	textTable := "CREATE TABLE t( id INT, a TEXT );"
+	notNullTable := "CREATE TABLE t( id INT, a INT NOT NULL );"
+	updateSets := []struct {
+		name   string
+		create string
+		set    string
+	}{
+		{"quoted number into INT", intTable, "SET a TO '5'"},
+		{"number into TEXT", textTable, "SET a TO 7"},
+		{"decimal into INT", intTable, "SET a TO 3.14"},
+		{"overflow into INT", intTable, "SET a TO 99999999999999999999"},
+		{"non-numeric string into INT", intTable, "SET a TO 'abc'"},
+		{"NULL into NOT NULL", notNullTable, "SET a TO NULL"},
+	}
+	for _, update := range updateSets {
+		row := "INSERT INTO t VALUES( 1, 1 );"
+		if update.create == textTable {
+			row = "INSERT INTO t VALUES( 1, 'x' );"
+		}
+		tests = append(tests,
+			badStatement{"UPDATE " + update.name + " on empty table", []string{update.create}, "UPDATE t " + update.set + ";"},
+			badStatement{"UPDATE " + update.name + " on no-match table", []string{update.create, row}, "UPDATE t " + update.set + " WHERE id EQUAL 2;"},
+			badStatement{"UPDATE " + update.name + " on matching table", []string{update.create, row}, "UPDATE t " + update.set + " WHERE id EQUAL 1;"},
+		)
+	}
+
+	// Changes is a map, so a partial write of the valid b=5 can only happen when the map visits
+	// b before a; repeat so at least one run takes that order.
+	for i := 0; i < 50; i++ {
+		tests = append(tests, badStatement{
+			name:  "UPDATE valid and wrong-type SET, run " + strconv.Itoa(i),
+			setup: []string{"CREATE TABLE t( a INT, b INT );", "INSERT INTO t VALUES( 1, 2 );"},
+			bad:   "UPDATE t SET b TO 5, a TO 3.14;",
+		})
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			engine := New()
@@ -197,5 +235,59 @@ func TestFailedStatementsLeaveTablesUnchanged(t *testing.T) {
 			walkTables(t, engine, test.bad)
 			assertTablesEqualSnapshot(t, engine, snapshot, test.bad)
 		})
+	}
+}
+
+// TestQueriesAreCorrectAfterRejectedUpdates - a rejected UPDATE that slipped a wrong-type value
+// into a column would break aggregates and sorting on it later, not at the UPDATE itself.
+func TestQueriesAreCorrectAfterRejectedUpdates(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine,
+		"CREATE TABLE t( id INT, value INT, name TEXT );",
+		"INSERT INTO t VALUES( 1, 3, 'a' );",
+		"INSERT INTO t VALUES( 2, 4, 'b' );",
+	)
+	rejected := []string{
+		"UPDATE t SET value TO 'abc' WHERE id EQUAL 2;",
+		"UPDATE t SET value TO '10' WHERE id EQUAL 1;",
+		"UPDATE t SET name TO 5 WHERE id EQUAL 1;",
+		"UPDATE t SET id TO 9, value TO 3.14;",
+		"UPDATE t SET name TO 'z', value TO 99999999999999999999;",
+	}
+	for _, input := range rejected {
+		sequence, err := parser.New(lexer.RunLexer(input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error for %q: %s", input, err)
+		}
+		if _, err := engine.Evaluate(sequence); err == nil {
+			t.Fatalf("expected error for %q, got nil", input)
+		}
+		walkTables(t, engine, input)
+	}
+
+	queries := []struct {
+		input    string
+		expected [][]string
+	}{
+		{"SELECT SUM(value), MAX(value), MAX(id) FROM t;", [][]string{{"7", "4", "2"}}},
+		{"SELECT id, name FROM t ORDER BY name DESC;", [][]string{{"2", "b"}, {"1", "a"}}},
+		{"SELECT id, value FROM t ORDER BY value DESC;", [][]string{{"2", "4"}, {"1", "3"}}},
+	}
+	for _, query := range queries {
+		sequence, err := parser.New(lexer.RunLexer(query.input)).ParseSequence()
+		if err != nil {
+			t.Fatalf("parser error for %q: %s", query.input, err)
+		}
+		result, err := engine.getSelectResponse(sequence.Commands[0].(*ast.SelectCommand))
+		if err != nil {
+			t.Fatalf("engine error for %q: %s", query.input, err)
+		}
+		for rowIndex, row := range query.expected {
+			for columnIndex, want := range row {
+				if got := result.Columns[columnIndex].Values[rowIndex].ToString(); got != want {
+					t.Fatalf("%q row %d column %d: want %s, got %s", query.input, rowIndex, columnIndex, want, got)
+				}
+			}
+		}
 	}
 }

@@ -127,6 +127,36 @@ func TestEngineUpdateCommandErrorHandling(t *testing.T) {
 	runEngineErrorHandlingSuite(t, tests)
 }
 
+// TestEngineUpdateValueTypeErrorHandling - a wrong-type SET value is decided by the statement and
+// the schema alone, so it errors the same way on an empty, a no-match and a matching table.
+func TestEngineUpdateValueTypeErrorHandling(t *testing.T) {
+	intSetup := "CREATE TABLE t(id INT, value INT);"
+	textSetup := "CREATE TABLE t(id INT, value TEXT);"
+	twoRows := "INSERT INTO t VALUES(1, NULL);INSERT INTO t VALUES(2, NULL);"
+
+	tests := []errorHandlingTestSuite{
+		{intSetup + "UPDATE t SET value TO '5';", "invalid value type provided in UPDATE command, expecting: INT, got: '5'"},
+		{intSetup + twoRows + "UPDATE t SET value TO '5' WHERE id EQUAL 3;", "invalid value type provided in UPDATE command, expecting: INT, got: '5'"},
+		{intSetup + twoRows + "UPDATE t SET value TO '5' WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: '5'"},
+		{textSetup + "UPDATE t SET value TO 7;", "invalid value type provided in UPDATE command, expecting: TEXT, got: 7"},
+		{textSetup + twoRows + "UPDATE t SET value TO 7 WHERE id EQUAL 3;", "invalid value type provided in UPDATE command, expecting: TEXT, got: 7"},
+		{textSetup + twoRows + "UPDATE t SET value TO 7 WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: TEXT, got: 7"},
+		{intSetup + "UPDATE t SET value TO 3.14;", "invalid value type provided in UPDATE command, expecting: INT, got: 3.14"},
+		{intSetup + twoRows + "UPDATE t SET value TO 3.14 WHERE id EQUAL 3;", "invalid value type provided in UPDATE command, expecting: INT, got: 3.14"},
+		{intSetup + twoRows + "UPDATE t SET value TO 3.14 WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: 3.14"},
+		{intSetup + "UPDATE t SET value TO 99999999999999999999;", "invalid value type provided in UPDATE command, expecting: INT, got: 99999999999999999999"},
+		{intSetup + twoRows + "UPDATE t SET value TO 99999999999999999999 WHERE id EQUAL 3;", "invalid value type provided in UPDATE command, expecting: INT, got: 99999999999999999999"},
+		{intSetup + twoRows + "UPDATE t SET value TO 99999999999999999999 WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: 99999999999999999999"},
+		{"CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: 'abc'"},
+		{"CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 1;", "invalid value type provided in UPDATE command, expecting: INT, got: 'abc'"},
+		{"CREATE TABLE table1( id INT, value INT);INSERT INTO table1 VALUES(1, 3);INSERT INTO table1 VALUES(2, 4);UPDATE table1 SET value TO '10' WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: '10'"},
+		{"CREATE TABLE table1( id INT, value INT);INSERT INTO table1 VALUES(1, NULL);INSERT INTO table1 VALUES(2, 3);INSERT INTO table1 VALUES(3, 4);UPDATE table1 SET value TO '10' WHERE id EQUAL 2;", "invalid value type provided in UPDATE command, expecting: INT, got: '10'"},
+		{"CREATE TABLE table1( id INT, value TEXT);INSERT INTO table1 VALUES(1, 'Value1');INSERT INTO table1 VALUES(2, 'Value2');UPDATE table1 SET value TO 5 WHERE id EQUAL 1;", "invalid value type provided in UPDATE command, expecting: TEXT, got: 5"},
+	}
+
+	runEngineErrorHandlingSuite(t, tests)
+}
+
 func TestEngineNotNullConstraintErrorHandling(t *testing.T) {
 	insertNull := NullValueNotAllowedError{columnName: "id", commandName: "INSERT"}
 	updateNull := NullValueNotAllowedError{columnName: "id", commandName: "UPDATE"}
@@ -138,6 +168,8 @@ func TestEngineNotNullConstraintErrorHandling(t *testing.T) {
 		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); UPDATE tbl SET nickname TO 'b', id TO NULL WHERE nickname EQUAL 'a';", updateNull.Error()},
 		// DELETE rebuilds the table via getCopyOfTableWithoutRows; NOT NULL must survive even a no-op DELETE.
 		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a'); DELETE FROM tbl WHERE id EQUAL 99; UPDATE tbl SET id TO NULL;", updateNull.Error()},
+		{"CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); UPDATE tbl SET id TO NULL;", updateNull.Error()},
+		{"CREATE TABLE users( id INT NOT NULL, nickname TEXT ); INSERT INTO users VALUES( 1, 'kate' ); UPDATE users SET id TO NULL WHERE id EQUAL 3;", updateNull.Error()},
 	}
 
 	runEngineErrorHandlingSuite(t, tests)
@@ -172,6 +204,20 @@ func TestEngineUpdateSetColumnErrorIsDeterministicAcrossMapOrder(t *testing.T) {
 	}
 }
 
+// TestEngineUpdateTypeErrorPrecedesNotNullErrorAcrossMapOrder - every SET value is type-checked
+// before any is NOT NULL-checked, so the error category doesn't depend on map iteration order.
+func TestEngineUpdateTypeErrorPrecedesNotNullErrorAcrossMapOrder(t *testing.T) {
+	want := "invalid value type provided in UPDATE command, expecting: TEXT, got: 5"
+	setup := "CREATE TABLE tbl(id INT NOT NULL, nickname TEXT); INSERT INTO tbl VALUES(1, 'a');"
+
+	for i := 0; i < 50; i++ {
+		errorMsg := getErrorMessage(t, setup+"UPDATE tbl SET nickname TO 5, id TO NULL;", i)
+		if errorMsg != want {
+			t.Fatalf("[%d] Was expecting error: \n\t{%s},\n\tbut it was:\n\t{%s}", i, want, errorMsg)
+		}
+	}
+}
+
 func TestEngineOrderByCommandErrorHandling(t *testing.T) {
 	columnDoesNotExist := ColumnDoesNotExistError{tableName: "tbl", columnName: "two"}
 
@@ -196,16 +242,6 @@ func TestEngineFullJoinErrorHandling(t *testing.T) {
 	}
 
 	runEngineErrorHandlingSuite(t, tests)
-}
-
-func TestEngineAggregateOnIntColumnWithUpdatedNonNumericString(t *testing.T) {
-	setup := "CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 2;"
-	want := `strconv.Atoi: parsing "abc": invalid syntax`
-	runEngineErrorHandlingSuite(t, []errorHandlingTestSuite{
-		{setup + "SELECT SUM(value) FROM t;", want},
-		{setup + "SELECT AVG(value) FROM t;", want},
-		{"CREATE TABLE t(id INT, value INT);INSERT INTO t VALUES(1,3);INSERT INTO t VALUES(2,4);UPDATE t SET value TO 'abc' WHERE id EQUAL 1;SELECT SUM(value) FROM t;", want},
-	})
 }
 
 func runEngineErrorHandlingSuite(t *testing.T, suite []errorHandlingTestSuite) {
