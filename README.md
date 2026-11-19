@@ -77,6 +77,12 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   **NOT NULL** constraint in **CREATE TABLE**. In GO4SQL NULL is the smallest possible value, what
   means it can be compared with other types with **EQUAL** and **NOT** statements.
 
+Typing is strict. Values in **INSERT INTO** and **UPDATE**, and both sides of every comparison in
+**WHERE** and **JOIN**, are checked against the declared column types before any row is read. A
+mismatch is an error, even on an empty table or when no row would match: ``'5'`` or ``3.14`` for an
+``INT`` column, ``7`` for a ``TEXT`` column, or an ``INT`` column compared with a ``TEXT`` column.
+A statement that fails this check leaves every table unchanged.
+
 ## FUNCTIONALITY
 
 * ***CREATE TABLE*** - you can create table with name ``table1`` using
@@ -91,6 +97,7 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   CREATE TABLE IF NOT EXISTS table1( one TEXT , two INT);
   ```
   In that case the command is skipped and the existing table with its data stays unchanged.
+  Declaring the same column name twice is an error.
 
   A column can be declared with the ``NOT NULL`` constraint, so it must always have a value:
   ```sql
@@ -179,7 +186,9 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ``table_name`` is the name of the table, and ``WHERE`` returns rows where ``column1`` matches the
   given pattern. Two wildcards are supported: ``%`` matches any sequence of characters (including
   none), and ``_`` matches exactly one character. Matching is case-sensitive, a ``NULL`` value never
-  matches any pattern, and ``column1`` must be a ``TEXT`` (or ``NULL``) column.
+  matches any pattern, and ``column1`` must be a ``TEXT`` column (a ``NULL`` pattern is allowed).
+  The operands are checked before any row is read, so a wrong one is an error even on an empty
+  table.
 
 * ***NOT LIKE*** - is used to search for a value that does not match a specified pattern in a
   ``TEXT`` column. It can be used with ``WHERE`` like this:
@@ -191,7 +200,8 @@ To run e2e test locally, you can run script `./e2e/e2e_test.sh` if you're in the
   ``table_name`` is the name of the table, and ``WHERE`` returns rows where ``column1`` does not
   match the given pattern, using the same wildcards as ``LIKE``. A ``NULL`` value always matches
   ``NOT LIKE`` (the opposite of ``LIKE``, which it never matches), and ``column1`` must be a
-  ``TEXT`` (or ``NULL``) column.
+  ``TEXT`` column (a ``NULL`` pattern is allowed). As with ``LIKE``, the operands are checked
+  before any row is read.
 
 * ***DELETE FROM*** is used to delete existing records in a table. It can be used like this:
   ```sql

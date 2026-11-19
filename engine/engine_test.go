@@ -778,6 +778,52 @@ func TestSelectWithWhereEqualToFalse(t *testing.T) {
 	engineTestSuite.runTestSuite(t)
 }
 
+// TestFilterTypeCheckAcceptsNullAndMatchingTypes - NULL fits every type (ADR 0002), so the
+// pre-scan check must let these through and leave row evaluation to decide the result.
+func TestFilterTypeCheckAcceptsNullAndMatchingTypes(t *testing.T) {
+	create := []string{"CREATE TABLE tb1( one TEXT, two INT );"}
+	rows := []string{
+		"INSERT INTO tb1 VALUES( 'a', 1 );",
+		"INSERT INTO tb1 VALUES( 'b', NULL );",
+		"INSERT INTO tb1 VALUES( 'c', 3 );",
+	}
+	header := []string{"one", "two"}
+
+	tests := []struct {
+		name           string
+		selectInput    string
+		expectedOutput [][]string
+	}{
+		{"column EQUAL NULL", "SELECT * FROM tb1 WHERE two EQUAL NULL;", [][]string{header, {"b", "NULL"}}},
+		{"NULL row values against a literal", "SELECT * FROM tb1 WHERE two EQUAL 3;", [][]string{header, {"c", "3"}}},
+		{"NULL in an IN list", "SELECT * FROM tb1 WHERE one IN ('a', NULL, 'c');", [][]string{header, {"a", "1"}, {"c", "3"}}},
+		{"literal NOT NULL", "SELECT * FROM tb1 WHERE 'x' NOT NULL;", [][]string{header, {"a", "1"}, {"b", "NULL"}, {"c", "3"}}},
+		{"TEXT column NOT quoted symbol", "SELECT * FROM tb1 WHERE one NOT '*';", [][]string{header, {"a", "1"}, {"b", "NULL"}, {"c", "3"}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			suite := engineTableContentTestSuite{
+				createInputs:          create,
+				insertAndDeleteInputs: rows,
+				selectInput:           test.selectInput,
+				expectedOutput:        test.expectedOutput,
+			}
+			suite.runTestSuite(t)
+		})
+	}
+}
+
+// TestWhereOnProjectedColumnSucceedsOnEmptyTable - the empty-table half of the accepted ORDER BY
+// projection exception (#65); the rows half is pinned in TestEngineWhereOnProjectedColumnIsMissingWhenRowsExist.
+func TestWhereOnProjectedColumnSucceedsOnEmptyTable(t *testing.T) {
+	engine := New()
+	evaluateInputs(t, engine,
+		"CREATE TABLE tbl( one TEXT, two INT );",
+		"SELECT one FROM tbl WHERE two EQUAL 1 ORDER BY one ASC;",
+	)
+}
+
 func TestDistinctSelect(t *testing.T) {
 
 	engineTestSuite := engineTableContentTestSuite{
@@ -871,7 +917,6 @@ func TestNotNullColumnAcceptsValuesAndNullableColumnAcceptsNull(t *testing.T) {
 			"INSERT INTO users VALUES( 1, 'kate' );",
 			"INSERT INTO users VALUES( 2, NULL );",
 			"UPDATE users SET nickname TO NULL WHERE id EQUAL 1;",
-			"UPDATE users SET id TO NULL WHERE id EQUAL 3;",
 			"UPDATE users SET id TO 5 WHERE id EQUAL 2;",
 		},
 		selectInput: "SELECT * FROM users;",
@@ -1789,67 +1834,6 @@ func TestAggregateFunctionSumOnIntColumnWithNullInFirstRow(t *testing.T) {
 		expectedOutput: [][]string{
 			{"SUM(value)"},
 			{"4"},
-		},
-	}
-
-	engineTestSuite.runTestSuite(t)
-}
-
-func TestAggregateFunctionSumOnIntColumnWithUpdatedStringInLaterRow(t *testing.T) {
-	engineTestSuite := engineTableContentTestSuite{
-		createInputs: []string{
-			"CREATE TABLE table1( id INT, value INT);",
-		},
-		insertAndDeleteInputs: []string{
-			"INSERT INTO table1 VALUES(1, 3);",
-			"INSERT INTO table1 VALUES(2, 4);",
-			"UPDATE table1 SET value TO '10' WHERE id EQUAL 2;",
-		},
-		selectInput: "SELECT SUM(value) FROM table1;",
-		expectedOutput: [][]string{
-			{"SUM(value)"},
-			{"13"},
-		},
-	}
-
-	engineTestSuite.runTestSuite(t)
-}
-
-func TestAggregateFunctionSumOnIntColumnWithUpdatedStringInFirstNonNullRow(t *testing.T) {
-	engineTestSuite := engineTableContentTestSuite{
-		createInputs: []string{
-			"CREATE TABLE table1( id INT, value INT);",
-		},
-		insertAndDeleteInputs: []string{
-			"INSERT INTO table1 VALUES(1, NULL);",
-			"INSERT INTO table1 VALUES(2, 3);",
-			"INSERT INTO table1 VALUES(3, 4);",
-			"UPDATE table1 SET value TO '10' WHERE id EQUAL 2;",
-		},
-		selectInput: "SELECT SUM(value) FROM table1;",
-		expectedOutput: [][]string{
-			{"SUM(value)"},
-			{"14"},
-		},
-	}
-
-	engineTestSuite.runTestSuite(t)
-}
-
-func TestAggregateFunctionSumOnTextColumnWithUpdatedNumberInFirstRow(t *testing.T) {
-	engineTestSuite := engineTableContentTestSuite{
-		createInputs: []string{
-			"CREATE TABLE table1( id INT, value TEXT);",
-		},
-		insertAndDeleteInputs: []string{
-			"INSERT INTO table1 VALUES(1, 'Value1');",
-			"INSERT INTO table1 VALUES(2, 'Value2');",
-			"UPDATE table1 SET value TO 5 WHERE id EQUAL 1;",
-		},
-		selectInput: "SELECT SUM(value) FROM table1;",
-		expectedOutput: [][]string{
-			{"SUM(value)"},
-			{"0"},
 		},
 	}
 

@@ -113,6 +113,16 @@ func (engine *DbEngine) getSelectResponse(selectCommand *ast.SelectCommand) (*Ta
 		return nil, err
 	}
 
+	// Checked on the source table, before ORDER BY projects it and before the WHERE transformer's
+	// empty-table early return can skip it.
+	if selectCommand.HasWhereCommand() {
+		whereCommand := selectCommand.WhereCommand
+		err = checkFilter(whereCommand.Expression, table, selectCommand.Name.Token.Literal, whereCommand.Token.Literal)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	processor := NewSelectProcessor(engine, selectCommand)
 
 	// Build the transformation pipeline using the builder pattern
@@ -147,6 +157,16 @@ func (engine *DbEngine) createTable(command *ast.CreateCommand) error {
 
 	if exist {
 		return &TableAlreadyExistsError{command.Name.Token.Literal}
+	}
+
+	// Rows are keyed by column name, so a duplicate name would let one column's values
+	// land in the other. Checked before registration so a rejected CREATE leaves no table.
+	declaredNames := make(map[string]bool, len(command.Columns))
+	for _, columnDefinition := range command.Columns {
+		if declaredNames[columnDefinition.Name] {
+			return &DuplicateColumnNameError{tableName: command.Name.Token.Literal, columnName: columnDefinition.Name}
+		}
+		declaredNames[columnDefinition.Name] = true
 	}
 
 	engine.Tables[command.Name.Token.Literal] = &Table{Columns: []*Column{}}
@@ -193,6 +213,36 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		changes = append(changes, change{index: colIndex, value: newValue})
 	}
 
+	// Type and NOT NULL checks are separate full passes, so the error category doesn't depend on
+	// map order, and both run before the scan, so the outcome doesn't depend on which rows match.
+	values := make([]ValueInterface, len(changes))
+	for i, change := range changes {
+		column := table.Columns[change.index]
+		value, ok := coerce(change.value.GetToken(), declaredTarget(column.Type.Type))
+		if !ok {
+			return &InvalidValueTypeError{
+				expectedType: string(column.Type.Type),
+				actualValue:  displayValue(change.value.GetToken()),
+				commandName:  command.Token.Literal,
+			}
+		}
+		values[i] = value
+	}
+
+	for i, change := range changes {
+		column := table.Columns[change.index]
+		if column.IsNotNull && values[i].GetType() == NullType {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
+		}
+	}
+
+	if command.HasWhereCommand() {
+		err := checkFilter(command.WhereCommand.Expression, table, command.Name.Token.Literal, command.WhereCommand.Token.Literal)
+		if err != nil {
+			return err
+		}
+	}
+
 	matchingRowIndices := make([]int, 0)
 	for rowIndex := 0; rowIndex < len(table.Columns[0].Values); rowIndex++ {
 		if command.HasWhereCommand() {
@@ -207,21 +257,9 @@ func (engine *DbEngine) updateTable(command *ast.UpdateCommand) error {
 		matchingRowIndices = append(matchingRowIndices, rowIndex)
 	}
 
-	// Validate before mutating so a rejected UPDATE leaves the table untouched.
-	for _, change := range changes {
-		column := table.Columns[change.index]
-		if len(matchingRowIndices) > 0 && column.IsNotNull && change.value.GetToken().Type == token.NULL {
-			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
-		}
-	}
-
 	for _, rowIndex := range matchingRowIndices {
-		for _, change := range changes {
-			val, err := getInterfaceValue(change.value.GetToken())
-			if err != nil {
-				return err
-			}
-			table.Columns[change.index].Values[rowIndex] = val
+		for i, change := range changes {
+			table.Columns[change.index].Values[rowIndex] = values[i]
 		}
 	}
 
@@ -247,26 +285,19 @@ func (engine *DbEngine) insertIntoTable(command *ast.InsertCommand) error {
 
 	// Validate every value before appending so a rejected INSERT doesn't leave a partial row
 	interfaceValues := make([]ValueInterface, len(columns))
-	for i := range columns {
-		expectedToken := tokenMapper(columns[i].Type.Type)
-		colValueType := command.Values[i].Type
-
-		if colValueType == token.NULL {
-			if columns[i].IsNotNull {
-				return &NullValueNotAllowedError{columnName: columns[i].Name, commandName: command.Token.Literal}
-			}
-		} else if expectedToken != colValueType {
+	for i, column := range columns {
+		value, ok := coerce(command.Values[i], declaredTarget(column.Type.Type))
+		if !ok {
 			return &InvalidValueTypeError{
-				expectedType: string(expectedToken),
-				actualType:   string(colValueType),
+				expectedType: string(column.Type.Type),
+				actualValue:  displayValue(command.Values[i]),
 				commandName:  command.Token.Literal,
 			}
 		}
-		interfaceValue, err := getInterfaceValue(command.Values[i])
-		if err != nil {
-			return err
+		if column.IsNotNull && value.GetType() == NullType {
+			return &NullValueNotAllowedError{columnName: column.Name, commandName: command.Token.Literal}
 		}
-		interfaceValues[i] = interfaceValue
+		interfaceValues[i] = value
 	}
 	for i := range columns {
 		columns[i].Values = append(columns[i].Values, interfaceValues[i])
@@ -440,6 +471,11 @@ func (engine *DbEngine) deleteFromTable(deleteCommand *ast.DeleteCommand, whereC
 		return &TableDoesNotExistError{deleteCommand.Name.Token.Literal}
 	}
 
+	err := checkFilter(whereCommand.Expression, table, deleteCommand.Name.Token.Literal, whereCommand.Token.Literal)
+	if err != nil {
+		return err
+	}
+
 	newTable, err := engine.getFilteredTable(table, whereCommand, true, deleteCommand.Name.Token.Literal)
 
 	if err != nil {
@@ -470,12 +506,8 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 		columnNames = append(columnNames, sortPattern.ColumnName.Literal)
 	}
 
-	missingColName := engine.getMissingColumnName(columnNames, table)
-	if missingColName != "" {
-		return nil, &ColumnDoesNotExistError{
-			tableName:  tableName,
-			columnName: missingColName,
-		}
+	if err := checkColumnsExist(columnNames, table, tableName); err != nil {
+		return nil, err
 	}
 
 	rows := MapTableToRows(table).rows
@@ -503,22 +535,6 @@ func (engine *DbEngine) getSortedTable(orderByCommand *ast.OrderByCommand, table
 	return copyOfTable, nil
 }
 
-func (engine *DbEngine) getMissingColumnName(columnNames []string, table *Table) string {
-	for _, columnName := range columnNames {
-		exists := false
-		for _, column := range table.Columns {
-			if column.Name == columnName {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			return columnName
-		}
-	}
-	return ""
-}
-
 func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCommand, negation bool, tableName string) (*Table, error) {
 	filteredTable := getCopyOfTableWithoutRows(table)
 
@@ -527,9 +543,8 @@ func (engine *DbEngine) getFilteredTable(table *Table, whereCommand *ast.WhereCo
 	for _, identifier := range identifiers {
 		columnNames = append(columnNames, identifier.Token.Literal)
 	}
-	missingColumnName := engine.getMissingColumnName(columnNames, table)
-	if missingColumnName != "" {
-		return nil, &ColumnDoesNotExistError{tableName: tableName, columnName: missingColumnName}
+	if err := checkColumnsExist(columnNames, table, tableName); err != nil {
+		return nil, err
 	}
 
 	for _, row := range MapTableToRows(table).rows {
@@ -566,6 +581,12 @@ func (engine *DbEngine) joinTables(joinCommand *ast.JoinCommand, leftTableName s
 
 	addColumnsWithPrefix(joinedTable, leftTable.Columns, leftTablePrefix)
 	addColumnsWithPrefix(joinedTable, rightTable.Columns, rightTablePrefix)
+
+	// The empty table name keeps the missing-column error a JOIN ON has always reported.
+	err := checkFilter(joinCommand.Expression, joinedTable, "", joinCommand.Token.Literal)
+	if err != nil {
+		return nil, err
+	}
 
 	leftTableWithAddedPrefix := leftTable.getTableCopyWithAddedPrefixToColumnNames(leftTablePrefix)
 	rightTableWithAddedPrefix := rightTable.getTableCopyWithAddedPrefixToColumnNames(rightTablePrefix)
@@ -745,9 +766,9 @@ func processContainExpression(row map[string]ValueInterface, containExpression *
 
 func ifValueInterfaceInArray(array []ast.Anonymitifier, valueLeft ValueInterface) (bool, error) {
 	for _, expectedValue := range array {
-		value, err := getInterfaceValue(expectedValue.Token)
-		if err != nil {
-			return false, err
+		value, ok := literalValue(expectedValue.Token)
+		if !ok {
+			return false, &UnsupportedValueType{expectedValue.Token.Literal}
 		}
 		if value.IsEqual(valueLeft) {
 			return true, nil
@@ -796,7 +817,11 @@ func getTifierValue(tifier ast.Tifier, row map[string]ValueInterface) (ValueInte
 		}
 		return value, nil
 	case ast.Anonymitifier:
-		return getInterfaceValue(mappedTifier.GetToken())
+		value, ok := literalValue(mappedTifier.GetToken())
+		if !ok {
+			return nil, &UnsupportedValueType{mappedTifier.GetToken().Literal}
+		}
+		return value, nil
 	default:
 		return nil, &UnsupportedValueType{tifier.GetToken().Literal}
 	}

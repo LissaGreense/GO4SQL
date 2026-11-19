@@ -20,7 +20,7 @@ type ValueInterface interface {
 type SupportedTypes int
 
 const (
-	IntType = iota
+	IntType SupportedTypes = iota
 	StringType
 	NullType
 )
